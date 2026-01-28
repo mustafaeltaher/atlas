@@ -41,14 +41,14 @@ import { AuthService } from '../../services/auth.service';
       </nav>
       
       <div class="sidebar-footer">
-        <div class="user-info">
+        <a routerLink="/profile" class="user-profile-widget" title="My Profile">
           <div class="user-avatar">{{ getInitials() }}</div>
           <div class="user-details">
             <span class="user-name">{{ authService.currentUser()?.username }}</span>
             <span class="user-role">{{ authService.currentUser()?.role }}</span>
           </div>
-        </div>
-        <button class="logout-btn" (click)="logout()">
+        </a>
+        <button class="logout-btn" (click)="logout()" title="Logout">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
             <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
             <polyline points="16 17 21 12 16 7"></polyline>
@@ -119,16 +119,27 @@ import { AuthService } from '../../services/auth.service';
     
     .sidebar-footer {
       padding: 16px;
-      border-top: 1px solid rgba(255,255,255,0.1);
+      margin-top: auto;
       display: flex;
       align-items: center;
-      justify-content: space-between;
+      gap: 8px;
     }
     
-    .user-info {
+    .user-profile-widget {
       display: flex;
       align-items: center;
       gap: 12px;
+      padding: 10px;
+      border-radius: var(--border-radius);
+      cursor: pointer;
+      transition: all 0.2s;
+      text-decoration: none;
+      color: inherit;
+      flex: 1;
+    }
+    
+    .user-profile-widget:hover {
+      background: rgba(255, 255, 255, 0.1);
     }
     
     .user-avatar {
@@ -142,11 +153,17 @@ import { AuthService } from '../../services/auth.service';
       font-weight: 600;
       font-size: 14px;
       color: white;
+      transition: transform 0.2s;
+    }
+
+    .user-profile-widget:hover .user-avatar {
+      transform: scale(1.05);
     }
     
     .user-details {
       display: flex;
       flex-direction: column;
+      flex: 1;
     }
     
     .user-name {
@@ -160,7 +177,7 @@ import { AuthService } from '../../services/auth.service';
       color: rgba(255,255,255,0.5);
       text-transform: uppercase;
     }
-    
+
     .logout-btn {
       background: none;
       border: none;
@@ -169,6 +186,9 @@ import { AuthService } from '../../services/auth.service';
       padding: 8px;
       border-radius: var(--border-radius);
       transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
     }
     
     .logout-btn:hover {
