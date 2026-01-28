@@ -25,10 +25,7 @@ import { DashboardStats } from '../../models';
               <div class="card-header">
                 <span class="card-title">Total Employees</span>
                 <div class="card-icon employees">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
-                    <circle cx="9" cy="7" r="4"></circle>
-                  </svg>
+                  <span>👤</span>
                 </div>
               </div>
               <div class="card-value">{{ stats()?.activeEmployees || 0 }}</div>
@@ -45,11 +42,7 @@ import { DashboardStats } from '../../models';
               <div class="card-header">
                 <span class="card-title">Utilization Rate</span>
                 <div class="card-icon utilization">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <line x1="18" y1="20" x2="18" y2="10"></line>
-                    <line x1="12" y1="20" x2="12" y2="4"></line>
-                    <line x1="6" y1="20" x2="6" y2="14"></line>
-                  </svg>
+                  <span>📊</span>
                 </div>
               </div>
               <div class="card-value">{{ stats()?.averageUtilization || 0 }}%</div>
@@ -63,11 +56,7 @@ import { DashboardStats } from '../../models';
               <div class="card-header">
                 <span class="card-title">Bench Count</span>
                 <div class="card-icon bench">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <circle cx="12" cy="12" r="10"></circle>
-                    <line x1="12" y1="8" x2="12" y2="12"></line>
-                    <line x1="12" y1="16" x2="12.01" y2="16"></line>
-                  </svg>
+                  <span>⏸️</span>
                 </div>
               </div>
               <div class="card-value">{{ stats()?.benchCount || 0 }}</div>
@@ -81,9 +70,7 @@ import { DashboardStats } from '../../models';
               <div class="card-header">
                 <span class="card-title">Active Projects</span>
                 <div class="card-icon projects">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
-                  </svg>
+                  <span>📋</span>
                 </div>
               </div>
               <div class="card-value">{{ stats()?.activeProjects || 0 }}</div>
@@ -155,23 +142,14 @@ import { DashboardStats } from '../../models';
     }
     
     .card-icon {
-      width: 40px;
-      height: 40px;
-      border-radius: 10px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
+      font-size: 1.5rem;
+      line-height: 1;
     }
     
-    .card-icon svg {
-      width: 20px;
-      height: 20px;
-    }
-    
-    .card-icon.employees { background: rgba(46, 204, 113, 0.15); color: var(--accent); }
-    .card-icon.utilization { background: rgba(62, 146, 204, 0.15); color: var(--secondary); }
-    .card-icon.bench { background: rgba(243, 156, 18, 0.15); color: var(--warning); }
-    .card-icon.projects { background: rgba(155, 89, 182, 0.15); color: #9B59B6; }
+    .card-icon.employees { color: var(--accent); }
+    .card-icon.utilization { color: var(--secondary); }
+    .card-icon.bench { color: var(--warning); }
+    .card-icon.projects { color: #9B59B6; }
     
     .stat-row {
       display: flex;
