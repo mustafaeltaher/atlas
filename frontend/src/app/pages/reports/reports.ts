@@ -32,7 +32,12 @@ import { HeaderComponent } from '../../components/header/header.component';
                 <div class="stat-item"><span class="dot secondary"></span>Project Coverage</div>
                 <div class="stat-item"><span class="dot secondary"></span>Time Period Analysis</div>
               </div>
-              <button class="btn-secondary center-btn">Run Report</button>
+              <button class="btn btn-primary full-width">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+                  <polygon points="5 3 19 12 5 21 5 3"></polygon>
+                </svg>
+                Run Report
+              </button>
             </div>
 
             <!-- Bench Report -->
@@ -45,7 +50,12 @@ import { HeaderComponent } from '../../components/header/header.component';
                 <div class="stat-item"><span class="dot secondary"></span>Cost Impact</div>
                 <div class="stat-item"><span class="dot secondary"></span>Availability Timeline</div>
               </div>
-              <button class="btn-secondary center-btn">Run Report</button>
+              <button class="btn btn-primary full-width">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+                  <polygon points="5 3 19 12 5 21 5 3"></polygon>
+                </svg>
+                Run Report
+              </button>
             </div>
 
             <!-- Allocation Report -->
@@ -58,7 +68,12 @@ import { HeaderComponent } from '../../components/header/header.component';
                 <div class="stat-item"><span class="dot secondary"></span>Project Allocation</div>
                 <div class="stat-item"><span class="dot secondary"></span>Team Capacity</div>
               </div>
-              <button class="btn-secondary center-btn">Run Report</button>
+              <button class="btn btn-primary full-width">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+                  <polygon points="5 3 19 12 5 21 5 3"></polygon>
+                </svg>
+                Run Report
+              </button>
             </div>
 
             <!-- Project Status -->
@@ -71,7 +86,12 @@ import { HeaderComponent } from '../../components/header/header.component';
                 <div class="stat-item"><span class="dot secondary"></span>Timeline Progress</div>
                 <div class="stat-item"><span class="dot secondary"></span>Team Efficiency</div>
               </div>
-              <button class="btn-secondary center-btn">Run Report</button>
+              <button class="btn btn-primary full-width">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+                  <polygon points="5 3 19 12 5 21 5 3"></polygon>
+                </svg>
+                Run Report
+              </button>
             </div>
 
             <!-- Skills Analysis -->
@@ -84,7 +104,12 @@ import { HeaderComponent } from '../../components/header/header.component';
                 <div class="stat-item"><span class="dot secondary"></span>Proficiency Levels</div>
                 <div class="stat-item"><span class="dot secondary"></span>Skill Gaps</div>
               </div>
-              <button class="btn-secondary center-btn">Run Report</button>
+              <button class="btn btn-primary full-width">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+                  <polygon points="5 3 19 12 5 21 5 3"></polygon>
+                </svg>
+                Run Report
+              </button>
             </div>
 
             <!-- Forecast Report -->
@@ -97,7 +122,12 @@ import { HeaderComponent } from '../../components/header/header.component';
                 <div class="stat-item"><span class="dot secondary"></span>Capacity Planning</div>
                 <div class="stat-item"><span class="dot secondary"></span>Risk Assessment</div>
               </div>
-              <button class="btn-secondary center-btn">Run Report</button>
+              <button class="btn btn-primary full-width">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+                  <polygon points="5 3 19 12 5 21 5 3"></polygon>
+                </svg>
+                Run Report
+              </button>
             </div>
           </div>
         </main>
@@ -128,7 +158,7 @@ import { HeaderComponent } from '../../components/header/header.component';
       cursor: pointer;
       display: flex;
       flex-direction: column;
-      text-align: center;
+      height: 100%;
     }
     
     .report-card:hover {
@@ -178,26 +208,9 @@ import { HeaderComponent } from '../../components/header/header.component';
       background-color: var(--secondary);
     }
     
-    .btn-secondary {
-      background-color: var(--bg-secondary);
-      color: var(--text-primary);
-      padding: 0.5rem 1rem;
-      border-radius: 0.5rem;
-      font-weight: 600;
-      border: none;
-      cursor: pointer;
-      transition: background-color 0.2s;
-    }
-    
-    .btn-secondary:hover {
-      background-color: var(--border-color);
-    }
-    
-    .center-btn {
-      margin: 0 auto;
-      display: block;
-      width: fit-content;
-      min-width: 120px;
+    .full-width {
+        width: 100%;
+        margin-top: auto;
     }
 
     .mt-4 { margin-top: 24px; }
