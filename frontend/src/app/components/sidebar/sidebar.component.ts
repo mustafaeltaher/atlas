@@ -41,7 +41,7 @@ import { AuthService } from '../../services/auth.service';
       </nav>
       
       <div class="sidebar-footer">
-        <a routerLink="/profile" class="user-profile-widget" title="My Profile">
+        <a routerLink="/profile" routerLinkActive="active" class="user-profile-widget" title="My Profile">
           <div class="user-avatar">{{ getInitials() }}</div>
           <div class="user-details">
             <span class="user-name">{{ authService.currentUser()?.username }}</span>
@@ -142,6 +142,11 @@ import { AuthService } from '../../services/auth.service';
       background: rgba(255, 255, 255, 0.1);
     }
     
+    .user-profile-widget.active {
+      background: white;
+      color: var(--primary);
+    }
+
     .user-avatar {
       width: 36px;
       height: 36px;
@@ -171,11 +176,19 @@ import { AuthService } from '../../services/auth.service';
       font-weight: 500;
       color: white;
     }
+
+    .user-profile-widget.active .user-name {
+      color: var(--primary);
+    }
     
     .user-role {
       font-size: 11px;
       color: rgba(255,255,255,0.5);
       text-transform: uppercase;
+    }
+
+    .user-profile-widget.active .user-role {
+      color: rgba(59, 130, 246, 0.7);
     }
 
     .logout-btn {

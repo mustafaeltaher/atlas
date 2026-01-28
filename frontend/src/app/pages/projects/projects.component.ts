@@ -22,51 +22,114 @@ import { Project } from '../../models';
             <h1>Projects</h1>
             <p>Manage projects and track allocation</p>
           </div>
-          <button class="btn btn-primary" (click)="showModal = true">
-            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
-              <line x1="12" y1="5" x2="12" y2="19"></line>
-              <line x1="5" y1="12" x2="19" y2="12"></line>
-            </svg>
-            Add Project
-          </button>
+          <div class="header-actions">
+            <div class="view-toggle">
+              <button class="toggle-btn" [class.active]="viewMode() === 'grid'" (click)="viewMode.set('grid')" title="Grid View">
+                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+                  <rect x="3" y="3" width="7" height="7"></rect>
+                  <rect x="14" y="3" width="7" height="7"></rect>
+                  <rect x="14" y="14" width="7" height="7"></rect>
+                  <rect x="3" y="14" width="7" height="7"></rect>
+                </svg>
+              </button>
+              <button class="toggle-btn" [class.active]="viewMode() === 'list'" (click)="viewMode.set('list')" title="List View">
+                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+                  <line x1="8" y1="6" x2="21" y2="6"></line>
+                  <line x1="8" y1="12" x2="21" y2="12"></line>
+                  <line x1="8" y1="18" x2="21" y2="18"></line>
+                  <line x1="3" y1="6" x2="3.01" y2="6"></line>
+                  <line x1="3" y1="12" x2="3.01" y2="12"></line>
+                  <line x1="3" y1="18" x2="3.01" y2="18"></line>
+                </svg>
+              </button>
+            </div>
+            <button class="btn btn-primary" (click)="showModal = true">
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="12" y1="5" x2="12" y2="19"></line>
+                <line x1="5" y1="12" x2="19" y2="12"></line>
+              </svg>
+              Add Project
+            </button>
+          </div>
         </header>
         
         @if (loading()) {
           <div class="loading">Loading projects...</div>
         } @else {
-          <div class="grid grid-3 fade-in">
-            @for (project of projects(); track project.id) {
-              <div class="card project-card">
-                <div class="project-header">
-                  <h3>{{ project.name }}</h3>
-                  <span class="status-pill" [class]="project.status.toLowerCase()">{{ project.status }}</span>
+          @if (viewMode() === 'grid') {
+            <div class="grid grid-3 fade-in">
+              @for (project of projects(); track project.id) {
+                <div class="card project-card">
+                  <div class="project-header">
+                    <h3>{{ project.name }}</h3>
+                    <span class="status-pill" [class]="project.status.toLowerCase()">{{ project.status }}</span>
+                  </div>
+                  <p class="project-id">{{ project.projectId }}</p>
+                  <p class="project-tower">{{ project.tower }}</p>
+                  
+                  <div class="project-stats">
+                    <div class="stat">
+                      <span class="stat-value">{{ project.allocatedEmployees }}</span>
+                      <span class="stat-label">Employees</span>
+                    </div>
+                    <div class="stat">
+                      <span class="stat-value">{{ project.averageUtilization | number:'1.0-0' }}%</span>
+                      <span class="stat-label">Avg Util</span>
+                    </div>
+                  </div>
+                  
+                  @if (project.startDate || project.endDate) {
+                    <div class="project-dates">
+                      <span>{{ project.startDate | date:'mediumDate' }}</span>
+                      <span>→</span>
+                      <span>{{ project.endDate | date:'mediumDate' }}</span>
+                    </div>
+                  }
                 </div>
-                <p class="project-id">{{ project.projectId }}</p>
-                <p class="project-tower">{{ project.tower }}</p>
-                
-                <div class="project-stats">
-                  <div class="stat">
-                    <span class="stat-value">{{ project.allocatedEmployees }}</span>
-                    <span class="stat-label">Employees</span>
-                  </div>
-                  <div class="stat">
-                    <span class="stat-value">{{ project.averageUtilization | number:'1.0-0' }}%</span>
-                    <span class="stat-label">Avg Util</span>
-                  </div>
-                </div>
-                
-                @if (project.startDate || project.endDate) {
-                  <div class="project-dates">
-                    <span>{{ project.startDate | date:'mediumDate' }}</span>
-                    <span>→</span>
-                    <span>{{ project.endDate | date:'mediumDate' }}</span>
-                  </div>
-                }
-              </div>
-            } @empty {
-              <div class="empty-state">No projects found</div>
-            }
-          </div>
+              } @empty {
+                <div class="empty-state">No projects found</div>
+              }
+            </div>
+          } @else {
+            <div class="list-view fade-in">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>Project Name</th>
+                    <th>ID</th>
+                    <th>Tower</th>
+                    <th>Status</th>
+                    <th>Employees</th>
+                    <th>Avg Util</th>
+                    <th>Timeline</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (project of projects(); track project.id) {
+                    <tr>
+                      <td><span class="fw-500">{{ project.name }}</span></td>
+                      <td class="text-muted">{{ project.projectId }}</td>
+                      <td>{{ project.tower }}</td>
+                      <td><span class="status-pill sm" [class]="project.status.toLowerCase()">{{ project.status }}</span></td>
+                      <td>{{ project.allocatedEmployees }}</td>
+                      <td>{{ project.averageUtilization | number:'1.0-0' }}%</td>
+                      <td class="text-sm">
+                        @if (project.startDate || project.endDate) {
+                          {{ project.startDate | date:'MMM d, y' }} — {{ project.endDate | date:'MMM d, y' }}
+                        }
+                      </td>
+                    </tr>
+                  } @empty {
+                    <tr>
+                      <td colspan="7">
+                        <div class="empty-state">No projects found</div>
+                      </td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+          }
         }
         
         @if (showModal) {
@@ -110,8 +173,86 @@ import { Project } from '../../models';
       margin-bottom: 24px;
     }
     
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .view-toggle {
+      display: flex;
+      background: var(--bg-secondary);
+      border-radius: 8px;
+      padding: 4px;
+      gap: 4px;
+    }
+
+    .toggle-btn {
+      width: 32px;
+      height: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: none;
+      background: transparent;
+      color: var(--text-secondary);
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .toggle-btn:hover {
+      color: var(--text-primary);
+    }
+
+    .toggle-btn.active {
+      background: var(--bg-card);
+      color: var(--primary);
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+    
     .header-left h1 { margin-bottom: 4px; }
     .header-left p { color: var(--text-muted); }
+
+    .data-table {
+      width: 100%;
+      border-collapse: collapse;
+      background: var(--bg-card);
+      border-radius: var(--border-radius);
+      overflow: hidden;
+    }
+
+    .data-table th, .data-table td {
+      padding: 12px 16px;
+      text-align: left;
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    .data-table th {
+      background: var(--bg-secondary);
+      font-weight: 600;
+      color: var(--text-secondary);
+      font-size: 13px;
+    }
+
+    .data-table td {
+      font-size: 14px;
+      color: var(--text-primary);
+    }
+
+    .data-table tr:last-child td {
+      border-bottom: none;
+    }
+
+    .text-muted { color: var(--text-muted); }
+    .text-sm { font-size: 13px; }
+    .fw-500 { font-weight: 500; }
+    
+    .status-pill.sm {
+      padding: 2px 8px;
+      font-size: 11px;
+    }
+    
     
     .loading, .empty-state {
       text-align: center;
@@ -222,6 +363,7 @@ import { Project } from '../../models';
 export class ProjectsComponent implements OnInit {
   projects = signal<Project[]>([]);
   loading = signal(true);
+  viewMode = signal<'grid' | 'list'>('grid');
   showModal = false;
   newProject: Partial<Project> = {};
 
