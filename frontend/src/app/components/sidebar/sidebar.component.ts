@@ -4,10 +4,10 @@ import { RouterModule } from '@angular/router';
 import { AuthService } from '../../services/auth.service';
 
 @Component({
-    selector: 'app-sidebar',
-    standalone: true,
-    imports: [CommonModule, RouterModule],
-    template: `
+  selector: 'app-sidebar',
+  standalone: true,
+  imports: [CommonModule, RouterModule],
+  template: `
     <aside class="sidebar">
       <div class="sidebar-header">
         <h1 class="logo">Atlas</h1>
@@ -15,40 +15,28 @@ import { AuthService } from '../../services/auth.service';
       
       <nav class="sidebar-nav">
         <a routerLink="/dashboard" routerLinkActive="active" class="nav-item">
-          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <rect x="3" y="3" width="7" height="7"></rect>
-            <rect x="14" y="3" width="7" height="7"></rect>
-            <rect x="14" y="14" width="7" height="7"></rect>
-            <rect x="3" y="14" width="7" height="7"></rect>
-          </svg>
+          <span class="nav-icon-emoji">📊</span>
           <span>Dashboard</span>
         </a>
         
         <a routerLink="/employees" routerLinkActive="active" class="nav-item">
-          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
-            <circle cx="9" cy="7" r="4"></circle>
-            <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
-            <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
-          </svg>
+          <span class="nav-icon-emoji">👤</span>
           <span>Employees</span>
         </a>
         
         <a routerLink="/projects" routerLinkActive="active" class="nav-item">
-          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
-          </svg>
+          <span class="nav-icon-emoji">📋</span>
           <span>Projects</span>
         </a>
         
         <a routerLink="/allocations" routerLinkActive="active" class="nav-item">
-          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
-            <line x1="16" y1="2" x2="16" y2="6"></line>
-            <line x1="8" y1="2" x2="8" y2="6"></line>
-            <line x1="3" y1="10" x2="21" y2="10"></line>
-          </svg>
+          <span class="nav-icon-emoji">🎯</span>
           <span>Allocations</span>
+        </a>
+        
+        <a routerLink="/reports" routerLinkActive="active" class="nav-item">
+          <span class="nav-icon-emoji">📈</span>
+          <span>Reports</span>
         </a>
       </nav>
       
@@ -70,7 +58,7 @@ import { AuthService } from '../../services/auth.service';
       </div>
     </aside>
   `,
-    styles: [`
+  styles: [`
     .sidebar {
       width: 260px;
       height: 100vh;
@@ -117,9 +105,16 @@ import { AuthService } from '../../services/auth.service';
       color: var(--primary);
     }
     
-    .nav-icon {
-      width: 20px;
-      height: 20px;
+    .nav-icon-emoji {
+      font-size: 1.25rem;
+      flex-shrink: 0;
+      width: 24px;
+      text-align: center;
+      margin-right: 12px;
+    }
+    
+    .nav-item span:last-child {
+      font-weight: 500;
     }
     
     .sidebar-footer {
@@ -183,14 +178,14 @@ import { AuthService } from '../../services/auth.service';
   `]
 })
 export class SidebarComponent {
-    constructor(public authService: AuthService) { }
+  constructor(public authService: AuthService) { }
 
-    getInitials(): string {
-        const name = this.authService.currentUser()?.username || '';
-        return name.split('.').map(n => n[0]?.toUpperCase() || '').join('');
-    }
+  getInitials(): string {
+    const name = this.authService.currentUser()?.username || '';
+    return name.split('.').map(n => n[0]?.toUpperCase() || '').join('');
+  }
 
-    logout(): void {
-        this.authService.logout();
-    }
+  logout(): void {
+    this.authService.logout();
+  }
 }
