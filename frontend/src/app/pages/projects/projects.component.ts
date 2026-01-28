@@ -2,18 +2,21 @@ import { Component, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { SidebarComponent } from '../../components/sidebar/sidebar.component';
+import { HeaderComponent } from '../../components/header/header.component';
 import { ApiService } from '../../services/api.service';
 import { Project } from '../../models';
 
 @Component({
-    selector: 'app-projects',
-    standalone: true,
-    imports: [CommonModule, FormsModule, SidebarComponent],
-    template: `
+  selector: 'app-projects',
+  standalone: true,
+  imports: [CommonModule, FormsModule, SidebarComponent, HeaderComponent],
+  template: `
     <div class="layout">
       <app-sidebar></app-sidebar>
       
-      <main class="main-content">
+      <div class="main-area">
+        <app-header></app-header>
+        <main class="main-content">
         <header class="page-header">
           <div class="header-left">
             <h1>Projects</h1>
@@ -96,9 +99,10 @@ import { Project } from '../../models';
           </div>
         }
       </main>
+      </div>
     </div>
   `,
-    styles: [`
+  styles: [`
     .page-header {
       display: flex;
       justify-content: space-between;
@@ -216,39 +220,39 @@ import { Project } from '../../models';
   `]
 })
 export class ProjectsComponent implements OnInit {
-    projects = signal<Project[]>([]);
-    loading = signal(true);
-    showModal = false;
-    newProject: Partial<Project> = {};
+  projects = signal<Project[]>([]);
+  loading = signal(true);
+  showModal = false;
+  newProject: Partial<Project> = {};
 
-    constructor(private apiService: ApiService) { }
+  constructor(private apiService: ApiService) { }
 
-    ngOnInit(): void {
+  ngOnInit(): void {
+    this.loadProjects();
+  }
+
+  loadProjects(): void {
+    this.apiService.getProjects().subscribe({
+      next: (data) => {
+        this.projects.set(data);
+        this.loading.set(false);
+      },
+      error: () => {
+        this.loading.set(false);
+      }
+    });
+  }
+
+  createProject(): void {
+    this.apiService.createProject(this.newProject).subscribe({
+      next: () => {
+        this.showModal = false;
+        this.newProject = {};
         this.loadProjects();
-    }
-
-    loadProjects(): void {
-        this.apiService.getProjects().subscribe({
-            next: (data) => {
-                this.projects.set(data);
-                this.loading.set(false);
-            },
-            error: () => {
-                this.loading.set(false);
-            }
-        });
-    }
-
-    createProject(): void {
-        this.apiService.createProject(this.newProject).subscribe({
-            next: () => {
-                this.showModal = false;
-                this.newProject = {};
-                this.loadProjects();
-            },
-            error: (err) => {
-                alert('Failed to create project: ' + (err.error?.message || 'Unknown error'));
-            }
-        });
-    }
+      },
+      error: (err) => {
+        alert('Failed to create project: ' + (err.error?.message || 'Unknown error'));
+      }
+    });
+  }
 }

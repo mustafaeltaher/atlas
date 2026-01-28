@@ -1,18 +1,21 @@
 import { Component, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { SidebarComponent } from '../../components/sidebar/sidebar.component';
+import { HeaderComponent } from '../../components/header/header.component';
 import { ApiService } from '../../services/api.service';
 import { Allocation } from '../../models';
 
 @Component({
-    selector: 'app-allocations',
-    standalone: true,
-    imports: [CommonModule, SidebarComponent],
-    template: `
+  selector: 'app-allocations',
+  standalone: true,
+  imports: [CommonModule, SidebarComponent, HeaderComponent],
+  template: `
     <div class="layout">
       <app-sidebar></app-sidebar>
       
-      <main class="main-content">
+      <div class="main-area">
+        <app-header></app-header>
+        <main class="main-content">
         <header class="page-header">
           <div class="header-left">
             <h1>Allocations</h1>
@@ -74,9 +77,10 @@ import { Allocation } from '../../models';
           </div>
         }
       </main>
+      </div>
     </div>
   `,
-    styles: [`
+  styles: [`
     .page-header {
       display: flex;
       justify-content: space-between;
@@ -116,24 +120,24 @@ import { Allocation } from '../../models';
   `]
 })
 export class AllocationsComponent implements OnInit {
-    allocations = signal<Allocation[]>([]);
-    loading = signal(true);
+  allocations = signal<Allocation[]>([]);
+  loading = signal(true);
 
-    constructor(private apiService: ApiService) { }
+  constructor(private apiService: ApiService) { }
 
-    ngOnInit(): void {
-        this.loadAllocations();
-    }
+  ngOnInit(): void {
+    this.loadAllocations();
+  }
 
-    loadAllocations(): void {
-        this.apiService.getAllocations().subscribe({
-            next: (data) => {
-                this.allocations.set(data);
-                this.loading.set(false);
-            },
-            error: () => {
-                this.loading.set(false);
-            }
-        });
-    }
+  loadAllocations(): void {
+    this.apiService.getAllocations().subscribe({
+      next: (data) => {
+        this.allocations.set(data);
+        this.loading.set(false);
+      },
+      error: () => {
+        this.loading.set(false);
+      }
+    });
+  }
 }

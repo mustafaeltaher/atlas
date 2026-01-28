@@ -9,6 +9,15 @@ export class ApiService {
 
     constructor(private http: HttpClient) { }
 
+    // Generic methods
+    get<T>(endpoint: string): Observable<T> {
+        return this.http.get<T>(`${this.API_URL}${endpoint}`);
+    }
+
+    post<T>(endpoint: string, body: any): Observable<T> {
+        return this.http.post<T>(`${this.API_URL}${endpoint}`, body);
+    }
+
     // Dashboard
     getDashboardStats(): Observable<DashboardStats> {
         return this.http.get<DashboardStats>(`${this.API_URL}/dashboard/stats`);

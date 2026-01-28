@@ -2,18 +2,21 @@ import { Component, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { SidebarComponent } from '../../components/sidebar/sidebar.component';
+import { HeaderComponent } from '../../components/header/header.component';
 import { ApiService } from '../../services/api.service';
 import { Employee } from '../../models';
 
 @Component({
   selector: 'app-employees',
   standalone: true,
-  imports: [CommonModule, FormsModule, SidebarComponent],
+  imports: [CommonModule, FormsModule, SidebarComponent, HeaderComponent],
   template: `
     <div class="layout">
       <app-sidebar></app-sidebar>
       
-      <main class="main-content">
+      <div class="main-area">
+        <app-header></app-header>
+        <main class="main-content">
         <header class="page-header">
           <div class="header-left">
             <h1>Employees</h1>
@@ -118,6 +121,7 @@ import { Employee } from '../../models';
           </div>
         }
       </main>
+      </div>
     </div>
   `,
   styles: [`

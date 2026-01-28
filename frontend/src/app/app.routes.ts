@@ -24,5 +24,10 @@ export const routes: Routes = [
         loadComponent: () => import('./pages/allocations/allocations.component').then(m => m.AllocationsComponent),
         canActivate: [authGuard]
     },
+    {
+        path: 'profile',
+        loadComponent: () => import('./pages/profile/profile.component').then(m => m.ProfileComponent),
+        canActivate: [authGuard]
+    },
     { path: '**', redirectTo: '/dashboard' }
 ];

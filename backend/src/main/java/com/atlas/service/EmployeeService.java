@@ -86,6 +86,11 @@ public class EmployeeService {
             return false;
         }
 
+        // Users can always access their own profile
+        if (userEmployee.getId().equals(employee.getId())) {
+            return true;
+        }
+
         // Check if the employee is in the manager's hierarchy
         return switch (user.getRole()) {
             case HEAD, DEPARTMENT_MANAGER, TEAM_LEAD ->

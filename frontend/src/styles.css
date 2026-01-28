@@ -6,6 +6,7 @@
   --primary-dark: #00102E;
   --secondary: #3E92CC;
   --accent: #2ECC71;
+  --success: #10B981;
   --warning: #F39C12;
   --danger: #E74C3C;
 
@@ -14,6 +15,7 @@
   --bg-card: #161B22;
   --bg-sidebar: #001A4D;
   --bg-hover: #21262D;
+  --bg-secondary: #21262D;
 
   /* Text */
   --text-primary: #F0F6FC;
@@ -28,6 +30,30 @@
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
   --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.3);
   --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.3);
+}
+
+/* Light Theme */
+body.light-theme {
+  --bg-dark: #F5F7FA;
+  --bg-card: #FFFFFF;
+  --bg-sidebar: #001A4D;
+  --bg-hover: #E8ECF0;
+  --bg-secondary: #F0F2F5;
+
+  --text-primary: #1F2937;
+  --text-secondary: #4B5563;
+  --text-muted: #9CA3AF;
+
+  --border-color: #E5E7EB;
+
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.1);
+  --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.1);
+}
+
+/* Dark Theme (default) */
+body.dark-theme {
+  /* Uses :root variables */
 }
 
 * {
@@ -324,6 +350,13 @@ a:hover {
   padding: 20px 0;
   display: flex;
   flex-direction: column;
+}
+
+.main-area {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 
 .main-content {

@@ -1,22 +1,21 @@
 import { Component, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { SidebarComponent } from '../../components/sidebar/sidebar.component';
+import { HeaderComponent } from '../../components/header/header.component';
 import { ApiService } from '../../services/api.service';
 import { DashboardStats } from '../../models';
 
 @Component({
-    selector: 'app-dashboard',
-    standalone: true,
-    imports: [CommonModule, SidebarComponent],
-    template: `
+  selector: 'app-dashboard',
+  standalone: true,
+  imports: [CommonModule, SidebarComponent, HeaderComponent],
+  template: `
     <div class="layout">
       <app-sidebar></app-sidebar>
       
-      <main class="main-content">
-        <header class="page-header">
-          <h1>Dashboard</h1>
-          <p>Employee allocation overview for the current month</p>
-        </header>
+      <div class="main-area">
+        <app-header></app-header>
+        <main class="main-content">
         
         @if (loading()) {
           <div class="loading">Loading...</div>
@@ -129,9 +128,10 @@ import { DashboardStats } from '../../models';
           </div>
         }
       </main>
+      </div>
     </div>
   `,
-    styles: [`
+  styles: [`
     .page-header {
       margin-bottom: 24px;
     }
@@ -194,24 +194,24 @@ import { DashboardStats } from '../../models';
   `]
 })
 export class DashboardComponent implements OnInit {
-    stats = signal<DashboardStats | null>(null);
-    loading = signal(true);
+  stats = signal<DashboardStats | null>(null);
+  loading = signal(true);
 
-    constructor(private apiService: ApiService) { }
+  constructor(private apiService: ApiService) { }
 
-    ngOnInit(): void {
-        this.loadStats();
-    }
+  ngOnInit(): void {
+    this.loadStats();
+  }
 
-    loadStats(): void {
-        this.apiService.getDashboardStats().subscribe({
-            next: (data) => {
-                this.stats.set(data);
-                this.loading.set(false);
-            },
-            error: () => {
-                this.loading.set(false);
-            }
-        });
-    }
+  loadStats(): void {
+    this.apiService.getDashboardStats().subscribe({
+      next: (data) => {
+        this.stats.set(data);
+        this.loading.set(false);
+      },
+      error: () => {
+        this.loading.set(false);
+      }
+    });
+  }
 }
