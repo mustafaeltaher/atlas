@@ -23,7 +23,7 @@ import { HeaderComponent } from '../../components/header/header.component';
           
           <div class="grid grid-3 fade-in">
             <!-- Utilization Report -->
-            <div class="card report-card">
+            <div class="card report-card" (click)="openReport('utilization')">
               <div class="card-icon-lg">📊</div>
               <h3 class="card-title">Utilization Report</h3>
               <p class="card-desc">Resource utilization by employee and project</p>
@@ -32,16 +32,10 @@ import { HeaderComponent } from '../../components/header/header.component';
                 <div class="stat-item"><span class="dot secondary"></span>Project Coverage</div>
                 <div class="stat-item"><span class="dot secondary"></span>Time Period Analysis</div>
               </div>
-              <button class="btn btn-primary full-width">
-                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
-                  <polygon points="5 3 19 12 5 21 5 3"></polygon>
-                </svg>
-                Run Report
-              </button>
             </div>
 
             <!-- Bench Report -->
-            <div class="card report-card">
+            <div class="card report-card" (click)="openReport('bench')">
               <div class="card-icon-lg">⏸️</div>
               <h3 class="card-title">Bench Report</h3>
               <p class="card-desc">Identify bench resources and availability</p>
@@ -50,16 +44,10 @@ import { HeaderComponent } from '../../components/header/header.component';
                 <div class="stat-item"><span class="dot secondary"></span>Cost Impact</div>
                 <div class="stat-item"><span class="dot secondary"></span>Availability Timeline</div>
               </div>
-              <button class="btn btn-primary full-width">
-                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
-                  <polygon points="5 3 19 12 5 21 5 3"></polygon>
-                </svg>
-                Run Report
-              </button>
             </div>
 
             <!-- Allocation Report -->
-            <div class="card report-card">
+            <div class="card report-card" (click)="openReport('allocation')">
               <div class="card-icon-lg">🎯</div>
               <h3 class="card-title">Allocation Report</h3>
               <p class="card-desc">Allocation breakdown by tech tower and project</p>
@@ -68,16 +56,10 @@ import { HeaderComponent } from '../../components/header/header.component';
                 <div class="stat-item"><span class="dot secondary"></span>Project Allocation</div>
                 <div class="stat-item"><span class="dot secondary"></span>Team Capacity</div>
               </div>
-              <button class="btn btn-primary full-width">
-                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
-                  <polygon points="5 3 19 12 5 21 5 3"></polygon>
-                </svg>
-                Run Report
-              </button>
             </div>
 
             <!-- Project Status -->
-            <div class="card report-card">
+            <div class="card report-card" (click)="openReport('project')">
               <div class="card-icon-lg">📋</div>
               <h3 class="card-title">Project Status</h3>
               <p class="card-desc">Project health, budget, and resource status</p>
@@ -86,16 +68,10 @@ import { HeaderComponent } from '../../components/header/header.component';
                 <div class="stat-item"><span class="dot secondary"></span>Timeline Progress</div>
                 <div class="stat-item"><span class="dot secondary"></span>Team Efficiency</div>
               </div>
-              <button class="btn btn-primary full-width">
-                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
-                  <polygon points="5 3 19 12 5 21 5 3"></polygon>
-                </svg>
-                Run Report
-              </button>
             </div>
 
             <!-- Skills Analysis -->
-            <div class="card report-card">
+            <div class="card report-card" (click)="openReport('skills')">
               <div class="card-icon-lg">💡</div>
               <h3 class="card-title">Skills Analysis</h3>
               <p class="card-desc">Employee skills inventory and gaps</p>
@@ -104,16 +80,10 @@ import { HeaderComponent } from '../../components/header/header.component';
                 <div class="stat-item"><span class="dot secondary"></span>Proficiency Levels</div>
                 <div class="stat-item"><span class="dot secondary"></span>Skill Gaps</div>
               </div>
-              <button class="btn btn-primary full-width">
-                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
-                  <polygon points="5 3 19 12 5 21 5 3"></polygon>
-                </svg>
-                Run Report
-              </button>
             </div>
 
             <!-- Forecast Report -->
-            <div class="card report-card">
+            <div class="card report-card" (click)="openReport('forecast')">
               <div class="card-icon-lg">🔮</div>
               <h3 class="card-title">Forecast Report</h3>
               <p class="card-desc">Resource demand and planning forecasts</p>
@@ -122,12 +92,6 @@ import { HeaderComponent } from '../../components/header/header.component';
                 <div class="stat-item"><span class="dot secondary"></span>Capacity Planning</div>
                 <div class="stat-item"><span class="dot secondary"></span>Risk Assessment</div>
               </div>
-              <button class="btn btn-primary full-width">
-                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
-                  <polygon points="5 3 19 12 5 21 5 3"></polygon>
-                </svg>
-                Run Report
-              </button>
             </div>
           </div>
         </main>
@@ -164,6 +128,7 @@ import { HeaderComponent } from '../../components/header/header.component';
     .report-card:hover {
       transform: translateY(-2px);
       box-shadow: var(--shadow-md);
+      border-color: var(--secondary);
     }
     
     .card-icon-lg {
@@ -190,7 +155,6 @@ import { HeaderComponent } from '../../components/header/header.component';
       display: flex;
       flex-direction: column;
       gap: 8px;
-      align-items: center;
     }
     
     .stat-item {
@@ -207,14 +171,14 @@ import { HeaderComponent } from '../../components/header/header.component';
       border-radius: 50%;
       background-color: var(--secondary);
     }
-    
-    .full-width {
-        width: 100%;
-        margin-top: auto;
-    }
 
     .mt-4 { margin-top: 24px; }
     .mt-2 { margin-top: 12px; }
   `]
 })
-export class ReportsComponent { }
+export class ReportsComponent {
+  openReport(reportType: string): void {
+    console.log('Opening report:', reportType);
+    // Future implementation: Navigate to detail view or open modal
+  }
+}
