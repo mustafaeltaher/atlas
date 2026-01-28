@@ -70,8 +70,8 @@ import { Employee } from '../../models';
               <span class="info-value">{{ profile()?.managerName || 'N/A' }}</span>
             </div>
             <div class="info-item">
-              <span class="info-label">Utilization</span>
-              <span class="info-value utilization">{{ profile()?.currentUtilization || 0 }}%</span>
+              <span class="info-label">Allocation</span>
+              <span class="info-value allocation">{{ profile()?.currentAllocation || 0 }}%</span>
             </div>
           </div>
         </div>
@@ -260,7 +260,7 @@ import { Employee } from '../../models';
       font-weight: 500;
     }
 
-    .info-value.utilization {
+    .info-value.allocation {
       color: var(--success);
       font-weight: 600;
     }

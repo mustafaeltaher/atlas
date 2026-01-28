@@ -65,18 +65,18 @@ public class AllocationService {
                 .startDate(dto.getStartDate())
                 .endDate(dto.getEndDate())
                 .status(dto.getStatus() != null ? dto.getStatus() : Allocation.AllocationStatus.ACTIVE)
-                .janUtilization(dto.getJanUtilization())
-                .febUtilization(dto.getFebUtilization())
-                .marUtilization(dto.getMarUtilization())
-                .aprUtilization(dto.getAprUtilization())
-                .mayUtilization(dto.getMayUtilization())
-                .junUtilization(dto.getJunUtilization())
-                .julUtilization(dto.getJulUtilization())
-                .augUtilization(dto.getAugUtilization())
-                .sepUtilization(dto.getSepUtilization())
-                .octUtilization(dto.getOctUtilization())
-                .novUtilization(dto.getNovUtilization())
-                .decUtilization(dto.getDecUtilization())
+                .janAllocation(dto.getJanAllocation())
+                .febAllocation(dto.getFebAllocation())
+                .marAllocation(dto.getMarAllocation())
+                .aprAllocation(dto.getAprAllocation())
+                .mayAllocation(dto.getMayAllocation())
+                .junAllocation(dto.getJunAllocation())
+                .julAllocation(dto.getJulAllocation())
+                .augAllocation(dto.getAugAllocation())
+                .sepAllocation(dto.getSepAllocation())
+                .octAllocation(dto.getOctAllocation())
+                .novAllocation(dto.getNovAllocation())
+                .decAllocation(dto.getDecAllocation())
                 .build();
 
         allocation = allocationRepository.save(allocation);
@@ -94,19 +94,19 @@ public class AllocationService {
         allocation.setEndDate(dto.getEndDate());
         allocation.setStatus(dto.getStatus());
 
-        // Update monthly utilizations
-        allocation.setJanUtilization(dto.getJanUtilization());
-        allocation.setFebUtilization(dto.getFebUtilization());
-        allocation.setMarUtilization(dto.getMarUtilization());
-        allocation.setAprUtilization(dto.getAprUtilization());
-        allocation.setMayUtilization(dto.getMayUtilization());
-        allocation.setJunUtilization(dto.getJunUtilization());
-        allocation.setJulUtilization(dto.getJulUtilization());
-        allocation.setAugUtilization(dto.getAugUtilization());
-        allocation.setSepUtilization(dto.getSepUtilization());
-        allocation.setOctUtilization(dto.getOctUtilization());
-        allocation.setNovUtilization(dto.getNovUtilization());
-        allocation.setDecUtilization(dto.getDecUtilization());
+        // Update monthly allocations
+        allocation.setJanAllocation(dto.getJanAllocation());
+        allocation.setFebAllocation(dto.getFebAllocation());
+        allocation.setMarAllocation(dto.getMarAllocation());
+        allocation.setAprAllocation(dto.getAprAllocation());
+        allocation.setMayAllocation(dto.getMayAllocation());
+        allocation.setJunAllocation(dto.getJunAllocation());
+        allocation.setJulAllocation(dto.getJulAllocation());
+        allocation.setAugAllocation(dto.getAugAllocation());
+        allocation.setSepAllocation(dto.getSepAllocation());
+        allocation.setOctAllocation(dto.getOctAllocation());
+        allocation.setNovAllocation(dto.getNovAllocation());
+        allocation.setDecAllocation(dto.getDecAllocation());
 
         allocation = allocationRepository.save(allocation);
         return toDTO(allocation);
@@ -141,17 +141,6 @@ public class AllocationService {
     }
 
     private AllocationDTO toDTO(Allocation allocation) {
-        int currentMonth = LocalDate.now().getMonthValue();
-        String currentUtil = allocation.getUtilizationForMonth(currentMonth);
-
-        double percentage = 0.0;
-        if (currentUtil != null && !currentUtil.equalsIgnoreCase("B") && !currentUtil.equalsIgnoreCase("P")) {
-            try {
-                percentage = Double.parseDouble(currentUtil) * 100;
-            } catch (NumberFormatException ignored) {
-            }
-        }
-
         return AllocationDTO.builder()
                 .id(allocation.getId())
                 .employeeId(allocation.getEmployee().getId())
@@ -163,20 +152,39 @@ public class AllocationService {
                 .startDate(allocation.getStartDate())
                 .endDate(allocation.getEndDate())
                 .status(allocation.getStatus())
-                .currentMonthUtilization(currentUtil)
-                .utilizationPercentage(percentage)
-                .janUtilization(allocation.getJanUtilization())
-                .febUtilization(allocation.getFebUtilization())
-                .marUtilization(allocation.getMarUtilization())
-                .aprUtilization(allocation.getAprUtilization())
-                .mayUtilization(allocation.getMayUtilization())
-                .junUtilization(allocation.getJunUtilization())
-                .julUtilization(allocation.getJulUtilization())
-                .augUtilization(allocation.getAugUtilization())
-                .sepUtilization(allocation.getSepUtilization())
-                .octUtilization(allocation.getOctUtilization())
-                .novUtilization(allocation.getNovUtilization())
-                .decUtilization(allocation.getDecUtilization())
+                .currentMonthAllocation(calculateCurrentMonthAllocation(allocation))
+                .allocationPercentage(calculateAllocationPercentage(allocation))
+                .janAllocation(allocation.getJanAllocation())
+                .febAllocation(allocation.getFebAllocation())
+                .marAllocation(allocation.getMarAllocation())
+                .aprAllocation(allocation.getAprAllocation())
+                .mayAllocation(allocation.getMayAllocation())
+                .junAllocation(allocation.getJunAllocation())
+                .julAllocation(allocation.getJulAllocation())
+                .augAllocation(allocation.getAugAllocation())
+                .sepAllocation(allocation.getSepAllocation())
+                .octAllocation(allocation.getOctAllocation())
+                .novAllocation(allocation.getNovAllocation())
+                .decAllocation(allocation.getDecAllocation())
                 .build();
+    }
+
+    private String calculateCurrentMonthAllocation(Allocation allocation) {
+        int currentMonth = LocalDate.now().getMonthValue();
+        return allocation.getAllocationForMonth(currentMonth);
+    }
+
+    private double calculateAllocationPercentage(Allocation allocation) {
+        String currentAllocation = calculateCurrentMonthAllocation(allocation);
+        double percentage = 0.0;
+        if (currentAllocation != null && !currentAllocation.equalsIgnoreCase("B")
+                && !currentAllocation.equalsIgnoreCase("P")) {
+            try {
+                percentage = Double.parseDouble(currentAllocation) * 100;
+            } catch (NumberFormatException ignored) {
+                // Log or handle the exception if necessary
+            }
+        }
+        return percentage;
     }
 }

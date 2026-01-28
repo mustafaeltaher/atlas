@@ -204,7 +204,7 @@ public class DataInitializer implements CommandLineRunner {
         }
 
         private void createAllocations(List<Employee> employees, List<Project> projects) {
-                String[] utilValues = { "1", "0.5", "0.25", "B", "P" };
+                String[] allocValues = { "1", "0.5", "0.25", "B", "P" };
 
                 for (Employee employee : employees) {
                         // Each employee gets 1-2 allocations
@@ -226,10 +226,10 @@ public class DataInitializer implements CommandLineRunner {
                                                 .status(Allocation.AllocationStatus.ACTIVE)
                                                 .build();
 
-                                // Set utilization for each month
+                                // Set allocation for each month
                                 for (int month = 1; month <= 12; month++) {
-                                        String util = utilValues[random.nextInt(utilValues.length)];
-                                        allocation.setUtilizationForMonth(month, util);
+                                        String alloc = allocValues[random.nextInt(allocValues.length)];
+                                        allocation.setAllocationForMonth(month, alloc);
                                 }
 
                                 allocationRepository.save(allocation);

@@ -112,23 +112,28 @@ public class EmployeeService {
     }
 
     private EmployeeDTO toDTO(Employee employee) {
-        // Calculate current month utilization
+        // Calculate current month allocation
         int currentMonth = LocalDate.now().getMonthValue();
         List<Allocation> allocations = allocationRepository.findActiveByEmployeeId(employee.getId());
 
-        double totalUtilization = 0.0;
+        double totalAllocation = 0.0;
         String status = "BENCH";
 
         for (Allocation allocation : allocations) {
-            String util = allocation.getUtilizationForMonth(currentMonth);
-            if (util != null) {
-                if ("B".equalsIgnoreCase(util)) {
-                    // Bench - no utilization
-                } else if ("P".equalsIgnoreCase(util)) {
-                    status = "PROSPECT";
+            String alloc = allocation.getAllocationForMonth(currentMonth);
+            if (alloc != null) {
+                if (alloc.equalsIgnoreCase("B")) {
+                    // Bench - no allocation
+                    status = "BENCH";
+                } else if (alloc.equalsIgnoreCase("P")) {
+                    // Prospect - potential allocation
+                    if (status.equals("BENCH")) {
+                        status = "PROSPECT";
+                    }
                 } else {
+                    // Active allocation
                     try {
-                        totalUtilization += Double.parseDouble(util);
+                        totalAllocation += Double.parseDouble(alloc);
                         status = "ACTIVE";
                     } catch (NumberFormatException ignored) {
                     }
@@ -160,8 +165,8 @@ public class EmployeeService {
                 .managerId(employee.getManager() != null ? employee.getManager().getId() : null)
                 .managerName(employee.getManager() != null ? employee.getManager().getName() : null)
                 .isActive(employee.getIsActive())
-                .currentUtilization(totalUtilization * 100)
-                .utilizationStatus(status)
+                .currentAllocation(totalAllocation * 100)
+                .allocationStatus(status)
                 .build();
     }
 

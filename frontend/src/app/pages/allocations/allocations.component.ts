@@ -33,7 +33,7 @@ import { Allocation } from '../../models';
                   <th>Employee</th>
                   <th>Project</th>
                   <th>Assignment</th>
-                  <th>Current Utilization</th>
+                  <th>Current Allocation</th>
                   <th>Status</th>
                   <th>End Date</th>
                 </tr>
@@ -45,16 +45,16 @@ import { Allocation } from '../../models';
                     <td>{{ alloc.projectName }}</td>
                     <td>{{ alloc.confirmedAssignment || '-' }}</td>
                     <td>
-                      <div class="utilization-cell">
+                      <div class="allocation-cell">
                         <div class="progress-bar">
                           <div class="progress-bar-fill" 
-                               [class.high]="alloc.utilizationPercentage >= 75"
-                               [class.medium]="alloc.utilizationPercentage >= 50 && alloc.utilizationPercentage < 75"
-                               [class.low]="alloc.utilizationPercentage < 50"
-                               [style.width.%]="alloc.utilizationPercentage">
+                               [class.high]="alloc.allocationPercentage >= 75"
+                               [class.medium]="alloc.allocationPercentage >= 50 && alloc.allocationPercentage < 75"
+                               [class.low]="alloc.allocationPercentage < 50"
+                               [style.width.%]="alloc.allocationPercentage">
                           </div>
                         </div>
-                        <span class="util-value">{{ alloc.currentMonthUtilization || 'N/A' }}</span>
+                        <span class="alloc-value">{{ alloc.currentMonthAllocation || 'N/A' }}</span>
                       </div>
                     </td>
                     <td>
@@ -97,7 +97,7 @@ import { Allocation } from '../../models';
       color: var(--text-muted);
     }
     
-    .utilization-cell {
+    .allocation-cell {
       display: flex;
       align-items: center;
       gap: 12px;
@@ -107,7 +107,7 @@ import { Allocation } from '../../models';
       width: 100px;
     }
     
-    .util-value {
+    .alloc-value {
       font-size: 12px;
       font-weight: 500;
       min-width: 40px;

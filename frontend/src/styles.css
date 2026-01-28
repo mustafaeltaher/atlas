@@ -169,7 +169,7 @@ a:hover {
   font-size: 14px;
   font-weight: 500;
   color: var(--text-secondary);
-  text-transform: uppercase;
+  color: var(--text-secondary);
   letter-spacing: 0.5px;
 }
 
@@ -216,7 +216,7 @@ a:hover {
 .data-table th {
   font-size: 12px;
   font-weight: 600;
-  text-transform: uppercase;
+  font-weight: 600;
   letter-spacing: 0.5px;
   color: var(--text-muted);
   background: var(--bg-hover);

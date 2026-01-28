@@ -37,9 +37,6 @@ import { Project } from '../../models';
                   <line x1="8" y1="6" x2="21" y2="6"></line>
                   <line x1="8" y1="12" x2="21" y2="12"></line>
                   <line x1="8" y1="18" x2="21" y2="18"></line>
-                  <line x1="3" y1="6" x2="3.01" y2="6"></line>
-                  <line x1="3" y1="12" x2="3.01" y2="12"></line>
-                  <line x1="3" y1="18" x2="3.01" y2="18"></line>
                 </svg>
               </button>
             </div>
@@ -73,8 +70,8 @@ import { Project } from '../../models';
                       <span class="stat-label">Employees</span>
                     </div>
                     <div class="stat">
-                      <span class="stat-value">{{ project.averageUtilization | number:'1.0-0' }}%</span>
-                      <span class="stat-label">Avg Util</span>
+                      <span class="stat-value">{{ project.averageAllocation | number:'1.0-0' }}%</span>
+                      <span class="stat-label">Avg Alloc</span>
                     </div>
                   </div>
                   
@@ -100,7 +97,7 @@ import { Project } from '../../models';
                     <th>Tower</th>
                     <th>Status</th>
                     <th>Employees</th>
-                    <th>Avg Util</th>
+                    <th>Avg Alloc</th>
                     <th>Timeline</th>
                   </tr>
                 </thead>
@@ -112,7 +109,7 @@ import { Project } from '../../models';
                       <td>{{ project.tower }}</td>
                       <td><span class="status-pill sm" [class]="project.status.toLowerCase()">{{ project.status }}</span></td>
                       <td>{{ project.allocatedEmployees }}</td>
-                      <td>{{ project.averageUtilization | number:'1.0-0' }}%</td>
+                      <td>{{ project.averageAllocation | number:'1.0-0' }}%</td>
                       <td class="text-sm">
                         @if (project.startDate || project.endDate) {
                           {{ project.startDate | date:'MMM d, y' }} — {{ project.endDate | date:'MMM d, y' }}
@@ -207,7 +204,7 @@ import { Project } from '../../models';
 
     .toggle-btn.active {
       background: var(--bg-card);
-      color: var(--primary);
+      color: var(--text-primary);
       box-shadow: 0 1px 3px rgba(0,0,0,0.1);
     }
     

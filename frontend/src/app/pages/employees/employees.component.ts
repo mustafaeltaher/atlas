@@ -20,7 +20,7 @@ import { Employee } from '../../models';
         <header class="page-header">
           <div class="header-left">
             <h1>Employees</h1>
-            <p>Manage and track employee utilization</p>
+            <p>Manage and track employee allocation</p>
           </div>
           <div class="header-actions">
             <input type="file" #fileInput (change)="onFileSelected($event)" accept=".xlsx,.xls" style="display: none">
@@ -71,7 +71,7 @@ import { Employee } from '../../models';
                   <th>Title</th>
                   <th>Tower</th>
                   <th>Primary Skill</th>
-                  <th>Utilization</th>
+                  <th>Allocation</th>
                   <th>Status</th>
                 </tr>
               </thead>
@@ -90,24 +90,24 @@ import { Employee } from '../../models';
                     <td>{{ emp.tower }}</td>
                     <td>{{ emp.primarySkill }}</td>
                     <td>
-                      <div class="utilization-cell">
+                      <div class="allocation-cell">
                         <div class="progress-bar">
                           <div class="progress-bar-fill" 
-                               [class.high]="emp.currentUtilization >= 75"
-                               [class.medium]="emp.currentUtilization >= 50 && emp.currentUtilization < 75"
-                               [class.low]="emp.currentUtilization < 50"
-                               [style.width.%]="emp.currentUtilization">
+                               [class.high]="emp.currentAllocation >= 75"
+                               [class.medium]="emp.currentAllocation >= 50 && emp.currentAllocation < 75"
+                               [class.low]="emp.currentAllocation < 50"
+                               [style.width.%]="emp.currentAllocation">
                           </div>
                         </div>
-                        <span class="util-value">{{ emp.currentUtilization }}%</span>
+                        <span class="alloc-value">{{ emp.currentAllocation }}%</span>
                       </div>
                     </td>
                     <td>
                       <span class="status-pill" 
-                            [class.active]="emp.utilizationStatus === 'ACTIVE'"
-                            [class.bench]="emp.utilizationStatus === 'BENCH'"
-                            [class.prospect]="emp.utilizationStatus === 'PROSPECT'">
-                        {{ emp.utilizationStatus }}
+                            [class.active]="emp.allocationStatus === 'ACTIVE'"
+                            [class.bench]="emp.allocationStatus === 'BENCH'"
+                            [class.prospect]="emp.allocationStatus === 'PROSPECT'">
+                        {{ emp.allocationStatus }}
                       </span>
                     </td>
                   </tr>
@@ -187,7 +187,7 @@ import { Employee } from '../../models';
       color: var(--text-muted);
     }
     
-    .utilization-cell {
+    .allocation-cell {
       display: flex;
       align-items: center;
       gap: 12px;
@@ -197,7 +197,7 @@ import { Employee } from '../../models';
       width: 100px;
     }
     
-    .util-value {
+    .alloc-value {
       font-size: 12px;
       font-weight: 500;
       min-width: 40px;
@@ -248,7 +248,7 @@ export class EmployeesComponent implements OnInit {
     }
 
     if (this.statusFilter) {
-      filtered = filtered.filter(e => e.utilizationStatus === this.statusFilter);
+      filtered = filtered.filter(e => e.allocationStatus === this.statusFilter);
     }
 
     if (this.towerFilter) {

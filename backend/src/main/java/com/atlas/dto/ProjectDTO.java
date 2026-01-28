@@ -27,5 +27,5 @@ public class ProjectDTO {
 
     // Statistics
     private Integer allocatedEmployees;
-    private Double averageUtilization;
+    private Double averageAllocation;
 }

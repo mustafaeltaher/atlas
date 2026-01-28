@@ -36,7 +36,7 @@ public class EmployeeDTO {
     private String managerName;
     private Boolean isActive;
 
-    // Current month utilization (calculated)
-    private Double currentUtilization;
-    private String utilizationStatus; // ACTIVE, BENCH, PROSPECT
+    // Current month allocation (calculated)
+    private Double currentAllocation;
+    private String allocationStatus; // ACTIVE, BENCH, PROSPECT
 }

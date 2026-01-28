@@ -39,42 +39,42 @@ public class Allocation {
     @Column(name = "end_date")
     private LocalDate endDate;
 
-    // Monthly utilization values: 1, 0.5, 0.25, "B" (Bench), "P" (Prospect)
-    @Column(name = "jan_util")
-    private String janUtilization;
+    // Monthly allocation values: 1, 0.5, 0.25, "B" (Bench), "P" (Prospect)
+    @Column(name = "jan_alloc")
+    private String janAllocation;
 
-    @Column(name = "feb_util")
-    private String febUtilization;
+    @Column(name = "feb_alloc")
+    private String febAllocation;
 
-    @Column(name = "mar_util")
-    private String marUtilization;
+    @Column(name = "mar_alloc")
+    private String marAllocation;
 
-    @Column(name = "apr_util")
-    private String aprUtilization;
+    @Column(name = "apr_alloc")
+    private String aprAllocation;
 
-    @Column(name = "may_util")
-    private String mayUtilization;
+    @Column(name = "may_alloc")
+    private String mayAllocation;
 
-    @Column(name = "jun_util")
-    private String junUtilization;
+    @Column(name = "jun_alloc")
+    private String junAllocation;
 
-    @Column(name = "jul_util")
-    private String julUtilization;
+    @Column(name = "jul_alloc")
+    private String julAllocation;
 
-    @Column(name = "aug_util")
-    private String augUtilization;
+    @Column(name = "aug_alloc")
+    private String augAllocation;
 
-    @Column(name = "sep_util")
-    private String sepUtilization;
+    @Column(name = "sep_alloc")
+    private String sepAllocation;
 
-    @Column(name = "oct_util")
-    private String octUtilization;
+    @Column(name = "oct_alloc")
+    private String octAllocation;
 
-    @Column(name = "nov_util")
-    private String novUtilization;
+    @Column(name = "nov_alloc")
+    private String novAllocation;
 
-    @Column(name = "dec_util")
-    private String decUtilization;
+    @Column(name = "dec_alloc")
+    private String decAllocation;
 
     @Enumerated(EnumType.STRING)
     @Builder.Default
@@ -84,40 +84,40 @@ public class Allocation {
         ACTIVE, PENDING, COMPLETED
     }
 
-    // Helper method to get utilization for a specific month (1-12)
-    public String getUtilizationForMonth(int month) {
+    // Helper method to get allocation for a specific month (1-12)
+    public String getAllocationForMonth(int month) {
         return switch (month) {
-            case 1 -> janUtilization;
-            case 2 -> febUtilization;
-            case 3 -> marUtilization;
-            case 4 -> aprUtilization;
-            case 5 -> mayUtilization;
-            case 6 -> junUtilization;
-            case 7 -> julUtilization;
-            case 8 -> augUtilization;
-            case 9 -> sepUtilization;
-            case 10 -> octUtilization;
-            case 11 -> novUtilization;
-            case 12 -> decUtilization;
+            case 1 -> janAllocation;
+            case 2 -> febAllocation;
+            case 3 -> marAllocation;
+            case 4 -> aprAllocation;
+            case 5 -> mayAllocation;
+            case 6 -> junAllocation;
+            case 7 -> julAllocation;
+            case 8 -> augAllocation;
+            case 9 -> sepAllocation;
+            case 10 -> octAllocation;
+            case 11 -> novAllocation;
+            case 12 -> decAllocation;
             default -> null;
         };
     }
 
-    // Helper method to set utilization for a specific month (1-12)
-    public void setUtilizationForMonth(int month, String value) {
+    // Helper method to set allocation for a specific month (1-12)
+    public void setAllocationForMonth(int month, String value) {
         switch (month) {
-            case 1 -> janUtilization = value;
-            case 2 -> febUtilization = value;
-            case 3 -> marUtilization = value;
-            case 4 -> aprUtilization = value;
-            case 5 -> mayUtilization = value;
-            case 6 -> junUtilization = value;
-            case 7 -> julUtilization = value;
-            case 8 -> augUtilization = value;
-            case 9 -> sepUtilization = value;
-            case 10 -> octUtilization = value;
-            case 11 -> novUtilization = value;
-            case 12 -> decUtilization = value;
+            case 1 -> janAllocation = value;
+            case 2 -> febAllocation = value;
+            case 3 -> marAllocation = value;
+            case 4 -> aprAllocation = value;
+            case 5 -> mayAllocation = value;
+            case 6 -> junAllocation = value;
+            case 7 -> julAllocation = value;
+            case 8 -> augAllocation = value;
+            case 9 -> sepAllocation = value;
+            case 10 -> octAllocation = value;
+            case 11 -> novAllocation = value;
+            case 12 -> decAllocation = value;
         }
     }
 }

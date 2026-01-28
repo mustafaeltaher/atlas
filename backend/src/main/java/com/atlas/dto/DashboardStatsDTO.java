@@ -12,7 +12,7 @@ import lombok.NoArgsConstructor;
 public class DashboardStatsDTO {
     private Long totalEmployees;
     private Long activeEmployees;
-    private Double averageUtilization;
+    private Double averageAllocation;
     private Long benchCount;
     private Long prospectCount;
     private Long activeProjects;
@@ -20,7 +20,7 @@ public class DashboardStatsDTO {
 
     // Trend data (compared to previous month)
     private Double employeeTrend;
-    private Double utilizationTrend;
+    private Double allocationTrend;
     private Double benchTrend;
     private Double projectTrend;
 }

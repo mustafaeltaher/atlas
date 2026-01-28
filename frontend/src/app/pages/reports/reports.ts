@@ -22,13 +22,14 @@ import { HeaderComponent } from '../../components/header/header.component';
           </div>
           
           <div class="grid grid-3 fade-in">
+            <!-- Resource Allocation Report -->
             <!-- Utilization Report -->
-            <div class="card report-card" (click)="openReport('utilization')">
+            <div class="card report-card" (click)="openReport('resource_allocation')">
               <div class="card-icon-lg">📊</div>
               <h3 class="card-title">Utilization Report</h3>
-              <p class="card-desc">Resource utilization by employee and project</p>
+              <p class="card-desc">Resource allocation by employee and project</p>
               <div class="card-stats">
-                <div class="stat-item"><span class="dot secondary"></span>Employee Utilization</div>
+                <div class="stat-item"><span class="dot secondary"></span>Employee Allocation</div>
                 <div class="stat-item"><span class="dot secondary"></span>Project Coverage</div>
                 <div class="stat-item"><span class="dot secondary"></span>Time Period Analysis</div>
               </div>
@@ -64,7 +65,7 @@ import { HeaderComponent } from '../../components/header/header.component';
               <h3 class="card-title">Project Status</h3>
               <p class="card-desc">Project health, budget, and resource status</p>
               <div class="card-stats">
-                <div class="stat-item"><span class="dot secondary"></span>Budget Utilization</div>
+                <div class="stat-item"><span class="dot secondary"></span>Budget Usage</div>
                 <div class="stat-item"><span class="dot secondary"></span>Timeline Progress</div>
                 <div class="stat-item"><span class="dot secondary"></span>Team Efficiency</div>
               </div>
@@ -139,7 +140,7 @@ import { HeaderComponent } from '../../components/header/header.component';
     
     .card-title {
       font-size: 1.125rem;
-      font-weight: 600;
+      font-weight: 700;
       margin-bottom: 8px;
       color: var(--text-primary);
     }
@@ -172,6 +173,8 @@ import { HeaderComponent } from '../../components/header/header.component';
       background-color: var(--secondary);
     }
 
+    .mt-4 { margin-top: 24px; }
+    .mt-2 { margin-top: 12px; }
     .mt-4 { margin-top: 24px; }
     .mt-2 { margin-top: 12px; }
   `]

@@ -24,21 +24,21 @@ public class AllocationDTO {
     private LocalDate endDate;
     private Allocation.AllocationStatus status;
 
-    // Current month utilization
-    private String currentMonthUtilization;
-    private Double utilizationPercentage; // Numeric value for progress bar
+    // Current month allocation
+    private String currentMonthAllocation;
+    private Double allocationPercentage; // Numeric value for progress bar
 
-    // Monthly utilization (for editing)
-    private String janUtilization;
-    private String febUtilization;
-    private String marUtilization;
-    private String aprUtilization;
-    private String mayUtilization;
-    private String junUtilization;
-    private String julUtilization;
-    private String augUtilization;
-    private String sepUtilization;
-    private String octUtilization;
-    private String novUtilization;
-    private String decUtilization;
+    // Monthly allocation (for editing)
+    private String janAllocation;
+    private String febAllocation;
+    private String marAllocation;
+    private String aprAllocation;
+    private String mayAllocation;
+    private String junAllocation;
+    private String julAllocation;
+    private String augAllocation;
+    private String sepAllocation;
+    private String octAllocation;
+    private String novAllocation;
+    private String decAllocation;
 }

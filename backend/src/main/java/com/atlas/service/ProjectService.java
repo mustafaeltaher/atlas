@@ -105,21 +105,21 @@ public class ProjectService {
         List<Allocation> allocations = allocationRepository.findActiveByProjectId(project.getId());
 
         int currentMonth = LocalDate.now().getMonthValue();
-        double totalUtilization = 0.0;
+        double totalAllocation = 0.0;
         int count = 0;
 
         for (Allocation allocation : allocations) {
-            String util = allocation.getUtilizationForMonth(currentMonth);
-            if (util != null && !util.equalsIgnoreCase("B") && !util.equalsIgnoreCase("P")) {
+            String alloc = allocation.getAllocationForMonth(currentMonth);
+            if (alloc != null && Character.isDigit(alloc.charAt(0))) {
                 try {
-                    totalUtilization += Double.parseDouble(util);
+                    totalAllocation += Double.parseDouble(alloc);
                     count++;
                 } catch (NumberFormatException ignored) {
                 }
             }
         }
 
-        double avgUtilization = count > 0 ? (totalUtilization / count) * 100 : 0.0;
+        double avgAllocation = count > 0 ? (totalAllocation / count) * 100 : 0.0;
 
         return ProjectDTO.builder()
                 .id(project.getId())
@@ -134,7 +134,7 @@ public class ProjectService {
                 .managerId(project.getManager() != null ? project.getManager().getId() : null)
                 .managerName(project.getManager() != null ? project.getManager().getName() : null)
                 .allocatedEmployees(allocations.size())
-                .averageUtilization(avgUtilization)
+                .averageAllocation(avgAllocation)
                 .build();
     }
 

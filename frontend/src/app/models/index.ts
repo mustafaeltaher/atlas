@@ -35,8 +35,8 @@ export interface Employee {
     tower: string;
     managerName?: string;
     isActive: boolean;
-    currentUtilization: number;
-    utilizationStatus: 'ACTIVE' | 'BENCH' | 'PROSPECT';
+    currentAllocation: number;
+    allocationStatus: 'ACTIVE' | 'BENCH' | 'PROSPECT';
 }
 
 export interface Project {
@@ -51,7 +51,7 @@ export interface Project {
     status: 'ACTIVE' | 'PENDING' | 'COMPLETED' | 'ON_HOLD';
     managerName?: string;
     allocatedEmployees: number;
-    averageUtilization: number;
+    averageAllocation: number;
 }
 
 export interface Allocation {
@@ -64,20 +64,20 @@ export interface Allocation {
     startDate: string;
     endDate: string;
     status: 'ACTIVE' | 'PENDING' | 'COMPLETED';
-    currentMonthUtilization: string;
-    utilizationPercentage: number;
+    currentMonthAllocation: string;
+    allocationPercentage: number;
 }
 
 export interface DashboardStats {
     totalEmployees: number;
     activeEmployees: number;
-    averageUtilization: number;
+    averageAllocation: number;
     benchCount: number;
     prospectCount: number;
     activeProjects: number;
     pendingProjects: number;
     employeeTrend: number;
-    utilizationTrend: number;
+    allocationTrend: number;
     benchTrend: number;
     projectTrend: number;
 }

@@ -28,7 +28,7 @@ import { DashboardStats } from '../../models';
                   <span>👤</span>
                 </div>
               </div>
-              <div class="card-value">{{ stats()?.activeEmployees || 0 }}</div>
+              <div class="card-value">{{ stats()?.totalEmployees || 0 }}</div>
               <div class="card-trend positive">
                 <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
                   <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline>
@@ -40,15 +40,15 @@ import { DashboardStats } from '../../models';
             
             <div class="card metric-card">
               <div class="card-header">
-                <span class="card-title">Utilization Rate</span>
-                <div class="card-icon utilization">
+                <span class="card-title">Allocation Rate</span>
+                <div class="card-icon allocation">
                   <span>📊</span>
                 </div>
               </div>
-              <div class="card-value">{{ stats()?.averageUtilization || 0 }}%</div>
-              <div class="card-trend" [class.positive]="(stats()?.utilizationTrend || 0) > 0" 
-                   [class.negative]="(stats()?.utilizationTrend || 0) < 0">
-                {{ (stats()?.utilizationTrend || 0) > 0 ? '+' : '' }}{{ stats()?.utilizationTrend || 0 }}% this month
+              <div class="card-value">{{ stats()?.averageAllocation || 0 }}%</div>
+              <div class="card-trend" [class.positive]="(stats()?.allocationTrend || 0) > 0" 
+                   [class.negative]="(stats()?.allocationTrend || 0) < 0">
+                {{ (stats()?.allocationTrend || 0) > 0 ? '+' : '' }}{{ stats()?.allocationTrend || 0 }}% this month
               </div>
             </div>
             
@@ -82,7 +82,7 @@ import { DashboardStats } from '../../models';
           
           <div class="grid grid-2" style="margin-top: 24px;">
             <div class="card">
-              <h3 style="margin-bottom: 16px;">Utilization Overview</h3>
+              <h3 style="margin-bottom: 16px;">Allocation Overview</h3>
               <div class="stat-row">
                 <span>Active Employees</span>
                 <span class="stat-value">{{ stats()?.activeEmployees }}</span>
@@ -104,8 +104,8 @@ import { DashboardStats } from '../../models';
                 <span class="stat-value">{{ stats()?.totalEmployees }}</span>
               </div>
               <div class="stat-row">
-                <span>Average Utilization</span>
-                <span class="stat-value">{{ stats()?.averageUtilization }}%</span>
+                <span>Average Allocation</span>
+                <span class="stat-value">{{ stats()?.averageAllocation }}%</span>
               </div>
               <div class="stat-row">
                 <span>Active Projects</span>
@@ -147,7 +147,7 @@ import { DashboardStats } from '../../models';
     }
     
     .card-icon.employees { color: var(--accent); }
-    .card-icon.utilization { color: var(--secondary); }
+    .card-icon.allocation { color: var(--secondary); }
     .card-icon.bench { color: var(--warning); }
     .card-icon.projects { color: #9B59B6; }
     
