@@ -48,4 +48,20 @@ public interface AllocationRepository extends JpaRepository<Allocation, Long> {
     List<Allocation> findActiveByEmployees(@Param("employees") List<Employee> employees);
 
     boolean existsByEmployeeAndProject(Employee employee, Project project);
+
+    // Pagination methods
+    @Query("SELECT a FROM Allocation a WHERE a.status = 'ACTIVE'")
+    org.springframework.data.domain.Page<Allocation> findByStatusActive(
+            org.springframework.data.domain.Pageable pageable);
+
+    // Search with pagination and filters
+    @Query("SELECT a FROM Allocation a WHERE " +
+            "(:status IS NULL OR a.status = :status) AND " +
+            "(:search IS NULL OR LOWER(CAST(a.employee.name AS string)) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%')) OR "
+            +
+            "LOWER(CAST(a.project.name AS string)) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%')))")
+    org.springframework.data.domain.Page<Allocation> searchAllocations(
+            @Param("search") String search,
+            @Param("status") Allocation.AllocationStatus status,
+            org.springframework.data.domain.Pageable pageable);
 }

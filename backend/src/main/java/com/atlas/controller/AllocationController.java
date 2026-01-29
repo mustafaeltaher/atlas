@@ -20,9 +20,15 @@ public class AllocationController {
     private final CustomUserDetailsService userDetailsService;
 
     @GetMapping
-    public ResponseEntity<List<AllocationDTO>> getAllAllocations(Authentication authentication) {
+    public ResponseEntity<org.springframework.data.domain.Page<AllocationDTO>> getAllAllocations(
+            Authentication authentication,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(required = false) String search,
+            @RequestParam(required = false) String status) {
         User currentUser = userDetailsService.getUserByUsername(authentication.getName());
-        return ResponseEntity.ok(allocationService.getAllAllocations(currentUser));
+        return ResponseEntity.ok(allocationService.getAllAllocations(currentUser,
+                org.springframework.data.domain.PageRequest.of(page, size), search, status));
     }
 
     @GetMapping("/{id}")

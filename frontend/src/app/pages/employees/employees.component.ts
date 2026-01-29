@@ -118,6 +118,19 @@ import { Employee } from '../../models';
                 }
               </tbody>
             </table>
+            
+            <!-- Pagination Controls -->
+            <div class="pagination-controls">
+              <button class="btn btn-secondary" (click)="previousPage()" [disabled]="currentPage() === 0">
+                ← Previous
+              </button>
+              <span class="page-info">
+                Page {{ currentPage() + 1 }} of {{ totalPages() }} ({{ totalElements() }} total)
+              </span>
+              <button class="btn btn-secondary" (click)="nextPage()" [disabled]="currentPage() >= totalPages() - 1">
+                Next →
+              </button>
+            </div>
           </div>
         }
       </main>
@@ -202,6 +215,39 @@ import { Employee } from '../../models';
       font-weight: 500;
       min-width: 40px;
     }
+    
+    .pagination-controls {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 16px;
+      padding: 16px;
+      border-top: 1px solid var(--border);
+    }
+    
+    .page-info {
+      color: var(--text-muted);
+      font-size: 14px;
+    }
+    
+    .btn-secondary {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 8px 16px;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    
+    .btn-secondary:hover:not(:disabled) {
+      background: var(--surface-hover);
+    }
+    
+    .btn-secondary:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
   `]
 })
 export class EmployeesComponent implements OnInit {
@@ -213,6 +259,10 @@ export class EmployeesComponent implements OnInit {
   searchTerm = '';
   statusFilter = '';
   towerFilter = '';
+  currentPage = signal(0);
+  pageSize = signal(10);
+  totalElements = signal(0);
+  totalPages = signal(0);
 
   constructor(private apiService: ApiService) { }
 
@@ -221,13 +271,19 @@ export class EmployeesComponent implements OnInit {
   }
 
   loadEmployees(): void {
-    this.apiService.getEmployees().subscribe({
-      next: (data) => {
-        this.employees.set(data);
-        this.filteredEmployees.set(data);
-        const uniqueTowers = [...new Set(data.map(e => e.tower).filter(Boolean))];
+    this.loading.set(true);
+    const search = this.searchTerm || undefined;
+    this.apiService.getEmployees(this.currentPage(), this.pageSize(), search).subscribe({
+      next: (page) => {
+        this.employees.set(page.content);
+        this.filteredEmployees.set(page.content);
+        this.totalElements.set(page.totalElements);
+        this.totalPages.set(page.totalPages);
+        const uniqueTowers = [...new Set(page.content.map(e => e.tower).filter(Boolean))];
         this.towers.set(uniqueTowers);
         this.loading.set(false);
+        // Apply client-side status filter if set
+        this.applyClientFilters();
       },
       error: () => {
         this.loading.set(false);
@@ -235,17 +291,28 @@ export class EmployeesComponent implements OnInit {
     });
   }
 
-  filterEmployees(): void {
-    let filtered = this.employees();
-
-    if (this.searchTerm) {
-      const term = this.searchTerm.toLowerCase();
-      filtered = filtered.filter(e =>
-        e.name.toLowerCase().includes(term) ||
-        e.primarySkill?.toLowerCase().includes(term) ||
-        e.tower?.toLowerCase().includes(term)
-      );
+  nextPage(): void {
+    if (this.currentPage() < this.totalPages() - 1) {
+      this.currentPage.update(p => p + 1);
+      this.loadEmployees();
     }
+  }
+
+  previousPage(): void {
+    if (this.currentPage() > 0) {
+      this.currentPage.update(p => p - 1);
+      this.loadEmployees();
+    }
+  }
+
+  filterEmployees(): void {
+    // Reset to first page when searching
+    this.currentPage.set(0);
+    this.loadEmployees();
+  }
+
+  applyClientFilters(): void {
+    let filtered = this.employees();
 
     if (this.statusFilter) {
       filtered = filtered.filter(e => e.allocationStatus === this.statusFilter);

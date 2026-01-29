@@ -20,9 +20,21 @@ public class ProjectController {
     private final CustomUserDetailsService userDetailsService;
 
     @GetMapping
-    public ResponseEntity<List<ProjectDTO>> getAllProjects(Authentication authentication) {
+    public ResponseEntity<org.springframework.data.domain.Page<ProjectDTO>> getAllProjects(
+            Authentication authentication,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(required = false) String search,
+            @RequestParam(required = false) String tower,
+            @RequestParam(required = false) String status) {
         User currentUser = userDetailsService.getUserByUsername(authentication.getName());
-        return ResponseEntity.ok(projectService.getAllProjects(currentUser));
+        return ResponseEntity.ok(projectService.getAllProjects(currentUser,
+                org.springframework.data.domain.PageRequest.of(page, size), search, tower, status));
+    }
+
+    @GetMapping("/towers")
+    public ResponseEntity<java.util.List<String>> getTowers() {
+        return ResponseEntity.ok(projectService.getDistinctTowers());
     }
 
     @GetMapping("/{id}")

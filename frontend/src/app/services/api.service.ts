@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
-import { Employee, Project, Allocation, DashboardStats } from '../models';
+import { Employee, Project, Allocation, DashboardStats, Page } from '../models';
 
 @Injectable({ providedIn: 'root' })
 export class ApiService {
@@ -24,8 +24,12 @@ export class ApiService {
     }
 
     // Employees
-    getEmployees(): Observable<Employee[]> {
-        return this.http.get<Employee[]>(`${this.API_URL}/employees`);
+    getEmployees(page: number = 0, size: number = 10, search?: string): Observable<Page<Employee>> {
+        let url = `${this.API_URL}/employees?page=${page}&size=${size}`;
+        if (search) {
+            url += `&search=${encodeURIComponent(search)}`;
+        }
+        return this.http.get<Page<Employee>>(url);
     }
 
     getEmployee(id: number): Observable<Employee> {
@@ -39,8 +43,16 @@ export class ApiService {
     }
 
     // Projects
-    getProjects(): Observable<Project[]> {
-        return this.http.get<Project[]>(`${this.API_URL}/projects`);
+    getProjects(page: number = 0, size: number = 10, search?: string, tower?: string, status?: string): Observable<Page<Project>> {
+        let url = `${this.API_URL}/projects?page=${page}&size=${size}`;
+        if (search) url += `&search=${encodeURIComponent(search)}`;
+        if (tower) url += `&tower=${encodeURIComponent(tower)}`;
+        if (status) url += `&status=${encodeURIComponent(status)}`;
+        return this.http.get<Page<Project>>(url);
+    }
+
+    getProjectTowers(): Observable<string[]> {
+        return this.http.get<string[]>(`${this.API_URL}/projects/towers`);
     }
 
     getProject(id: number): Observable<Project> {
@@ -56,8 +68,11 @@ export class ApiService {
     }
 
     // Allocations
-    getAllocations(): Observable<Allocation[]> {
-        return this.http.get<Allocation[]>(`${this.API_URL}/allocations`);
+    getAllocations(page: number = 0, size: number = 10, search?: string, status?: string): Observable<Page<Allocation>> {
+        let url = `${this.API_URL}/allocations?page=${page}&size=${size}`;
+        if (search) url += `&search=${encodeURIComponent(search)}`;
+        if (status) url += `&status=${encodeURIComponent(status)}`;
+        return this.http.get<Page<Allocation>>(url);
     }
 
     getAllocationsByEmployee(employeeId: number): Observable<Allocation[]> {

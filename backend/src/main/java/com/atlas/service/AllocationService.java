@@ -31,6 +31,61 @@ public class AllocationService {
                 .collect(Collectors.toList());
     }
 
+    // Paginated version with search and filters
+    public org.springframework.data.domain.Page<AllocationDTO> getAllAllocations(User currentUser,
+            org.springframework.data.domain.Pageable pageable, String search, String status) {
+
+        Allocation.AllocationStatus statusEnum = null;
+        if (status != null && !status.trim().isEmpty()) {
+            try {
+                statusEnum = Allocation.AllocationStatus.valueOf(status.toUpperCase());
+            } catch (IllegalArgumentException e) {
+                // Invalid status, ignore filter
+            }
+        }
+
+        String searchParam = (search != null && !search.trim().isEmpty()) ? search.trim() : null;
+
+        if (currentUser.getRole() == User.Role.SYSTEM_ADMIN || currentUser.getRole() == User.Role.EXECUTIVE) {
+            // Direct database pagination for admins
+            org.springframework.data.domain.Page<Allocation> allocationPage = allocationRepository.searchAllocations(
+                    searchParam, statusEnum, pageable);
+            return allocationPage.map(this::toDTO);
+        }
+
+        // For managers: fetch all accessible allocations, then filter and paginate
+        List<Allocation> allAccessible = getFilteredAllocations(currentUser);
+
+        // Apply search and filters
+        final String searchLower = searchParam != null ? searchParam.toLowerCase() : null;
+        final Allocation.AllocationStatus statusFinal = statusEnum;
+
+        allAccessible = allAccessible.stream()
+                .filter(a -> searchLower == null ||
+                        (a.getEmployee() != null && a.getEmployee().getName() != null
+                                && a.getEmployee().getName().toLowerCase().contains(searchLower))
+                        ||
+                        (a.getProject() != null && a.getProject().getName() != null
+                                && a.getProject().getName().toLowerCase().contains(searchLower)))
+                .filter(a -> statusFinal == null || a.getStatus() == statusFinal)
+                .collect(Collectors.toList());
+
+        List<AllocationDTO> dtoList = allAccessible.stream()
+                .map(this::toDTO)
+                .collect(Collectors.toList());
+
+        // Manual pagination from the filtered list
+        int start = (int) pageable.getOffset();
+        int end = Math.min(start + pageable.getPageSize(), dtoList.size());
+
+        List<AllocationDTO> pageContent = start < dtoList.size() ? dtoList.subList(start, end) : List.of();
+
+        return new org.springframework.data.domain.PageImpl<>(
+                pageContent,
+                pageable,
+                dtoList.size());
+    }
+
     public AllocationDTO getAllocationById(Long id) {
         Allocation allocation = allocationRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Allocation not found: " + id));

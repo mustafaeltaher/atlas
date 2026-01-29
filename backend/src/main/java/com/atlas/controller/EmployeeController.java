@@ -24,9 +24,14 @@ public class EmployeeController {
     private final CustomUserDetailsService userDetailsService;
 
     @GetMapping
-    public ResponseEntity<List<EmployeeDTO>> getAllEmployees(Authentication authentication) {
+    public ResponseEntity<org.springframework.data.domain.Page<EmployeeDTO>> getAllEmployees(
+            Authentication authentication,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(required = false) String search) {
         User currentUser = userDetailsService.getUserByUsername(authentication.getName());
-        return ResponseEntity.ok(employeeService.getAllEmployees(currentUser));
+        return ResponseEntity.ok(employeeService.getAllEmployees(currentUser,
+                org.springframework.data.domain.PageRequest.of(page, size), search));
     }
 
     @GetMapping("/{id}")

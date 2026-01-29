@@ -45,4 +45,18 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long> {
 
     @Query("SELECT e FROM Employee e WHERE e.manager.id = :managerId AND e.isActive = true")
     List<Employee> findActiveByManagerId(@Param("managerId") Long managerId);
+
+    // Pagination methods
+    org.springframework.data.domain.Page<Employee> findByIsActiveTrue(
+            org.springframework.data.domain.Pageable pageable);
+
+    // Search with pagination
+    @Query("SELECT e FROM Employee e WHERE e.isActive = true AND " +
+            "(LOWER(e.name) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
+            "LOWER(e.primarySkill) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
+            "LOWER(e.tower) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
+            "LOWER(e.email) LIKE LOWER(CONCAT('%', :search, '%')))")
+    org.springframework.data.domain.Page<Employee> searchActiveEmployees(
+            @Param("search") String search,
+            org.springframework.data.domain.Pageable pageable);
 }

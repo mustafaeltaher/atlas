@@ -28,6 +28,50 @@ public class EmployeeService {
                 .collect(Collectors.toList());
     }
 
+    // Paginated version with search
+    public org.springframework.data.domain.Page<EmployeeDTO> getAllEmployees(User currentUser,
+            org.springframework.data.domain.Pageable pageable, String search) {
+        if (currentUser.getRole() == User.Role.SYSTEM_ADMIN || currentUser.getRole() == User.Role.EXECUTIVE) {
+            // Direct database pagination for admins
+            org.springframework.data.domain.Page<Employee> employeePage;
+            if (search != null && !search.trim().isEmpty()) {
+                employeePage = employeeRepository.searchActiveEmployees(search.trim(), pageable);
+            } else {
+                employeePage = employeeRepository.findByIsActiveTrue(pageable);
+            }
+            return employeePage.map(this::toDTO);
+        }
+
+        // For managers: fetch all accessible employees, then filter and paginate
+        List<Employee> allAccessible = getAccessibleEmployees(currentUser);
+
+        // Apply search filter if provided
+        if (search != null && !search.trim().isEmpty()) {
+            String searchLower = search.toLowerCase().trim();
+            allAccessible = allAccessible.stream()
+                    .filter(e -> (e.getName() != null && e.getName().toLowerCase().contains(searchLower)) ||
+                            (e.getPrimarySkill() != null && e.getPrimarySkill().toLowerCase().contains(searchLower)) ||
+                            (e.getTower() != null && e.getTower().toLowerCase().contains(searchLower)) ||
+                            (e.getEmail() != null && e.getEmail().toLowerCase().contains(searchLower)))
+                    .collect(Collectors.toList());
+        }
+
+        List<EmployeeDTO> dtoList = allAccessible.stream()
+                .map(this::toDTO)
+                .collect(Collectors.toList());
+
+        // Manual pagination from the filtered list
+        int start = (int) pageable.getOffset();
+        int end = Math.min(start + pageable.getPageSize(), dtoList.size());
+
+        List<EmployeeDTO> pageContent = start < dtoList.size() ? dtoList.subList(start, end) : List.of();
+
+        return new org.springframework.data.domain.PageImpl<>(
+                pageContent,
+                pageable,
+                dtoList.size());
+    }
+
     public EmployeeDTO getEmployeeById(Long id, User currentUser) {
         Employee employee = employeeRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Employee not found: " + id));

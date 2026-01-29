@@ -30,6 +30,65 @@ public class ProjectService {
                 .collect(Collectors.toList());
     }
 
+    // Paginated version with search and filters
+    public org.springframework.data.domain.Page<ProjectDTO> getAllProjects(User currentUser,
+            org.springframework.data.domain.Pageable pageable, String search, String tower, String status) {
+
+        Project.ProjectStatus statusEnum = null;
+        if (status != null && !status.trim().isEmpty()) {
+            try {
+                statusEnum = Project.ProjectStatus.valueOf(status.toUpperCase());
+            } catch (IllegalArgumentException e) {
+                // Invalid status, ignore filter
+            }
+        }
+
+        String searchParam = (search != null && !search.trim().isEmpty()) ? search.trim() : null;
+        String towerParam = (tower != null && !tower.trim().isEmpty()) ? tower.trim() : null;
+
+        if (currentUser.getRole() == User.Role.SYSTEM_ADMIN || currentUser.getRole() == User.Role.EXECUTIVE) {
+            // Direct database pagination for admins
+            org.springframework.data.domain.Page<Project> projectPage = projectRepository.searchProjects(
+                    searchParam, towerParam, statusEnum, pageable);
+            return projectPage.map(this::toDTO);
+        }
+
+        // For managers: fetch all accessible projects, then filter and paginate
+        List<Project> allAccessible = getFilteredProjects(currentUser);
+
+        // Apply search and filters
+        final String searchLower = searchParam != null ? searchParam.toLowerCase() : null;
+        final String towerFinal = towerParam;
+        final Project.ProjectStatus statusFinal = statusEnum;
+
+        allAccessible = allAccessible.stream()
+                .filter(p -> searchLower == null ||
+                        (p.getName() != null && p.getName().toLowerCase().contains(searchLower)))
+                .filter(p -> towerFinal == null ||
+                        (p.getTower() != null && p.getTower().equals(towerFinal)))
+                .filter(p -> statusFinal == null || p.getStatus() == statusFinal)
+                .collect(Collectors.toList());
+
+        List<ProjectDTO> dtoList = allAccessible.stream()
+                .map(this::toDTO)
+                .collect(Collectors.toList());
+
+        // Manual pagination from the filtered list
+        int start = (int) pageable.getOffset();
+        int end = Math.min(start + pageable.getPageSize(), dtoList.size());
+
+        List<ProjectDTO> pageContent = start < dtoList.size() ? dtoList.subList(start, end) : List.of();
+
+        return new org.springframework.data.domain.PageImpl<>(
+                pageContent,
+                pageable,
+                dtoList.size());
+    }
+
+    public List<String> getDistinctTowers() {
+        return projectRepository.findDistinctTowers();
+    }
+
     public ProjectDTO getProjectById(Long id, User currentUser) {
         Project project = projectRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Project not found: " + id));
