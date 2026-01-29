@@ -1,4 +1,4 @@
-import { Component, OnInit, signal } from '@angular/core';
+import { Component, OnInit, signal, ElementRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { SidebarComponent } from '../../components/sidebar/sidebar.component';
@@ -74,11 +74,11 @@ import { Project } from '../../models';
           </select>
         </div>
         
-        @if (loading()) {
+        @if (loading() && projects().length === 0) {
           <div class="loading">Loading projects...</div>
         } @else {
           @if (viewMode() === 'grid') {
-            <div class="grid grid-3 fade-in">
+            <div class="grid grid-3 fade-in" [style.opacity]="loading() ? '0.5' : '1'">
               @for (project of projects(); track project.id) {
                 <div class="card project-card">
                   <div class="project-header">
@@ -112,7 +112,7 @@ import { Project } from '../../models';
               }
             </div>
           } @else {
-            <div class="list-view fade-in">
+            <div class="list-view fade-in" [style.opacity]="loading() ? '0.5' : '1'">
               <table class="data-table">
                 <thead>
                   <tr>
@@ -150,20 +150,31 @@ import { Project } from '../../models';
                 </tbody>
               </table>
               
-              <!-- Pagination Controls -->
-              <div class="pagination-controls">
-                <button class="btn btn-secondary" (click)="previousPage()" [disabled]="currentPage() === 0">
-                  ← Previous
-                </button>
-                <span class="page-info">
-                  Page {{ currentPage() + 1 }} of {{ totalPages() }} ({{ totalElements() }} total)
-                </span>
-                <button class="btn btn-secondary" (click)="nextPage()" [disabled]="currentPage() >= totalPages() - 1">
-                  Next →
-                </button>
-              </div>
+              
+              <!-- Pagination Controls removed from here -->
             </div>
           }
+            <!-- Pagination Controls -->
+            <div class="pagination-controls">
+              <button class="btn btn-secondary" (click)="previousPage()" [disabled]="currentPage() === 0 || loading()">
+                ← Previous
+              </button>
+              
+              <div class="page-numbers">
+                @for (page of getPageNumbers(); track page) {
+                  <button class="page-btn" 
+                          [class.active]="page === currentPage()"
+                          [disabled]="loading()"
+                          (click)="goToPage(page)">
+                    {{ page + 1 }}
+                  </button>
+                }
+              </div>
+              
+              <button class="btn btn-secondary" (click)="nextPage()" [disabled]="currentPage() >= totalPages() - 1 || loading()">
+                Next →
+              </button>
+            </div>
         }
         
         @if (showModal) {
@@ -402,6 +413,36 @@ import { Project } from '../../models';
       border-top: 1px solid var(--border);
     }
     
+    .page-numbers {
+      display: flex;
+      gap: 8px;
+    }
+    
+    .page-btn {
+      min-width: 32px;
+      height: 32px;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      color: var(--text);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      font-size: 14px;
+      transition: all 0.2s;
+    }
+    
+    .page-btn:hover {
+      background: var(--surface-hover);
+    }
+    
+    .page-btn.active {
+      background: var(--primary);
+      color: white;
+      border-color: var(--primary);
+    }
+    
     .page-info {
       color: var(--text-muted);
       font-size: 14px;
@@ -498,7 +539,7 @@ export class ProjectsComponent implements OnInit {
   totalElements = signal(0);
   totalPages = signal(0);
 
-  constructor(private apiService: ApiService) { }
+  constructor(private apiService: ApiService, private elementRef: ElementRef) { }
 
   ngOnInit(): void {
     this.loadTowers();
@@ -512,7 +553,7 @@ export class ProjectsComponent implements OnInit {
     });
   }
 
-  loadProjects(): void {
+  loadProjects(scrollToBottom: boolean = false): void {
     this.loading.set(true);
     const search = this.searchTerm || undefined;
     const tower = this.towerFilter || undefined;
@@ -524,6 +565,15 @@ export class ProjectsComponent implements OnInit {
         this.totalElements.set(page.totalElements);
         this.totalPages.set(page.totalPages);
         this.loading.set(false);
+
+        if (scrollToBottom) {
+          setTimeout(() => {
+            const element = this.elementRef.nativeElement.querySelector('.pagination-controls');
+            if (element) {
+              element.scrollIntoView({ behavior: 'smooth', block: 'end' });
+            }
+          }, 100);
+        }
       },
       error: () => {
         this.loading.set(false);
@@ -534,15 +584,43 @@ export class ProjectsComponent implements OnInit {
   nextPage(): void {
     if (this.currentPage() < this.totalPages() - 1) {
       this.currentPage.update(p => p + 1);
-      this.loadProjects();
+      this.loadProjects(true);
     }
   }
 
   previousPage(): void {
     if (this.currentPage() > 0) {
       this.currentPage.update(p => p - 1);
-      this.loadProjects();
+      this.loadProjects(true);
     }
+  }
+
+  goToPage(page: number): void {
+    if (page >= 0 && page < this.totalPages() && page !== this.currentPage()) {
+      this.currentPage.set(page);
+      this.loadProjects(true);
+    }
+  }
+
+  getPageNumbers(): number[] {
+    const total = this.totalPages();
+    const current = this.currentPage();
+    const range = [];
+
+    // Always show first page, last page, and pages around current
+    // Simple implementation: show max 5 pages
+    let start = Math.max(0, current - 2);
+    let end = Math.min(total - 1, start + 4);
+
+    if (end - start < 4) {
+      start = Math.max(0, end - 4);
+    }
+
+    for (let i = start; i <= end; i++) {
+      range.push(i);
+    }
+
+    return range;
   }
 
   onSearch(): void {

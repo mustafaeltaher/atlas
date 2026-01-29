@@ -1,4 +1,4 @@
-import { Component, OnInit, signal } from '@angular/core';
+import { Component, OnInit, signal, ElementRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { SidebarComponent } from '../../components/sidebar/sidebar.component';
@@ -58,10 +58,10 @@ import { Employee } from '../../models';
           </select>
         </div>
         
-        @if (loading()) {
+        @if (loading() && employees().length === 0) {
           <div class="loading">Loading employees...</div>
         } @else {
-          <div class="card fade-in">
+          <div class="card fade-in" [style.opacity]="loading() ? '0.5' : '1'">
             <table class="data-table">
               <thead>
                 <tr>
@@ -121,13 +121,22 @@ import { Employee } from '../../models';
             
             <!-- Pagination Controls -->
             <div class="pagination-controls">
-              <button class="btn btn-secondary" (click)="previousPage()" [disabled]="currentPage() === 0">
+              <button class="btn btn-secondary" (click)="previousPage()" [disabled]="currentPage() === 0 || loading()">
                 ← Previous
               </button>
-              <span class="page-info">
-                Page {{ currentPage() + 1 }} of {{ totalPages() }} ({{ totalElements() }} total)
-              </span>
-              <button class="btn btn-secondary" (click)="nextPage()" [disabled]="currentPage() >= totalPages() - 1">
+              
+              <div class="page-numbers">
+                @for (page of getPageNumbers(); track page) {
+                  <button class="page-btn" 
+                          [class.active]="page === currentPage()"
+                          [disabled]="loading()"
+                          (click)="goToPage(page)">
+                    {{ page + 1 }}
+                  </button>
+                }
+              </div>
+              
+              <button class="btn btn-secondary" (click)="nextPage()" [disabled]="currentPage() >= totalPages() - 1 || loading()">
                 Next →
               </button>
             </div>
@@ -225,6 +234,36 @@ import { Employee } from '../../models';
       border-top: 1px solid var(--border);
     }
     
+    .page-numbers {
+      display: flex;
+      gap: 8px;
+    }
+    
+    .page-btn {
+      min-width: 32px;
+      height: 32px;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      color: var(--text);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      font-size: 14px;
+      transition: all 0.2s;
+    }
+    
+    .page-btn:hover {
+      background: var(--surface-hover);
+    }
+    
+    .page-btn.active {
+      background: var(--primary);
+      color: white;
+      border-color: var(--primary);
+    }
+    
     .page-info {
       color: var(--text-muted);
       font-size: 14px;
@@ -264,13 +303,13 @@ export class EmployeesComponent implements OnInit {
   totalElements = signal(0);
   totalPages = signal(0);
 
-  constructor(private apiService: ApiService) { }
+  constructor(private apiService: ApiService, private elementRef: ElementRef) { }
 
   ngOnInit(): void {
     this.loadEmployees();
   }
 
-  loadEmployees(): void {
+  loadEmployees(scrollToBottom: boolean = false): void {
     this.loading.set(true);
     const search = this.searchTerm || undefined;
     this.apiService.getEmployees(this.currentPage(), this.pageSize(), search).subscribe({
@@ -284,6 +323,15 @@ export class EmployeesComponent implements OnInit {
         this.loading.set(false);
         // Apply client-side status filter if set
         this.applyClientFilters();
+
+        if (scrollToBottom) {
+          setTimeout(() => {
+            const element = this.elementRef.nativeElement.querySelector('.pagination-controls');
+            if (element) {
+              element.scrollIntoView({ behavior: 'smooth', block: 'end' });
+            }
+          }, 100);
+        }
       },
       error: () => {
         this.loading.set(false);
@@ -294,15 +342,43 @@ export class EmployeesComponent implements OnInit {
   nextPage(): void {
     if (this.currentPage() < this.totalPages() - 1) {
       this.currentPage.update(p => p + 1);
-      this.loadEmployees();
+      this.loadEmployees(true);
     }
   }
 
   previousPage(): void {
     if (this.currentPage() > 0) {
       this.currentPage.update(p => p - 1);
-      this.loadEmployees();
+      this.loadEmployees(true);
     }
+  }
+
+  goToPage(page: number): void {
+    if (page >= 0 && page < this.totalPages() && page !== this.currentPage()) {
+      this.currentPage.set(page);
+      this.loadEmployees(true);
+    }
+  }
+
+  getPageNumbers(): number[] {
+    const total = this.totalPages();
+    const current = this.currentPage();
+    const range = [];
+
+    // Always show first page, last page, and pages around current
+    // Simple implementation: show max 5 pages
+    let start = Math.max(0, current - 2);
+    let end = Math.min(total - 1, start + 4);
+
+    if (end - start < 4) {
+      start = Math.max(0, end - 4);
+    }
+
+    for (let i = start; i <= end; i++) {
+      range.push(i);
+    }
+
+    return range;
   }
 
   filterEmployees(): void {
