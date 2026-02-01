@@ -1,6 +1,7 @@
-import { Component, OnInit, signal, ElementRef } from '@angular/core';
+import { Component, OnInit, signal, ElementRef, DestroyRef, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { SidebarComponent } from '../../components/sidebar/sidebar.component';
 import { HeaderComponent } from '../../components/header/header.component';
 import { ApiService } from '../../services/api.service';
@@ -521,6 +522,8 @@ import { Project } from '../../models';
   `]
 })
 export class ProjectsComponent implements OnInit {
+  private destroyRef = inject(DestroyRef);
+
   projects = signal<Project[]>([]);
   towers = signal<string[]>([]);
   loading = signal(true);
@@ -547,7 +550,7 @@ export class ProjectsComponent implements OnInit {
   }
 
   loadTowers(): void {
-    this.apiService.getProjectTowers().subscribe({
+    this.apiService.getProjectTowers().pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: (towers) => this.towers.set(towers),
       error: () => { }
     });
@@ -559,7 +562,7 @@ export class ProjectsComponent implements OnInit {
     const tower = this.towerFilter || undefined;
     const status = this.statusFilter || undefined;
 
-    this.apiService.getProjects(this.currentPage(), this.pageSize(), search, tower, status).subscribe({
+    this.apiService.getProjects(this.currentPage(), this.pageSize(), search, tower, status).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: (page) => {
         this.projects.set(page.content);
         this.totalElements.set(page.totalElements);
@@ -634,7 +637,7 @@ export class ProjectsComponent implements OnInit {
   }
 
   createProject(): void {
-    this.apiService.createProject(this.newProject).subscribe({
+    this.apiService.createProject(this.newProject).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: () => {
         this.showModal = false;
         this.newProject = {};

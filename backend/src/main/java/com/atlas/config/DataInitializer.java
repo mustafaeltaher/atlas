@@ -270,9 +270,5 @@ public class DataInitializer implements CommandLineRunner {
                 }
 
                 log.info("Created admin user and {} manager users", managers.size());
-                log.info("Login credentials:");
-                log.info("  Admin: admin / admin123");
-                log.info("  N1 Manager: ahmed.el-sayed / password123");
-                log.info("  N2 Manager: mohamed.hassan / password123");
         }
 }

@@ -1,6 +1,7 @@
-import { Component, OnInit, signal, ElementRef } from '@angular/core';
+import { Component, OnInit, signal, ElementRef, DestroyRef, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { SidebarComponent } from '../../components/sidebar/sidebar.component';
 import { HeaderComponent } from '../../components/header/header.component';
 import { ApiService } from '../../services/api.service';
@@ -290,6 +291,8 @@ import { Employee } from '../../models';
   `]
 })
 export class EmployeesComponent implements OnInit {
+  private destroyRef = inject(DestroyRef);
+
   employees = signal<Employee[]>([]);
   filteredEmployees = signal<Employee[]>([]);
   towers = signal<string[]>([]);
@@ -312,7 +315,7 @@ export class EmployeesComponent implements OnInit {
   loadEmployees(scrollToBottom: boolean = false): void {
     this.loading.set(true);
     const search = this.searchTerm || undefined;
-    this.apiService.getEmployees(this.currentPage(), this.pageSize(), search).subscribe({
+    this.apiService.getEmployees(this.currentPage(), this.pageSize(), search).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: (page) => {
         this.employees.set(page.content);
         this.filteredEmployees.set(page.content);
@@ -409,7 +412,7 @@ export class EmployeesComponent implements OnInit {
     const input = event.target as HTMLInputElement;
     if (input.files?.length) {
       const file = input.files[0];
-      this.apiService.importEmployees(file).subscribe({
+      this.apiService.importEmployees(file).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
         next: (result) => {
           alert(`Successfully imported ${result.imported} employees`);
           this.loadEmployees();

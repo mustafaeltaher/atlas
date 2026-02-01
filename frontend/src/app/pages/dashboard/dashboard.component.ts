@@ -1,5 +1,6 @@
-import { Component, OnInit, signal } from '@angular/core';
+import { Component, OnInit, signal, DestroyRef, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { SidebarComponent } from '../../components/sidebar/sidebar.component';
 import { HeaderComponent } from '../../components/header/header.component';
 import { ApiService } from '../../services/api.service';
@@ -172,6 +173,8 @@ import { DashboardStats } from '../../models';
   `]
 })
 export class DashboardComponent implements OnInit {
+  private destroyRef = inject(DestroyRef);
+
   stats = signal<DashboardStats | null>(null);
   loading = signal(true);
 
@@ -182,7 +185,7 @@ export class DashboardComponent implements OnInit {
   }
 
   loadStats(): void {
-    this.apiService.getDashboardStats().subscribe({
+    this.apiService.getDashboardStats().pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: (data) => {
         this.stats.set(data);
         this.loading.set(false);

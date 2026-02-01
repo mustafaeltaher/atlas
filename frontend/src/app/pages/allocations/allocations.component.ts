@@ -1,6 +1,7 @@
-import { Component, OnInit, signal, ElementRef } from '@angular/core';
+import { Component, OnInit, signal, ElementRef, DestroyRef, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { SidebarComponent } from '../../components/sidebar/sidebar.component';
 import { HeaderComponent } from '../../components/header/header.component';
 import { ApiService } from '../../services/api.service';
@@ -275,6 +276,8 @@ import { Allocation } from '../../models';
   `]
 })
 export class AllocationsComponent implements OnInit {
+  private destroyRef = inject(DestroyRef);
+
   allocations = signal<Allocation[]>([]);
   loading = signal(true);
 
@@ -299,7 +302,7 @@ export class AllocationsComponent implements OnInit {
     const search = this.searchTerm || undefined;
     const status = this.statusFilter || undefined;
 
-    this.apiService.getAllocations(this.currentPage(), this.pageSize(), search, status).subscribe({
+    this.apiService.getAllocations(this.currentPage(), this.pageSize(), search, status).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: (page) => {
         this.allocations.set(page.content);
         this.totalElements.set(page.totalElements);

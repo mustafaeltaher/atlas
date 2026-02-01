@@ -4,6 +4,7 @@ import com.atlas.dto.ProjectDTO;
 import com.atlas.entity.User;
 import com.atlas.security.CustomUserDetailsService;
 import com.atlas.service.ProjectService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -16,6 +17,8 @@ import java.util.List;
 @RequiredArgsConstructor
 public class ProjectController {
 
+    private static final int MAX_PAGE_SIZE = 100;
+
     private final ProjectService projectService;
     private final CustomUserDetailsService userDetailsService;
 
@@ -27,6 +30,8 @@ public class ProjectController {
             @RequestParam(required = false) String search,
             @RequestParam(required = false) String tower,
             @RequestParam(required = false) String status) {
+        page = Math.max(0, page);
+        size = Math.max(1, Math.min(size, MAX_PAGE_SIZE));
         User currentUser = userDetailsService.getUserByUsername(authentication.getName());
         return ResponseEntity.ok(projectService.getAllProjects(currentUser,
                 org.springframework.data.domain.PageRequest.of(page, size), search, tower, status));
@@ -44,12 +49,12 @@ public class ProjectController {
     }
 
     @PostMapping
-    public ResponseEntity<ProjectDTO> createProject(@RequestBody ProjectDTO projectDTO) {
+    public ResponseEntity<ProjectDTO> createProject(@Valid @RequestBody ProjectDTO projectDTO) {
         return ResponseEntity.ok(projectService.createProject(projectDTO));
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<ProjectDTO> updateProject(@PathVariable Long id, @RequestBody ProjectDTO projectDTO) {
+    public ResponseEntity<ProjectDTO> updateProject(@PathVariable Long id, @Valid @RequestBody ProjectDTO projectDTO) {
         return ResponseEntity.ok(projectService.updateProject(id, projectDTO));
     }
 }

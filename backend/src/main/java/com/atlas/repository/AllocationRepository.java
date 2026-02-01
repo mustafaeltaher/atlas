@@ -26,26 +26,32 @@ public interface AllocationRepository extends JpaRepository<Allocation, Long> {
     @Query("SELECT a FROM Allocation a WHERE a.employee.id = :employeeId AND a.status = 'ACTIVE'")
     List<Allocation> findActiveByEmployeeId(@Param("employeeId") Long employeeId);
 
-    @Query("SELECT a FROM Allocation a WHERE a.project.id = :projectId AND a.status = 'ACTIVE'")
+    @Query("SELECT a FROM Allocation a JOIN FETCH a.employee JOIN FETCH a.project WHERE a.project.id = :projectId AND a.status = 'ACTIVE'")
     List<Allocation> findActiveByProjectId(@Param("projectId") Long projectId);
 
-    @Query("SELECT a FROM Allocation a WHERE a.project.parentTower = :parentTower")
+    @Query("SELECT a FROM Allocation a JOIN FETCH a.employee JOIN FETCH a.project WHERE a.project.parentTower = :parentTower")
     List<Allocation> findByParentTower(@Param("parentTower") String parentTower);
 
-    @Query("SELECT a FROM Allocation a WHERE a.project.tower = :tower")
+    @Query("SELECT a FROM Allocation a JOIN FETCH a.employee JOIN FETCH a.project WHERE a.project.tower = :tower")
     List<Allocation> findByTower(@Param("tower") String tower);
 
-    @Query("SELECT a FROM Allocation a JOIN a.project p WHERE p.id IN :projectIds")
+    @Query("SELECT a FROM Allocation a JOIN FETCH a.employee JOIN FETCH a.project WHERE a.project.id IN :projectIds")
     List<Allocation> findByProjectIdIn(@Param("projectIds") List<Long> projectIds);
 
-    @Query("SELECT a FROM Allocation a WHERE a.employee.parentTower = :parentTower AND a.status = 'ACTIVE'")
+    @Query("SELECT a FROM Allocation a JOIN FETCH a.employee JOIN FETCH a.project WHERE a.employee.parentTower = :parentTower AND a.status = 'ACTIVE'")
     List<Allocation> findActiveByParentTower(@Param("parentTower") String parentTower);
 
-    @Query("SELECT a FROM Allocation a WHERE a.employee.tower = :tower AND a.status = 'ACTIVE'")
+    @Query("SELECT a FROM Allocation a JOIN FETCH a.employee JOIN FETCH a.project WHERE a.employee.tower = :tower AND a.status = 'ACTIVE'")
     List<Allocation> findActiveByTower(@Param("tower") String tower);
 
-    @Query("SELECT a FROM Allocation a WHERE a.employee IN :employees AND a.status = 'ACTIVE'")
+    @Query("SELECT a FROM Allocation a JOIN FETCH a.employee JOIN FETCH a.project WHERE a.employee IN :employees AND a.status = 'ACTIVE'")
     List<Allocation> findActiveByEmployees(@Param("employees") List<Employee> employees);
+
+    @Query("SELECT a FROM Allocation a WHERE a.employee.id IN :employeeIds AND a.status = 'ACTIVE'")
+    List<Allocation> findActiveByEmployeeIds(@Param("employeeIds") List<Long> employeeIds);
+
+    @Query("SELECT a FROM Allocation a WHERE a.project.id IN :projectIds AND a.status = 'ACTIVE'")
+    List<Allocation> findActiveByProjectIds(@Param("projectIds") List<Long> projectIds);
 
     boolean existsByEmployeeAndProject(Employee employee, Project project);
 
@@ -55,7 +61,12 @@ public interface AllocationRepository extends JpaRepository<Allocation, Long> {
             org.springframework.data.domain.Pageable pageable);
 
     // Search with pagination and filters
-    @Query("SELECT a FROM Allocation a WHERE " +
+    @Query(value = "SELECT a FROM Allocation a JOIN FETCH a.employee JOIN FETCH a.project WHERE " +
+            "(:status IS NULL OR a.status = :status) AND " +
+            "(:search IS NULL OR LOWER(CAST(a.employee.name AS string)) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%')) OR "
+            +
+            "LOWER(CAST(a.project.name AS string)) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%')))",
+            countQuery = "SELECT COUNT(a) FROM Allocation a WHERE " +
             "(:status IS NULL OR a.status = :status) AND " +
             "(:search IS NULL OR LOWER(CAST(a.employee.name AS string)) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%')) OR "
             +

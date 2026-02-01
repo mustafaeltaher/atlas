@@ -1,6 +1,7 @@
-import { Component, OnInit, signal } from '@angular/core';
+import { Component, OnInit, signal, DestroyRef, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ThemeService } from '../../services/theme.service';
 import { AuthService } from '../../services/auth.service';
 import { ApiService } from '../../services/api.service';
@@ -378,6 +379,8 @@ import { Employee } from '../../models';
   `]
 })
 export class ProfileComponent implements OnInit {
+  private destroyRef = inject(DestroyRef);
+
   profile = signal<Employee | null>(null);
   currentPassword = '';
   newPassword = '';
@@ -399,7 +402,7 @@ export class ProfileComponent implements OnInit {
   loadProfile(): void {
     const employeeId = this.authService.currentUser()?.employeeId;
     if (employeeId) {
-      this.apiService.get<Employee>(`/employees/${employeeId}`).subscribe({
+      this.apiService.get<Employee>(`/employees/${employeeId}`).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
         next: (data) => this.profile.set(data),
         error: (err) => console.error('Failed to load profile', err)
       });
@@ -438,7 +441,7 @@ export class ProfileComponent implements OnInit {
     this.apiService.post('/auth/change-password', {
       currentPassword: this.currentPassword,
       newPassword: this.newPassword
-    }).subscribe({
+    }).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: () => {
         this.passwordSuccess.set('Password changed successfully');
         this.currentPassword = '';

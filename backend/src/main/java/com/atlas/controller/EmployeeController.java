@@ -19,6 +19,8 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class EmployeeController {
 
+    private static final int MAX_PAGE_SIZE = 100;
+
     private final EmployeeService employeeService;
     private final ExcelImportService excelImportService;
     private final CustomUserDetailsService userDetailsService;
@@ -29,6 +31,8 @@ public class EmployeeController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size,
             @RequestParam(required = false) String search) {
+        page = Math.max(0, page);
+        size = Math.max(1, Math.min(size, MAX_PAGE_SIZE));
         User currentUser = userDetailsService.getUserByUsername(authentication.getName());
         return ResponseEntity.ok(employeeService.getAllEmployees(currentUser,
                 org.springframework.data.domain.PageRequest.of(page, size), search));
@@ -49,6 +53,13 @@ public class EmployeeController {
 
     @PostMapping("/import")
     public ResponseEntity<Map<String, Object>> importEmployees(@RequestParam("file") MultipartFile file) {
+        String filename = file.getOriginalFilename();
+        if (filename == null || (!filename.endsWith(".xlsx") && !filename.endsWith(".xls"))) {
+            return ResponseEntity.badRequest().body(Map.of(
+                    "success", false,
+                    "message", "Only Excel files (.xlsx, .xls) are accepted"));
+        }
+
         try {
             int imported = excelImportService.importEmployees(file);
             return ResponseEntity.ok(Map.of(

@@ -12,7 +12,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @Service
@@ -25,8 +27,9 @@ public class ProjectService {
 
     public List<ProjectDTO> getAllProjects(User currentUser) {
         List<Project> projects = getFilteredProjects(currentUser);
+        Map<Long, List<Allocation>> allocationsByProject = batchFetchAllocations(projects);
         return projects.stream()
-                .map(this::toDTO)
+                .map(p -> toDTO(p, allocationsByProject.getOrDefault(p.getId(), Collections.emptyList())))
                 .collect(Collectors.toList());
     }
 
@@ -50,7 +53,8 @@ public class ProjectService {
             // Direct database pagination for admins
             org.springframework.data.domain.Page<Project> projectPage = projectRepository.searchProjects(
                     searchParam, towerParam, statusEnum, pageable);
-            return projectPage.map(this::toDTO);
+            Map<Long, List<Allocation>> allocationsByProject = batchFetchAllocations(projectPage.getContent());
+            return projectPage.map(p -> toDTO(p, allocationsByProject.getOrDefault(p.getId(), Collections.emptyList())));
         }
 
         // For managers: fetch all accessible projects, then filter and paginate
@@ -69,20 +73,20 @@ public class ProjectService {
                 .filter(p -> statusFinal == null || p.getStatus() == statusFinal)
                 .collect(Collectors.toList());
 
-        List<ProjectDTO> dtoList = allAccessible.stream()
-                .map(this::toDTO)
-                .collect(Collectors.toList());
-
         // Manual pagination from the filtered list
         int start = (int) pageable.getOffset();
-        int end = Math.min(start + pageable.getPageSize(), dtoList.size());
+        int end = Math.min(start + pageable.getPageSize(), allAccessible.size());
+        List<Project> pageProjects = start < allAccessible.size() ? allAccessible.subList(start, end) : List.of();
 
-        List<ProjectDTO> pageContent = start < dtoList.size() ? dtoList.subList(start, end) : List.of();
+        Map<Long, List<Allocation>> allocationsByProject = batchFetchAllocations(pageProjects);
+        List<ProjectDTO> pageContent = pageProjects.stream()
+                .map(p -> toDTO(p, allocationsByProject.getOrDefault(p.getId(), Collections.emptyList())))
+                .collect(Collectors.toList());
 
         return new org.springframework.data.domain.PageImpl<>(
                 pageContent,
                 pageable,
-                dtoList.size());
+                allAccessible.size());
     }
 
     public List<String> getDistinctTowers() {
@@ -160,9 +164,21 @@ public class ProjectService {
         return accessibleProjects.stream().anyMatch(p -> p.getId().equals(project.getId()));
     }
 
+    private Map<Long, List<Allocation>> batchFetchAllocations(List<Project> projects) {
+        if (projects.isEmpty()) {
+            return Collections.emptyMap();
+        }
+        List<Long> ids = projects.stream().map(Project::getId).collect(Collectors.toList());
+        return allocationRepository.findActiveByProjectIds(ids).stream()
+                .collect(Collectors.groupingBy(a -> a.getProject().getId()));
+    }
+
     private ProjectDTO toDTO(Project project) {
         List<Allocation> allocations = allocationRepository.findActiveByProjectId(project.getId());
+        return toDTO(project, allocations);
+    }
 
+    private ProjectDTO toDTO(Project project, List<Allocation> allocations) {
         int currentMonth = LocalDate.now().getMonthValue();
         double totalAllocation = 0.0;
         int count = 0;

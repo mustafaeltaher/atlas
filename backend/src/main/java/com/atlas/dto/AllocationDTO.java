@@ -1,6 +1,7 @@
 package com.atlas.dto;
 
 import com.atlas.entity.Allocation;
+import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -14,9 +15,15 @@ import java.time.LocalDate;
 @AllArgsConstructor
 public class AllocationDTO {
     private Long id;
+
+    @NotNull(message = "Employee ID is required")
     private Long employeeId;
+
     private String employeeName;
+
+    @NotNull(message = "Project ID is required")
     private Long projectId;
+
     private String projectName;
     private String confirmedAssignment;
     private String prospectAssignment;
@@ -26,7 +33,7 @@ public class AllocationDTO {
 
     // Current month allocation
     private String currentMonthAllocation;
-    private Double allocationPercentage; // Numeric value for progress bar
+    private Double allocationPercentage;
 
     // Monthly allocation (for editing)
     private String janAllocation;

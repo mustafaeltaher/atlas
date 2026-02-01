@@ -1,11 +1,13 @@
 package com.atlas.controller;
 
+import com.atlas.dto.ChangePasswordRequest;
 import com.atlas.dto.LoginRequest;
 import com.atlas.dto.LoginResponse;
 import com.atlas.entity.User;
 import com.atlas.repository.UserRepository;
 import com.atlas.security.CustomUserDetailsService;
 import com.atlas.security.JwtTokenProvider;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -29,7 +31,7 @@ public class AuthController {
     private final UserRepository userRepository;
 
     @PostMapping("/login")
-    public ResponseEntity<LoginResponse> login(@RequestBody LoginRequest loginRequest) {
+    public ResponseEntity<LoginResponse> login(@Valid @RequestBody LoginRequest loginRequest) {
         Authentication authentication = authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(
                         loginRequest.getUsername(),
@@ -77,24 +79,17 @@ public class AuthController {
     }
 
     @PostMapping("/change-password")
-    public ResponseEntity<?> changePassword(@RequestBody Map<String, String> request) {
+    public ResponseEntity<?> changePassword(@Valid @RequestBody ChangePasswordRequest request) {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         String username = authentication.getName();
 
-        String currentPassword = request.get("currentPassword");
-        String newPassword = request.get("newPassword");
-
-        if (currentPassword == null || newPassword == null) {
-            return ResponseEntity.badRequest().body(Map.of("message", "Current and new passwords are required"));
-        }
-
         User user = userDetailsService.getUserByUsername(username);
 
-        if (!passwordEncoder.matches(currentPassword, user.getPassword())) {
+        if (!passwordEncoder.matches(request.getCurrentPassword(), user.getPassword())) {
             return ResponseEntity.badRequest().body(Map.of("message", "Current password is incorrect"));
         }
 
-        user.setPassword(passwordEncoder.encode(newPassword));
+        user.setPassword(passwordEncoder.encode(request.getNewPassword()));
         userRepository.save(user);
 
         return ResponseEntity.ok(Map.of("message", "Password changed successfully"));
