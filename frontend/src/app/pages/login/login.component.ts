@@ -1,7 +1,8 @@
-import { Component, signal } from '@angular/core';
+import { Component, signal, DestroyRef, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { AuthService } from '../../services/auth.service';
 
 @Component({
@@ -126,6 +127,8 @@ import { AuthService } from '../../services/auth.service';
   `]
 })
 export class LoginComponent {
+    private destroyRef = inject(DestroyRef);
+
     username = '';
     password = '';
     loading = signal(false);
@@ -143,7 +146,7 @@ export class LoginComponent {
         this.loading.set(true);
         this.error.set('');
 
-        this.authService.login(this.username, this.password).subscribe({
+        this.authService.login(this.username, this.password).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
             next: () => {
                 this.router.navigate(['/dashboard']);
             },

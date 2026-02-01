@@ -12,6 +12,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -90,8 +91,7 @@ public class EmployeeService {
 
     public List<Employee> getAccessibleEmployees(User user) {
         if (user.getRole() == User.Role.SYSTEM_ADMIN || user.getRole() == User.Role.EXECUTIVE) {
-            // Full visibility
-            return employeeRepository.findByIsActiveTrue();
+            return employeeRepository.findByIsActiveTrueWithManager();
         }
 
         Employee userEmployee = user.getEmployee();
@@ -99,29 +99,31 @@ public class EmployeeService {
             return List.of();
         }
 
-        // Hierarchy-based visibility: get all direct and indirect reports
-        // Including the user themselves
-        List<Employee> employees = new java.util.ArrayList<>();
-        employees.add(userEmployee);
-        employees.addAll(getAllReportsRecursively(userEmployee.getId()));
-        return employees;
+        // Load all active employees in one query, then walk the tree in memory
+        List<Employee> allActive = employeeRepository.findByIsActiveTrueWithManager();
+        Map<Long, List<Employee>> reportsByManager = new HashMap<>();
+        for (Employee e : allActive) {
+            if (e.getManager() != null) {
+                reportsByManager.computeIfAbsent(e.getManager().getId(), k -> new java.util.ArrayList<>()).add(e);
+            }
+        }
+
+        List<Employee> result = new java.util.ArrayList<>();
+        result.add(userEmployee);
+        collectReports(userEmployee.getId(), reportsByManager, result);
+        return result;
+    }
+
+    private void collectReports(Long managerId, Map<Long, List<Employee>> reportsByManager, List<Employee> result) {
+        List<Employee> directs = reportsByManager.getOrDefault(managerId, Collections.emptyList());
+        for (Employee report : directs) {
+            result.add(report);
+            collectReports(report.getId(), reportsByManager, result);
+        }
     }
 
     private List<Employee> getFilteredEmployees(User user) {
         return getAccessibleEmployees(user);
-    }
-
-    private List<Employee> getAllReportsRecursively(Long managerId) {
-        List<Employee> allReports = new java.util.ArrayList<>();
-        List<Employee> directReports = employeeRepository.findActiveByManagerId(managerId);
-
-        for (Employee report : directReports) {
-            allReports.add(report);
-            // Recursively get reports of this employee
-            allReports.addAll(getAllReportsRecursively(report.getId()));
-        }
-
-        return allReports;
     }
 
     private boolean hasAccessToEmployee(User user, Employee employee) {

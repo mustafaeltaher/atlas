@@ -37,18 +37,23 @@ public class AllocationController {
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<AllocationDTO> getAllocationById(@PathVariable Long id) {
-        return ResponseEntity.ok(allocationService.getAllocationById(id));
+    public ResponseEntity<AllocationDTO> getAllocationById(@PathVariable Long id, Authentication authentication) {
+        User currentUser = userDetailsService.getUserByUsername(authentication.getName());
+        return ResponseEntity.ok(allocationService.getAllocationById(id, currentUser));
     }
 
     @GetMapping("/employee/{employeeId}")
-    public ResponseEntity<List<AllocationDTO>> getAllocationsByEmployee(@PathVariable Long employeeId) {
-        return ResponseEntity.ok(allocationService.getAllocationsByEmployee(employeeId));
+    public ResponseEntity<List<AllocationDTO>> getAllocationsByEmployee(@PathVariable Long employeeId,
+            Authentication authentication) {
+        User currentUser = userDetailsService.getUserByUsername(authentication.getName());
+        return ResponseEntity.ok(allocationService.getAllocationsByEmployee(employeeId, currentUser));
     }
 
     @GetMapping("/project/{projectId}")
-    public ResponseEntity<List<AllocationDTO>> getAllocationsByProject(@PathVariable Long projectId) {
-        return ResponseEntity.ok(allocationService.getAllocationsByProject(projectId));
+    public ResponseEntity<List<AllocationDTO>> getAllocationsByProject(@PathVariable Long projectId,
+            Authentication authentication) {
+        User currentUser = userDetailsService.getUserByUsername(authentication.getName());
+        return ResponseEntity.ok(allocationService.getAllocationsByProject(projectId, currentUser));
     }
 
     @PostMapping

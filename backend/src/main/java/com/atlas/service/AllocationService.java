@@ -86,20 +86,25 @@ public class AllocationService {
                 dtoList.size());
     }
 
-    public AllocationDTO getAllocationById(Long id) {
-        Allocation allocation = allocationRepository.findById(id)
+    public AllocationDTO getAllocationById(Long id, User currentUser) {
+        Allocation allocation = allocationRepository.findByIdWithDetails(id)
                 .orElseThrow(() -> new RuntimeException("Allocation not found: " + id));
+        if (!hasAccessToAllocation(currentUser, allocation)) {
+            throw new RuntimeException("Access denied to allocation: " + id);
+        }
         return toDTO(allocation);
     }
 
-    public List<AllocationDTO> getAllocationsByEmployee(Long employeeId) {
-        return allocationRepository.findByEmployeeId(employeeId).stream()
+    public List<AllocationDTO> getAllocationsByEmployee(Long employeeId, User currentUser) {
+        return allocationRepository.findByEmployeeIdWithDetails(employeeId).stream()
+                .filter(a -> hasAccessToAllocation(currentUser, a))
                 .map(this::toDTO)
                 .collect(Collectors.toList());
     }
 
-    public List<AllocationDTO> getAllocationsByProject(Long projectId) {
-        return allocationRepository.findByProjectId(projectId).stream()
+    public List<AllocationDTO> getAllocationsByProject(Long projectId, User currentUser) {
+        return allocationRepository.findByProjectIdWithDetails(projectId).stream()
+                .filter(a -> hasAccessToAllocation(currentUser, a))
                 .map(this::toDTO)
                 .collect(Collectors.toList());
     }
@@ -177,7 +182,7 @@ public class AllocationService {
 
     private List<Allocation> getFilteredAllocations(User user) {
         if (user.getRole() == User.Role.SYSTEM_ADMIN || user.getRole() == User.Role.EXECUTIVE) {
-            return allocationRepository.findAll();
+            return allocationRepository.findAllWithEmployeeAndProject();
         }
 
         var userEmployee = user.getEmployee();
@@ -192,6 +197,27 @@ public class AllocationService {
             case HEAD -> allocationRepository.findByParentTower(parentTower);
             case DEPARTMENT_MANAGER, TEAM_LEAD -> allocationRepository.findByTower(tower);
             default -> List.of();
+        };
+    }
+
+    private boolean hasAccessToAllocation(User user, Allocation allocation) {
+        if (user.getRole() == User.Role.SYSTEM_ADMIN || user.getRole() == User.Role.EXECUTIVE) {
+            return true;
+        }
+
+        var userEmployee = user.getEmployee();
+        if (userEmployee == null) {
+            return false;
+        }
+
+        String userTower = userEmployee.getTower();
+        String userParentTower = userEmployee.getParentTower();
+        Employee allocationEmployee = allocation.getEmployee();
+
+        return switch (user.getRole()) {
+            case HEAD -> userParentTower != null && userParentTower.equals(allocationEmployee.getParentTower());
+            case DEPARTMENT_MANAGER, TEAM_LEAD -> userTower != null && userTower.equals(allocationEmployee.getTower());
+            default -> false;
         };
     }
 

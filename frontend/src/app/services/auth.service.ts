@@ -48,6 +48,12 @@ export class AuthService {
 
     private getStoredUser(): User | null {
         const stored = localStorage.getItem(this.USER_KEY);
-        return stored ? JSON.parse(stored) : null;
+        if (!stored) return null;
+        try {
+            return JSON.parse(stored);
+        } catch {
+            localStorage.removeItem(this.USER_KEY);
+            return null;
+        }
     }
 }

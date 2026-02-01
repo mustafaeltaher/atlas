@@ -552,7 +552,7 @@ export class ProjectsComponent implements OnInit {
   loadTowers(): void {
     this.apiService.getProjectTowers().pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: (towers) => this.towers.set(towers),
-      error: () => { }
+      error: (err) => console.error('Failed to load towers', err)
     });
   }
 

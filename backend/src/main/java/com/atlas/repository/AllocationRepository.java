@@ -53,6 +53,18 @@ public interface AllocationRepository extends JpaRepository<Allocation, Long> {
     @Query("SELECT a FROM Allocation a WHERE a.project.id IN :projectIds AND a.status = 'ACTIVE'")
     List<Allocation> findActiveByProjectIds(@Param("projectIds") List<Long> projectIds);
 
+    @Query("SELECT a FROM Allocation a JOIN FETCH a.employee JOIN FETCH a.project")
+    List<Allocation> findAllWithEmployeeAndProject();
+
+    @Query("SELECT a FROM Allocation a JOIN FETCH a.employee JOIN FETCH a.project WHERE a.employee.id = :employeeId")
+    List<Allocation> findByEmployeeIdWithDetails(@Param("employeeId") Long employeeId);
+
+    @Query("SELECT a FROM Allocation a JOIN FETCH a.employee JOIN FETCH a.project WHERE a.project.id = :projectId")
+    List<Allocation> findByProjectIdWithDetails(@Param("projectId") Long projectId);
+
+    @Query("SELECT a FROM Allocation a JOIN FETCH a.employee JOIN FETCH a.project WHERE a.id = :id")
+    java.util.Optional<Allocation> findByIdWithDetails(@Param("id") Long id);
+
     boolean existsByEmployeeAndProject(Employee employee, Project project);
 
     // Pagination methods
