@@ -28,12 +28,13 @@ public class AllocationController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size,
             @RequestParam(required = false) String search,
-            @RequestParam(required = false) String status) {
+            @RequestParam(required = false) String status,
+            @RequestParam(required = false) Long managerId) {
         page = Math.max(0, page);
         size = Math.max(1, Math.min(size, MAX_PAGE_SIZE));
         User currentUser = userDetailsService.getUserByUsername(authentication.getName());
         return ResponseEntity.ok(allocationService.getAllAllocations(currentUser,
-                org.springframework.data.domain.PageRequest.of(page, size), search, status));
+                org.springframework.data.domain.PageRequest.of(page, size), search, status, managerId));
     }
 
     @GetMapping("/{id}")

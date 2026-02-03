@@ -69,4 +69,13 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long> {
 
     @Query("SELECT e FROM Employee e LEFT JOIN FETCH e.manager WHERE e.isActive = true")
     List<Employee> findByIsActiveTrueWithManager();
+
+    @Query("SELECT DISTINCT m FROM Employee m WHERE m.isActive = true AND EXISTS (SELECT e FROM Employee e WHERE e.manager = m AND e.isActive = true)")
+    List<Employee> findActiveManagers();
+
+    @Query("SELECT DISTINCT m FROM Employee m WHERE m.isActive = true AND m.parentTower = :parentTower AND EXISTS (SELECT e FROM Employee e WHERE e.manager = m AND e.isActive = true)")
+    List<Employee> findActiveManagersByParentTower(@Param("parentTower") String parentTower);
+
+    @Query("SELECT DISTINCT m FROM Employee m WHERE m.isActive = true AND m.tower = :tower AND EXISTS (SELECT e FROM Employee e WHERE e.manager = m AND e.isActive = true)")
+    List<Employee> findActiveManagersByTower(@Param("tower") String tower);
 }

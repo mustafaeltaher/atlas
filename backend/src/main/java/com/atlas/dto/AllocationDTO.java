@@ -20,6 +20,7 @@ public class AllocationDTO {
     private Long employeeId;
 
     private String employeeName;
+    private String employeeOracleId;
 
     @NotNull(message = "Project ID is required")
     private Long projectId;

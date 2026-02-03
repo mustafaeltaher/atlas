@@ -14,7 +14,7 @@ import { Project } from '../../models';
   template: `
     <div class="layout">
       <app-sidebar></app-sidebar>
-      
+
       <div class="main-area">
         <app-header></app-header>
         <main class="main-content">
@@ -50,7 +50,7 @@ import { Project } from '../../models';
             </button>
           </div>
         </header>
-        
+
         <!-- Search and Filters -->
         <div class="filters-bar">
           <div class="search-box">
@@ -74,21 +74,21 @@ import { Project } from '../../models';
             <option value="PLANNED">Planned</option>
           </select>
         </div>
-        
+
         @if (loading() && projects().length === 0) {
           <div class="loading">Loading projects...</div>
         } @else {
           @if (viewMode() === 'grid') {
             <div class="grid grid-3 fade-in" [style.opacity]="loading() ? '0.5' : '1'">
               @for (project of projects(); track project.id) {
-                <div class="card project-card">
+                <div class="card project-card" (click)="openEditModal(project)">
                   <div class="project-header">
                     <h3>{{ project.name }}</h3>
                     <span class="status-pill" [class]="project.status.toLowerCase()">{{ project.status }}</span>
                   </div>
                   <p class="project-id">{{ project.projectId }}</p>
                   <p class="project-tower">{{ project.tower }}</p>
-                  
+
                   <div class="project-stats">
                     <div class="stat">
                       <span class="stat-value">{{ project.allocatedEmployees }}</span>
@@ -99,7 +99,7 @@ import { Project } from '../../models';
                       <span class="stat-label">Avg Alloc</span>
                     </div>
                   </div>
-                  
+
                   @if (project.startDate || project.endDate) {
                     <div class="project-dates">
                       <span>{{ project.startDate | date:'mediumDate' }}</span>
@@ -124,6 +124,7 @@ import { Project } from '../../models';
                     <th>Employees</th>
                     <th>Avg Alloc</th>
                     <th>Timeline</th>
+                    <th>Actions</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -140,19 +141,24 @@ import { Project } from '../../models';
                           {{ project.startDate | date:'MMM d, y' }} — {{ project.endDate | date:'MMM d, y' }}
                         }
                       </td>
+                      <td>
+                        <button class="btn-icon" (click)="openEditModal(project)" title="Edit project">
+                          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                          </svg>
+                        </button>
+                      </td>
                     </tr>
                   } @empty {
                     <tr>
-                      <td colspan="7">
+                      <td colspan="8">
                         <div class="empty-state">No projects found</div>
                       </td>
                     </tr>
                   }
                 </tbody>
               </table>
-              
-              
-              <!-- Pagination Controls removed from here -->
             </div>
           }
             <!-- Pagination Controls -->
@@ -160,10 +166,10 @@ import { Project } from '../../models';
               <button class="btn btn-secondary" (click)="previousPage()" [disabled]="currentPage() === 0 || loading()">
                 ← Previous
               </button>
-              
+
               <div class="page-numbers">
                 @for (page of getPageNumbers(); track page) {
-                  <button class="page-btn" 
+                  <button class="page-btn"
                           [class.active]="page === currentPage()"
                           [disabled]="loading()"
                           (click)="goToPage(page)">
@@ -171,13 +177,14 @@ import { Project } from '../../models';
                   </button>
                 }
               </div>
-              
+
               <button class="btn btn-secondary" (click)="nextPage()" [disabled]="currentPage() >= totalPages() - 1 || loading()">
                 Next →
               </button>
             </div>
         }
-        
+
+        <!-- Add Project Modal -->
         @if (showModal) {
           <div class="modal-overlay" (click)="showModal = false">
             <div class="modal" (click)="$event.stopPropagation()">
@@ -207,6 +214,39 @@ import { Project } from '../../models';
             </div>
           </div>
         }
+
+        <!-- Edit Project Modal -->
+        @if (showEditModal) {
+          <div class="modal-overlay" (click)="showEditModal = false">
+            <div class="modal" (click)="$event.stopPropagation()">
+              <h2>Edit Project</h2>
+              <p class="edit-project-name">{{ editProject.name }} ({{ editProject.projectId }})</p>
+              <form (ngSubmit)="updateProject()">
+                <div class="form-group">
+                  <label class="form-label">Status</label>
+                  <select class="form-input" [(ngModel)]="editProject.status" name="editStatus">
+                    <option value="ACTIVE">Active</option>
+                    <option value="PENDING">Pending</option>
+                    <option value="COMPLETED">Completed</option>
+                    <option value="ON_HOLD">On Hold</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Start Date</label>
+                  <input type="date" class="form-input" [(ngModel)]="editProject.startDate" name="editStartDate">
+                </div>
+                <div class="form-group">
+                  <label class="form-label">End Date</label>
+                  <input type="date" class="form-input" [(ngModel)]="editProject.endDate" name="editEndDate">
+                </div>
+                <div class="modal-actions">
+                  <button type="button" class="btn btn-secondary" (click)="showEditModal = false">Cancel</button>
+                  <button type="submit" class="btn btn-primary">Save</button>
+                </div>
+              </form>
+            </div>
+          </div>
+        }
       </main>
       </div>
     </div>
@@ -218,7 +258,7 @@ import { Project } from '../../models';
       align-items: flex-start;
       margin-bottom: 24px;
     }
-    
+
     .header-actions {
       display: flex;
       align-items: center;
@@ -256,7 +296,7 @@ import { Project } from '../../models';
       color: var(--text-primary);
       box-shadow: 0 1px 3px rgba(0,0,0,0.1);
     }
-    
+
     .header-left h1 { margin-bottom: 4px; }
     .header-left p { color: var(--text-muted); }
 
@@ -293,74 +333,74 @@ import { Project } from '../../models';
     .text-muted { color: var(--text-muted); }
     .text-sm { font-size: 13px; }
     .fw-500 { font-weight: 500; }
-    
+
     .status-pill.sm {
       padding: 2px 8px;
       font-size: 11px;
     }
-    
-    
+
     .loading, .empty-state {
       text-align: center;
       padding: 40px;
       color: var(--text-muted);
     }
-    
+
     .project-card {
       transition: transform 0.2s, box-shadow 0.2s;
+      cursor: pointer;
     }
-    
+
     .project-card:hover {
       transform: translateY(-2px);
       box-shadow: var(--shadow-md);
     }
-    
+
     .project-header {
       display: flex;
       justify-content: space-between;
       align-items: flex-start;
       margin-bottom: 8px;
     }
-    
+
     .project-header h3 {
       font-size: 1rem;
     }
-    
+
     .project-id {
       font-size: 12px;
       color: var(--text-muted);
       margin-bottom: 4px;
     }
-    
+
     .project-tower {
       font-size: 13px;
       color: var(--text-secondary);
       margin-bottom: 16px;
     }
-    
+
     .project-stats {
       display: flex;
       gap: 24px;
       margin-bottom: 12px;
     }
-    
+
     .stat {
       display: flex;
       flex-direction: column;
     }
-    
+
     .stat-value {
       font-size: 1.25rem;
       font-weight: 600;
       color: var(--text-primary);
     }
-    
+
     .stat-label {
       font-size: 11px;
       color: var(--text-muted);
       text-transform: uppercase;
     }
-    
+
     .project-dates {
       font-size: 12px;
       color: var(--text-muted);
@@ -369,12 +409,12 @@ import { Project } from '../../models';
       padding-top: 12px;
       border-top: 1px solid var(--border-color);
     }
-    
+
     .status-pill.active { background: rgba(46, 204, 113, 0.15); color: var(--accent); }
     .status-pill.pending { background: rgba(243, 156, 18, 0.15); color: var(--warning); }
     .status-pill.completed { background: rgba(62, 146, 204, 0.15); color: var(--secondary); }
     .status-pill.on_hold { background: rgba(231, 76, 60, 0.15); color: var(--danger); }
-    
+
     .modal-overlay {
       position: fixed;
       inset: 0;
@@ -384,7 +424,7 @@ import { Project } from '../../models';
       justify-content: center;
       z-index: 1000;
     }
-    
+
     .modal {
       background: var(--bg-card);
       border: 1px solid var(--border-color);
@@ -393,18 +433,43 @@ import { Project } from '../../models';
       width: 100%;
       max-width: 480px;
     }
-    
+
     .modal h2 {
+      margin-bottom: 8px;
+    }
+
+    .edit-project-name {
+      color: var(--text-muted);
+      font-size: 14px;
       margin-bottom: 20px;
     }
-    
+
     .modal-actions {
       display: flex;
       gap: 12px;
       justify-content: flex-end;
       margin-top: 20px;
     }
-    
+
+    .btn-icon {
+      width: 32px;
+      height: 32px;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      color: var(--text-secondary);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .btn-icon:hover {
+      background: var(--surface-hover);
+      color: var(--primary);
+    }
+
     .pagination-controls {
       display: flex;
       justify-content: center;
@@ -413,12 +478,12 @@ import { Project } from '../../models';
       padding: 16px;
       border-top: 1px solid var(--border);
     }
-    
+
     .page-numbers {
       display: flex;
       gap: 8px;
     }
-    
+
     .page-btn {
       min-width: 32px;
       height: 32px;
@@ -433,22 +498,17 @@ import { Project } from '../../models';
       font-size: 14px;
       transition: all 0.2s;
     }
-    
+
     .page-btn:hover {
       background: var(--surface-hover);
     }
-    
+
     .page-btn.active {
       background: var(--primary);
       color: white;
       border-color: var(--primary);
     }
-    
-    .page-info {
-      color: var(--text-muted);
-      font-size: 14px;
-    }
-    
+
     .btn-secondary {
       background: var(--surface);
       border: 1px solid var(--border);
@@ -458,23 +518,23 @@ import { Project } from '../../models';
       cursor: pointer;
       transition: all 0.2s;
     }
-    
+
     .btn-secondary:hover:not(:disabled) {
       background: var(--surface-hover);
     }
-    
+
     .btn-secondary:disabled {
       opacity: 0.5;
       cursor: not-allowed;
     }
-    
+
     .filters-bar {
       display: flex;
       gap: 16px;
       margin-bottom: 20px;
       flex-wrap: wrap;
     }
-    
+
     .search-box {
       display: flex;
       align-items: center;
@@ -486,11 +546,11 @@ import { Project } from '../../models';
       flex: 1;
       min-width: 200px;
     }
-    
+
     .search-box svg {
       color: var(--text-muted);
     }
-    
+
     .search-box input {
       border: none;
       background: transparent;
@@ -499,11 +559,11 @@ import { Project } from '../../models';
       width: 100%;
       font-size: 14px;
     }
-    
+
     .search-box input::placeholder {
       color: var(--text-muted);
     }
-    
+
     .filter-select {
       background: var(--bg-card);
       border: 1px solid var(--border);
@@ -514,7 +574,7 @@ import { Project } from '../../models';
       min-width: 140px;
       cursor: pointer;
     }
-    
+
     .filter-select:focus {
       outline: none;
       border-color: var(--primary);
@@ -529,7 +589,10 @@ export class ProjectsComponent implements OnInit {
   loading = signal(true);
   viewMode = signal<'grid' | 'list'>('list');
   showModal = false;
+  showEditModal = false;
   newProject: Partial<Project> = {};
+  editProject: Partial<Project> & { id?: number } = {};
+  editProjectId: number | null = null;
 
   // Search and filter state
   searchTerm = '';
@@ -610,8 +673,6 @@ export class ProjectsComponent implements OnInit {
     const current = this.currentPage();
     const range = [];
 
-    // Always show first page, last page, and pages around current
-    // Simple implementation: show max 5 pages
     let start = Math.max(0, current - 2);
     let end = Math.min(total - 1, start + 4);
 
@@ -645,6 +706,37 @@ export class ProjectsComponent implements OnInit {
       },
       error: (err) => {
         alert('Failed to create project: ' + (err.error?.message || 'Unknown error'));
+      }
+    });
+  }
+
+  openEditModal(project: Project): void {
+    this.editProjectId = project.id;
+    this.editProject = {
+      name: project.name,
+      projectId: project.projectId,
+      status: project.status,
+      startDate: project.startDate ? project.startDate.substring(0, 10) : '',
+      endDate: project.endDate ? project.endDate.substring(0, 10) : ''
+    };
+    this.showEditModal = true;
+  }
+
+  updateProject(): void {
+    if (this.editProjectId == null) return;
+    this.apiService.updateProject(this.editProjectId, {
+      status: this.editProject.status,
+      startDate: this.editProject.startDate,
+      endDate: this.editProject.endDate
+    }).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: () => {
+        this.showEditModal = false;
+        this.editProject = {};
+        this.editProjectId = null;
+        this.loadProjects();
+      },
+      error: (err) => {
+        alert('Failed to update project: ' + (err.error?.message || 'Unknown error'));
       }
     });
   }

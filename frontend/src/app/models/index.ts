@@ -58,6 +58,7 @@ export interface Allocation {
     id: number;
     employeeId: number;
     employeeName: string;
+    employeeOracleId: string;
     projectId: number;
     projectName: string;
     confirmedAssignment: string;
@@ -66,6 +67,12 @@ export interface Allocation {
     status: 'ACTIVE' | 'PENDING' | 'COMPLETED';
     currentMonthAllocation: string;
     allocationPercentage: number;
+}
+
+export interface Manager {
+    id: number;
+    name: string;
+    oracleId?: string;
 }
 
 export interface DashboardStats {

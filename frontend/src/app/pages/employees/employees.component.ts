@@ -5,7 +5,8 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { SidebarComponent } from '../../components/sidebar/sidebar.component';
 import { HeaderComponent } from '../../components/header/header.component';
 import { ApiService } from '../../services/api.service';
-import { Employee } from '../../models';
+import { AuthService } from '../../services/auth.service';
+import { Employee, Manager } from '../../models';
 
 @Component({
   selector: 'app-employees',
@@ -14,7 +15,7 @@ import { Employee } from '../../models';
   template: `
     <div class="layout">
       <app-sidebar></app-sidebar>
-      
+
       <div class="main-area">
         <app-header></app-header>
         <main class="main-content">
@@ -35,30 +36,39 @@ import { Employee } from '../../models';
             </button>
           </div>
         </header>
-        
+
         <div class="filters-bar">
-          <input 
-            type="text" 
-            class="form-input search-input" 
+          <input
+            type="text"
+            class="form-input search-input"
             [(ngModel)]="searchTerm"
             (ngModelChange)="filterEmployees()"
             placeholder="Search by name, skill, or tower...">
-          
+
           <select class="form-input filter-select" [(ngModel)]="statusFilter" (ngModelChange)="filterEmployees()">
             <option value="">All Status</option>
             <option value="ACTIVE">Active</option>
             <option value="BENCH">Bench</option>
             <option value="PROSPECT">Prospect</option>
           </select>
-          
-          <select class="form-input filter-select" [(ngModel)]="towerFilter" (ngModelChange)="filterEmployees()">
-            <option value="">All Towers</option>
-            @for (tower of towers(); track tower) {
-              <option [value]="tower">{{ tower }}</option>
+
+          <select class="form-input filter-select" [(ngModel)]="managerFilter" (ngModelChange)="filterEmployees()">
+            <option value="">All Managers</option>
+            @for (mgr of managers(); track mgr.id) {
+              <option [value]="mgr.id">{{ mgr.name }}</option>
             }
           </select>
+
+          @if (isN1Manager()) {
+            <select class="form-input filter-select" [(ngModel)]="towerFilter" (ngModelChange)="filterEmployees()">
+              <option value="">All Towers</option>
+              @for (tower of towers(); track tower) {
+                <option [value]="tower">{{ tower }}</option>
+              }
+            </select>
+          }
         </div>
-        
+
         @if (loading() && employees().length === 0) {
           <div class="loading">Loading employees...</div>
         } @else {
@@ -68,8 +78,10 @@ import { Employee } from '../../models';
                 <tr>
                   <th>Initials</th>
                   <th>Employee</th>
+                  <th>Oracle ID</th>
                   <th>Grade</th>
                   <th>Title</th>
+                  <th>Manager</th>
                   <th>Tower</th>
                   <th>Primary Skill</th>
                   <th>Allocation</th>
@@ -86,14 +98,16 @@ import { Employee } from '../../models';
                       <div class="name">{{ emp.name }}</div>
                       <div class="email">{{ emp.email }}</div>
                     </td>
+                    <td class="text-muted">{{ emp.oracleId || '-' }}</td>
                     <td>{{ emp.grade }}</td>
                     <td>{{ emp.title }}</td>
+                    <td>{{ emp.managerName || '-' }}</td>
                     <td>{{ emp.tower }}</td>
                     <td>{{ emp.primarySkill }}</td>
                     <td>
                       <div class="allocation-cell">
                         <div class="progress-bar">
-                          <div class="progress-bar-fill" 
+                          <div class="progress-bar-fill"
                                [class.high]="emp.currentAllocation >= 75"
                                [class.medium]="emp.currentAllocation >= 50 && emp.currentAllocation < 75"
                                [class.low]="emp.currentAllocation < 50"
@@ -104,7 +118,7 @@ import { Employee } from '../../models';
                       </div>
                     </td>
                     <td>
-                      <span class="status-pill" 
+                      <span class="status-pill"
                             [class.active]="emp.allocationStatus === 'ACTIVE'"
                             [class.bench]="emp.allocationStatus === 'BENCH'"
                             [class.prospect]="emp.allocationStatus === 'PROSPECT'">
@@ -114,21 +128,21 @@ import { Employee } from '../../models';
                   </tr>
                 } @empty {
                   <tr>
-                    <td colspan="7" class="empty-state">No employees found</td>
+                    <td colspan="10" class="empty-state">No employees found</td>
                   </tr>
                 }
               </tbody>
             </table>
-            
+
             <!-- Pagination Controls -->
             <div class="pagination-controls">
               <button class="btn btn-secondary" (click)="previousPage()" [disabled]="currentPage() === 0 || loading()">
                 ← Previous
               </button>
-              
+
               <div class="page-numbers">
                 @for (page of getPageNumbers(); track page) {
-                  <button class="page-btn" 
+                  <button class="page-btn"
                           [class.active]="page === currentPage()"
                           [disabled]="loading()"
                           (click)="goToPage(page)">
@@ -136,7 +150,7 @@ import { Employee } from '../../models';
                   </button>
                 }
               </div>
-              
+
               <button class="btn btn-secondary" (click)="nextPage()" [disabled]="currentPage() >= totalPages() - 1 || loading()">
                 Next →
               </button>
@@ -154,37 +168,38 @@ import { Employee } from '../../models';
       align-items: flex-start;
       margin-bottom: 24px;
     }
-    
+
     .header-left h1 { margin-bottom: 4px; }
     .header-left p { color: var(--text-muted); }
-    
+
     .filters-bar {
       display: flex;
       gap: 12px;
       margin-bottom: 20px;
+      flex-wrap: wrap;
     }
-    
+
     .search-input {
       flex: 1;
       max-width: 400px;
     }
-    
+
     .filter-select {
       width: 180px;
     }
-    
+
     .loading, .empty-state {
       text-align: center;
       padding: 40px;
       color: var(--text-muted);
     }
-    
+
     .employee-cell {
       display: flex;
       align-items: center;
       gap: 12px;
     }
-    
+
     .avatar {
       width: 36px;
       min-width: 36px;
@@ -199,33 +214,37 @@ import { Employee } from '../../models';
       color: white;
       flex-shrink: 0;
     }
-    
+
     .name {
       font-weight: 500;
       color: var(--text-primary);
     }
-    
+
     .email {
       font-size: 12px;
       color: var(--text-muted);
     }
-    
+
+    .text-muted {
+      color: var(--text-muted);
+    }
+
     .allocation-cell {
       display: flex;
       align-items: center;
       gap: 12px;
     }
-    
+
     .progress-bar {
       width: 100px;
     }
-    
+
     .alloc-value {
       font-size: 12px;
       font-weight: 500;
       min-width: 40px;
     }
-    
+
     .pagination-controls {
       display: flex;
       justify-content: center;
@@ -234,12 +253,12 @@ import { Employee } from '../../models';
       padding: 16px;
       border-top: 1px solid var(--border);
     }
-    
+
     .page-numbers {
       display: flex;
       gap: 8px;
     }
-    
+
     .page-btn {
       min-width: 32px;
       height: 32px;
@@ -254,22 +273,22 @@ import { Employee } from '../../models';
       font-size: 14px;
       transition: all 0.2s;
     }
-    
+
     .page-btn:hover {
       background: var(--surface-hover);
     }
-    
+
     .page-btn.active {
       background: var(--primary);
       color: white;
       border-color: var(--primary);
     }
-    
+
     .page-info {
       color: var(--text-muted);
       font-size: 14px;
     }
-    
+
     .btn-secondary {
       background: var(--surface);
       border: 1px solid var(--border);
@@ -279,11 +298,11 @@ import { Employee } from '../../models';
       cursor: pointer;
       transition: all 0.2s;
     }
-    
+
     .btn-secondary:hover:not(:disabled) {
       background: var(--surface-hover);
     }
-    
+
     .btn-secondary:disabled {
       opacity: 0.5;
       cursor: not-allowed;
@@ -296,26 +315,46 @@ export class EmployeesComponent implements OnInit {
   employees = signal<Employee[]>([]);
   filteredEmployees = signal<Employee[]>([]);
   towers = signal<string[]>([]);
+  managers = signal<Manager[]>([]);
   loading = signal(true);
 
   searchTerm = '';
   statusFilter = '';
   towerFilter = '';
+  managerFilter = '';
   currentPage = signal(0);
   pageSize = signal(10);
   totalElements = signal(0);
   totalPages = signal(0);
 
-  constructor(private apiService: ApiService, private elementRef: ElementRef) { }
+  constructor(
+    private apiService: ApiService,
+    private authService: AuthService,
+    private elementRef: ElementRef
+  ) { }
 
   ngOnInit(): void {
+    this.loadManagers();
     this.loadEmployees();
+  }
+
+  isN1Manager(): boolean {
+    const user = this.authService.currentUser();
+    return user?.role === 'EXECUTIVE';
+  }
+
+  loadManagers(): void {
+    this.apiService.getManagers().pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: (managers) => this.managers.set(managers),
+      error: () => {}
+    });
   }
 
   loadEmployees(scrollToBottom: boolean = false): void {
     this.loading.set(true);
     const search = this.searchTerm || undefined;
-    this.apiService.getEmployees(this.currentPage(), this.pageSize(), search).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+    const managerId = this.managerFilter ? Number(this.managerFilter) : undefined;
+    this.apiService.getEmployees(this.currentPage(), this.pageSize(), search, managerId).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: (page) => {
         this.employees.set(page.content);
         this.filteredEmployees.set(page.content);
@@ -324,7 +363,6 @@ export class EmployeesComponent implements OnInit {
         const uniqueTowers = [...new Set(page.content.map(e => e.tower).filter(Boolean))];
         this.towers.set(uniqueTowers);
         this.loading.set(false);
-        // Apply client-side status filter if set
         this.applyClientFilters();
 
         if (scrollToBottom) {
@@ -368,8 +406,6 @@ export class EmployeesComponent implements OnInit {
     const current = this.currentPage();
     const range = [];
 
-    // Always show first page, last page, and pages around current
-    // Simple implementation: show max 5 pages
     let start = Math.max(0, current - 2);
     let end = Math.min(total - 1, start + 4);
 
@@ -385,7 +421,6 @@ export class EmployeesComponent implements OnInit {
   }
 
   filterEmployees(): void {
-    // Reset to first page when searching
     this.currentPage.set(0);
     this.loadEmployees();
   }

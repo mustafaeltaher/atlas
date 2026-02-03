@@ -33,7 +33,7 @@ public class AllocationService {
 
     // Paginated version with search and filters
     public org.springframework.data.domain.Page<AllocationDTO> getAllAllocations(User currentUser,
-            org.springframework.data.domain.Pageable pageable, String search, String status) {
+            org.springframework.data.domain.Pageable pageable, String search, String status, Long managerId) {
 
         Allocation.AllocationStatus statusEnum = null;
         if (status != null && !status.trim().isEmpty()) {
@@ -46,21 +46,33 @@ public class AllocationService {
 
         String searchParam = (search != null && !search.trim().isEmpty()) ? search.trim() : null;
 
+        List<Allocation> allAllocations;
         if (currentUser.getRole() == User.Role.SYSTEM_ADMIN || currentUser.getRole() == User.Role.EXECUTIVE) {
-            // Direct database pagination for admins
-            org.springframework.data.domain.Page<Allocation> allocationPage = allocationRepository.searchAllocations(
-                    searchParam, statusEnum, pageable);
-            return allocationPage.map(this::toDTO);
+            if (managerId == null && searchParam == null && statusEnum == null) {
+                // No filters — use direct database pagination
+                org.springframework.data.domain.Page<Allocation> allocationPage = allocationRepository.searchAllocations(
+                        null, null, pageable);
+                return allocationPage.map(this::toDTO);
+            }
+            allAllocations = allocationRepository.findAllWithEmployeeAndProject();
+        } else {
+            allAllocations = getFilteredAllocations(currentUser);
         }
 
-        // For managers: fetch all accessible allocations, then filter and paginate
-        List<Allocation> allAccessible = getFilteredAllocations(currentUser);
+        // Apply manager filter
+        if (managerId != null) {
+            final Long mId = managerId;
+            allAllocations = allAllocations.stream()
+                    .filter(a -> a.getEmployee() != null && a.getEmployee().getManager() != null
+                            && a.getEmployee().getManager().getId().equals(mId))
+                    .collect(Collectors.toList());
+        }
 
-        // Apply search and filters
+        // Apply search and status filters
         final String searchLower = searchParam != null ? searchParam.toLowerCase() : null;
         final Allocation.AllocationStatus statusFinal = statusEnum;
 
-        allAccessible = allAccessible.stream()
+        allAllocations = allAllocations.stream()
                 .filter(a -> searchLower == null ||
                         (a.getEmployee() != null && a.getEmployee().getName() != null
                                 && a.getEmployee().getName().toLowerCase().contains(searchLower))
@@ -70,7 +82,7 @@ public class AllocationService {
                 .filter(a -> statusFinal == null || a.getStatus() == statusFinal)
                 .collect(Collectors.toList());
 
-        List<AllocationDTO> dtoList = allAccessible.stream()
+        List<AllocationDTO> dtoList = allAllocations.stream()
                 .map(this::toDTO)
                 .collect(Collectors.toList());
 
@@ -148,25 +160,12 @@ public class AllocationService {
         Allocation allocation = allocationRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Allocation not found: " + id));
 
-        allocation.setConfirmedAssignment(dto.getConfirmedAssignment());
-        allocation.setProspectAssignment(dto.getProspectAssignment());
-        allocation.setStartDate(dto.getStartDate());
-        allocation.setEndDate(dto.getEndDate());
-        allocation.setStatus(dto.getStatus());
-
-        // Update monthly allocations
-        allocation.setJanAllocation(dto.getJanAllocation());
-        allocation.setFebAllocation(dto.getFebAllocation());
-        allocation.setMarAllocation(dto.getMarAllocation());
-        allocation.setAprAllocation(dto.getAprAllocation());
-        allocation.setMayAllocation(dto.getMayAllocation());
-        allocation.setJunAllocation(dto.getJunAllocation());
-        allocation.setJulAllocation(dto.getJulAllocation());
-        allocation.setAugAllocation(dto.getAugAllocation());
-        allocation.setSepAllocation(dto.getSepAllocation());
-        allocation.setOctAllocation(dto.getOctAllocation());
-        allocation.setNovAllocation(dto.getNovAllocation());
-        allocation.setDecAllocation(dto.getDecAllocation());
+        // Only update the current month's allocation value
+        int currentMonth = LocalDate.now().getMonthValue();
+        String newValue = dto.getCurrentMonthAllocation();
+        if (newValue != null) {
+            allocation.setAllocationForMonth(currentMonth, newValue);
+        }
 
         allocation = allocationRepository.save(allocation);
         return toDTO(allocation);
@@ -226,6 +225,7 @@ public class AllocationService {
                 .id(allocation.getId())
                 .employeeId(allocation.getEmployee().getId())
                 .employeeName(allocation.getEmployee().getName())
+                .employeeOracleId(allocation.getEmployee().getOracleId())
                 .projectId(allocation.getProject().getId())
                 .projectName(allocation.getProject().getName())
                 .confirmedAssignment(allocation.getConfirmedAssignment())

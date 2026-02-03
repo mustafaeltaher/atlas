@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
-import { Employee, Project, Allocation, DashboardStats, Page } from '../models';
+import { Employee, Project, Allocation, DashboardStats, Page, Manager } from '../models';
 
 @Injectable({ providedIn: 'root' })
 export class ApiService {
@@ -24,16 +24,19 @@ export class ApiService {
     }
 
     // Employees
-    getEmployees(page: number = 0, size: number = 10, search?: string): Observable<Page<Employee>> {
+    getEmployees(page: number = 0, size: number = 10, search?: string, managerId?: number): Observable<Page<Employee>> {
         let url = `${this.API_URL}/employees?page=${page}&size=${size}`;
-        if (search) {
-            url += `&search=${encodeURIComponent(search)}`;
-        }
+        if (search) url += `&search=${encodeURIComponent(search)}`;
+        if (managerId) url += `&managerId=${managerId}`;
         return this.http.get<Page<Employee>>(url);
     }
 
     getEmployee(id: number): Observable<Employee> {
         return this.http.get<Employee>(`${this.API_URL}/employees/${id}`);
+    }
+
+    getManagers(): Observable<Manager[]> {
+        return this.http.get<Manager[]>(`${this.API_URL}/employees/managers`);
     }
 
     importEmployees(file: File): Observable<any> {
@@ -68,10 +71,11 @@ export class ApiService {
     }
 
     // Allocations
-    getAllocations(page: number = 0, size: number = 10, search?: string, status?: string): Observable<Page<Allocation>> {
+    getAllocations(page: number = 0, size: number = 10, search?: string, status?: string, managerId?: number): Observable<Page<Allocation>> {
         let url = `${this.API_URL}/allocations?page=${page}&size=${size}`;
         if (search) url += `&search=${encodeURIComponent(search)}`;
         if (status) url += `&status=${encodeURIComponent(status)}`;
+        if (managerId) url += `&managerId=${managerId}`;
         return this.http.get<Page<Allocation>>(url);
     }
 
