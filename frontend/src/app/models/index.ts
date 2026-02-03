@@ -69,6 +69,15 @@ export interface Allocation {
     allocationPercentage: number;
 }
 
+export interface EmployeeAllocationSummary {
+    employeeId: number;
+    employeeName: string;
+    employeeOracleId: string;
+    totalAllocationPercentage: number;
+    projectCount: number;
+    allocations: Allocation[];
+}
+
 export interface Manager {
     id: number;
     name: string;

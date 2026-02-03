@@ -233,7 +233,7 @@ a:hover {
 /* Progress Bar */
 .progress-bar {
   height: 8px;
-  background: var(--bg-hover);
+  background: var(--border-color);
   border-radius: 4px;
   overflow: hidden;
 }

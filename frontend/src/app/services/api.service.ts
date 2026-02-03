@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
-import { Employee, Project, Allocation, DashboardStats, Page, Manager } from '../models';
+import { Employee, Project, Allocation, EmployeeAllocationSummary, DashboardStats, Page, Manager } from '../models';
 
 @Injectable({ providedIn: 'root' })
 export class ApiService {
@@ -71,6 +71,14 @@ export class ApiService {
     }
 
     // Allocations
+    getGroupedAllocations(page: number = 0, size: number = 10, search?: string, status?: string, managerId?: number): Observable<Page<EmployeeAllocationSummary>> {
+        let url = `${this.API_URL}/allocations/grouped?page=${page}&size=${size}`;
+        if (search) url += `&search=${encodeURIComponent(search)}`;
+        if (status) url += `&status=${encodeURIComponent(status)}`;
+        if (managerId) url += `&managerId=${managerId}`;
+        return this.http.get<Page<EmployeeAllocationSummary>>(url);
+    }
+
     getAllocations(page: number = 0, size: number = 10, search?: string, status?: string, managerId?: number): Observable<Page<Allocation>> {
         let url = `${this.API_URL}/allocations?page=${page}&size=${size}`;
         if (search) url += `&search=${encodeURIComponent(search)}`;

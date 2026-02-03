@@ -1,11 +1,14 @@
 package com.atlas.controller;
 
 import com.atlas.dto.AllocationDTO;
+import com.atlas.dto.EmployeeAllocationSummaryDTO;
 import com.atlas.entity.User;
 import com.atlas.security.CustomUserDetailsService;
 import com.atlas.service.AllocationService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
@@ -35,6 +38,21 @@ public class AllocationController {
         User currentUser = userDetailsService.getUserByUsername(authentication.getName());
         return ResponseEntity.ok(allocationService.getAllAllocations(currentUser,
                 org.springframework.data.domain.PageRequest.of(page, size), search, status, managerId));
+    }
+
+    @GetMapping("/grouped")
+    public ResponseEntity<Page<EmployeeAllocationSummaryDTO>> getGroupedAllocations(
+            Authentication authentication,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(required = false) String search,
+            @RequestParam(required = false) String status,
+            @RequestParam(required = false) Long managerId) {
+        page = Math.max(0, page);
+        size = Math.max(1, Math.min(size, MAX_PAGE_SIZE));
+        User currentUser = userDetailsService.getUserByUsername(authentication.getName());
+        return ResponseEntity.ok(allocationService.getGroupedAllocations(currentUser,
+                PageRequest.of(page, size), search, status, managerId));
     }
 
     @GetMapping("/{id}")

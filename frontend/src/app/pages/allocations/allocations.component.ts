@@ -6,7 +6,7 @@ import { SidebarComponent } from '../../components/sidebar/sidebar.component';
 import { HeaderComponent } from '../../components/header/header.component';
 import { ApiService } from '../../services/api.service';
 import { AuthService } from '../../services/auth.service';
-import { Allocation, Employee, Project, Manager } from '../../models';
+import { Allocation, EmployeeAllocationSummary, Employee, Project, Manager } from '../../models';
 
 @Component({
   selector: 'app-allocations',
@@ -58,54 +58,49 @@ import { Allocation, Employee, Project, Manager } from '../../models';
           </select>
         </div>
 
-        @if (loading() && allocations().length === 0) {
+        @if (loading() && employeeSummaries().length === 0) {
           <div class="loading">Loading allocations...</div>
         } @else {
+          <!-- Master Table: grouped by employee -->
           <div class="card fade-in" [style.opacity]="loading() ? '0.5' : '1'">
             <table class="data-table">
               <thead>
                 <tr>
                   <th>Employee</th>
                   <th>Oracle ID</th>
-                  <th>Project</th>
-                  <th>Assignment</th>
-                  <th>Current Allocation</th>
-                  <th>Status</th>
-                  <th>End Date</th>
+                  <th>Projects</th>
+                  <th>Total Allocation</th>
                   <th>Actions</th>
                 </tr>
               </thead>
               <tbody>
-                @for (alloc of allocations(); track alloc.id) {
+                @for (summary of employeeSummaries(); track summary.employeeId) {
                   <tr>
-                    <td>{{ alloc.employeeName }}</td>
-                    <td class="text-muted">{{ alloc.employeeOracleId || '-' }}</td>
-                    <td>{{ alloc.projectName }}</td>
-                    <td>{{ alloc.confirmedAssignment || '-' }}</td>
+                    <td>
+                      <div class="employee-cell">
+                        <div class="avatar-sm">{{ getInitials(summary.employeeName) }}</div>
+                        <span>{{ summary.employeeName }}</span>
+                      </div>
+                    </td>
+                    <td class="text-muted">{{ summary.employeeOracleId || '-' }}</td>
+                    <td>
+                      <span class="project-count">{{ summary.projectCount }}</span>
+                    </td>
                     <td>
                       <div class="allocation-cell">
                         <div class="progress-bar">
                           <div class="progress-bar-fill"
-                               [class.high]="alloc.allocationPercentage >= 75"
-                               [class.medium]="alloc.allocationPercentage >= 50 && alloc.allocationPercentage < 75"
-                               [class.low]="alloc.allocationPercentage < 50"
-                               [style.width.%]="alloc.allocationPercentage">
+                               [class.high]="summary.totalAllocationPercentage >= 75"
+                               [class.medium]="summary.totalAllocationPercentage >= 50 && summary.totalAllocationPercentage < 75"
+                               [class.low]="summary.totalAllocationPercentage < 50"
+                               [style.width.%]="Math.min(summary.totalAllocationPercentage, 100)">
                           </div>
                         </div>
-                        <span class="alloc-value">{{ alloc.currentMonthAllocation || 'N/A' }}</span>
+                        <span class="alloc-value">{{ summary.totalAllocationPercentage }}%</span>
                       </div>
                     </td>
                     <td>
-                      <span class="status-pill"
-                            [class.active]="alloc.status === 'ACTIVE'"
-                            [class.pending]="alloc.status === 'PENDING'"
-                            [class.completed]="alloc.status === 'COMPLETED'">
-                        {{ alloc.status }}
-                      </span>
-                    </td>
-                    <td>{{ alloc.endDate | date:'mediumDate' }}</td>
-                    <td>
-                      <button class="btn-icon" (click)="openEditModal(alloc)" title="Edit allocation">
+                      <button class="btn-icon" (click)="openDetailModal(summary)" title="Edit allocations">
                         <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
                           <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
                           <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
@@ -115,7 +110,7 @@ import { Allocation, Employee, Project, Manager } from '../../models';
                   </tr>
                 } @empty {
                   <tr>
-                    <td colspan="8" class="empty-state">No allocations found</td>
+                    <td colspan="5" class="empty-state">No allocations found</td>
                   </tr>
                 }
               </tbody>
@@ -145,6 +140,187 @@ import { Allocation, Employee, Project, Manager } from '../../models';
           </div>
         }
 
+        <!-- Detail Modal: individual allocations for selected employee -->
+        @if (showDetailModal) {
+          <div class="modal-overlay" (click)="showDetailModal = false">
+            <div class="modal modal-wide" (click)="$event.stopPropagation()">
+              <div class="detail-header">
+                <div>
+                  <h2>{{ selectedSummary.employeeName }}</h2>
+                  <p class="edit-info">Oracle ID: {{ selectedSummary.employeeOracleId || 'N/A' }} &middot; Total: {{ selectedSummary.totalAllocationPercentage }}%</p>
+                </div>
+                <button class="btn btn-primary btn-sm" (click)="openAddAssignmentForm()">
+                  <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="12" y1="5" x2="12" y2="19"></line>
+                    <line x1="5" y1="12" x2="19" y2="12"></line>
+                  </svg>
+                  Add Assignment
+                </button>
+              </div>
+
+              <!-- Add assignment inline form -->
+              @if (showAddAssignment) {
+                <div class="add-assignment-form">
+                  <div class="form-row">
+                    <div class="form-group flex-1">
+                      <label class="form-label">Project</label>
+                      <div class="searchable-select">
+                        <input type="text"
+                               class="form-input"
+                               placeholder="Search projects..."
+                               [(ngModel)]="detailProjectSearchText"
+                               (focus)="showDetailProjectDropdown = true"
+                               (input)="showDetailProjectDropdown = true"
+                               (blur)="closeDropdownDelayed('detailProject')"
+                               name="detailProjectSearch"
+                               autocomplete="off">
+                        @if (newDetailAllocation.projectId) {
+                          <button type="button" class="clear-btn" (mousedown)="clearDetailProjectSelection($event)">&times;</button>
+                        }
+                        @if (showDetailProjectDropdown) {
+                          <div class="dropdown-list">
+                            @for (proj of getFilteredDetailProjects(); track proj.id) {
+                              <div class="dropdown-item" (mousedown)="selectDetailProject(proj)">
+                                {{ proj.name }} ({{ proj.projectId }})
+                              </div>
+                            } @empty {
+                              <div class="dropdown-item disabled">No matches found</div>
+                            }
+                          </div>
+                        }
+                      </div>
+                    </div>
+                    <div class="form-group">
+                      <label class="form-label">Allocation</label>
+                      <select class="form-input" [(ngModel)]="newDetailAllocation.currentMonthAllocation" name="detailAllocation">
+                        <option value="1">100%</option>
+                        <option value="0.5">50%</option>
+                        <option value="0.25">25%</option>
+                        <option value="B">Bench</option>
+                        <option value="P">Prospect</option>
+                      </select>
+                    </div>
+                    <div class="form-group">
+                      <label class="form-label">Status</label>
+                      <select class="form-input" [(ngModel)]="newDetailAllocation.status" name="detailStatus">
+                        <option value="ACTIVE">Active</option>
+                        <option value="PENDING">Pending</option>
+                        <option value="COMPLETED">Completed</option>
+                      </select>
+                    </div>
+                  </div>
+                  <div class="form-row">
+                    <div class="form-group">
+                      <label class="form-label">Start Date</label>
+                      <input type="date" class="form-input" [(ngModel)]="newDetailAllocation.startDate" name="detailStartDate">
+                    </div>
+                    <div class="form-group">
+                      <label class="form-label">End Date</label>
+                      <input type="date" class="form-input" [(ngModel)]="newDetailAllocation.endDate" name="detailEndDate">
+                    </div>
+                    <div class="form-group form-actions-inline">
+                      <button class="btn btn-primary btn-sm" (click)="createDetailAllocation()" [disabled]="!newDetailAllocation.projectId">Save</button>
+                      <button class="btn btn-secondary btn-sm" (click)="showAddAssignment = false">Cancel</button>
+                    </div>
+                  </div>
+                </div>
+              }
+
+              <!-- Detail allocation list -->
+              <table class="data-table detail-table">
+                <thead>
+                  <tr>
+                    <th>Project</th>
+                    <th>Assignment</th>
+                    <th>Allocation</th>
+                    <th>Status</th>
+                    <th>End Date</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (alloc of detailAllocations(); track alloc.id) {
+                    <tr>
+                      <td>{{ alloc.projectName }}</td>
+                      <td>{{ alloc.confirmedAssignment || '-' }}</td>
+                      <td>
+                        @if (editingAllocationId === alloc.id) {
+                          <select class="form-input form-input-sm" [(ngModel)]="editAllocationValue" name="inlineEdit">
+                            <option value="1">100%</option>
+                            <option value="0.5">50%</option>
+                            <option value="0.25">25%</option>
+                            <option value="B">Bench</option>
+                            <option value="P">Prospect</option>
+                          </select>
+                        } @else {
+                          <div class="allocation-cell">
+                            <div class="progress-bar">
+                              <div class="progress-bar-fill"
+                                   [class.high]="alloc.allocationPercentage >= 75"
+                                   [class.medium]="alloc.allocationPercentage >= 50 && alloc.allocationPercentage < 75"
+                                   [class.low]="alloc.allocationPercentage < 50"
+                                   [style.width.%]="alloc.allocationPercentage">
+                              </div>
+                            </div>
+                            <span class="alloc-value">{{ alloc.currentMonthAllocation || 'N/A' }}</span>
+                          </div>
+                        }
+                      </td>
+                      <td>
+                        <span class="status-pill"
+                              [class.active]="alloc.status === 'ACTIVE'"
+                              [class.pending]="alloc.status === 'PENDING'"
+                              [class.completed]="alloc.status === 'COMPLETED'">
+                          {{ alloc.status }}
+                        </span>
+                      </td>
+                      <td>{{ alloc.endDate | date:'mediumDate' }}</td>
+                      <td>
+                        <div class="action-buttons">
+                          @if (editingAllocationId === alloc.id) {
+                            <button class="btn-icon save" (click)="saveInlineEdit()" title="Save">
+                              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+                                <polyline points="20 6 9 17 4 12"></polyline>
+                              </svg>
+                            </button>
+                            <button class="btn-icon" (click)="cancelInlineEdit()" title="Cancel">
+                              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+                                <line x1="18" y1="6" x2="6" y2="18"></line>
+                                <line x1="6" y1="6" x2="18" y2="18"></line>
+                              </svg>
+                            </button>
+                          } @else {
+                            <button class="btn-icon" (click)="startInlineEdit(alloc)" title="Edit allocation">
+                              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                              </svg>
+                            </button>
+                            <button class="btn-icon delete" (click)="deleteAllocation(alloc.id)" title="Delete allocation">
+                              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+                                <polyline points="3 6 5 6 21 6"></polyline>
+                                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                              </svg>
+                            </button>
+                          }
+                        </div>
+                      </td>
+                    </tr>
+                  } @empty {
+                    <tr>
+                      <td colspan="6" class="empty-state">No assignments for this employee</td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+
+              <div class="modal-actions">
+                <button class="btn btn-secondary" (click)="showDetailModal = false">Close</button>
+              </div>
+            </div>
+          </div>
+        }
+
         <!-- Create Allocation Modal -->
         @if (showCreateModal) {
           <div class="modal-overlay" (click)="showCreateModal = false">
@@ -153,21 +329,59 @@ import { Allocation, Employee, Project, Manager } from '../../models';
               <form (ngSubmit)="createAllocation()">
                 <div class="form-group">
                   <label class="form-label">Employee</label>
-                  <select class="form-input" [(ngModel)]="newAllocation.employeeId" name="employeeId" required>
-                    <option [ngValue]="undefined">Select employee...</option>
-                    @for (emp of employeesList(); track emp.id) {
-                      <option [ngValue]="emp.id">{{ emp.name }} ({{ emp.oracleId || 'N/A' }})</option>
+                  <div class="searchable-select">
+                    <input type="text"
+                           class="form-input"
+                           placeholder="Search employees..."
+                           [(ngModel)]="employeeSearchText"
+                           (focus)="showEmployeeDropdown = true"
+                           (input)="showEmployeeDropdown = true"
+                           (blur)="closeDropdownDelayed('employee')"
+                           name="employeeSearch"
+                           autocomplete="off">
+                    @if (newAllocation.employeeId) {
+                      <button type="button" class="clear-btn" (mousedown)="clearEmployeeSelection($event)">&times;</button>
                     }
-                  </select>
+                    @if (showEmployeeDropdown) {
+                      <div class="dropdown-list">
+                        @for (emp of getFilteredEmployees(); track emp.id) {
+                          <div class="dropdown-item" (mousedown)="selectEmployee(emp)">
+                            {{ emp.name }} ({{ emp.oracleId || 'N/A' }})
+                          </div>
+                        } @empty {
+                          <div class="dropdown-item disabled">No matches found</div>
+                        }
+                      </div>
+                    }
+                  </div>
                 </div>
                 <div class="form-group">
                   <label class="form-label">Project</label>
-                  <select class="form-input" [(ngModel)]="newAllocation.projectId" name="projectId" required>
-                    <option [ngValue]="undefined">Select project...</option>
-                    @for (proj of projectsList(); track proj.id) {
-                      <option [ngValue]="proj.id">{{ proj.name }} ({{ proj.projectId }})</option>
+                  <div class="searchable-select">
+                    <input type="text"
+                           class="form-input"
+                           placeholder="Search projects..."
+                           [(ngModel)]="createProjectSearchText"
+                           (focus)="showCreateProjectDropdown = true"
+                           (input)="showCreateProjectDropdown = true"
+                           (blur)="closeDropdownDelayed('createProject')"
+                           name="projectSearch"
+                           autocomplete="off">
+                    @if (newAllocation.projectId) {
+                      <button type="button" class="clear-btn" (mousedown)="clearCreateProjectSelection($event)">&times;</button>
                     }
-                  </select>
+                    @if (showCreateProjectDropdown) {
+                      <div class="dropdown-list">
+                        @for (proj of getFilteredCreateProjects(); track proj.id) {
+                          <div class="dropdown-item" (mousedown)="selectCreateProject(proj)">
+                            {{ proj.name }} ({{ proj.projectId }})
+                          </div>
+                        } @empty {
+                          <div class="dropdown-item disabled">No matches found</div>
+                        }
+                      </div>
+                    }
+                  </div>
                 </div>
                 <div class="form-group">
                   <label class="form-label">Allocation (current month)</label>
@@ -203,32 +417,6 @@ import { Allocation, Employee, Project, Manager } from '../../models';
             </div>
           </div>
         }
-
-        <!-- Edit Allocation Modal (only allocation percentage) -->
-        @if (showEditModal) {
-          <div class="modal-overlay" (click)="showEditModal = false">
-            <div class="modal" (click)="$event.stopPropagation()">
-              <h2>Edit Allocation</h2>
-              <p class="edit-info">{{ editAllocationData.employeeName }} — {{ editAllocationData.projectName }}</p>
-              <form (ngSubmit)="updateAllocation()">
-                <div class="form-group">
-                  <label class="form-label">Allocation (current month)</label>
-                  <select class="form-input" [(ngModel)]="editAllocationValue" name="editAllocation">
-                    <option value="1">100%</option>
-                    <option value="0.5">50%</option>
-                    <option value="0.25">25%</option>
-                    <option value="B">Bench</option>
-                    <option value="P">Prospect</option>
-                  </select>
-                </div>
-                <div class="modal-actions">
-                  <button type="button" class="btn btn-secondary" (click)="showEditModal = false">Cancel</button>
-                  <button type="submit" class="btn btn-primary">Save</button>
-                </div>
-              </form>
-            </div>
-          </div>
-        }
       </main>
       </div>
     </div>
@@ -251,6 +439,40 @@ import { Allocation, Employee, Project, Manager } from '../../models';
     }
 
     .text-muted { color: var(--text-muted); }
+
+    .employee-cell {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .avatar-sm {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background: var(--primary);
+      color: white;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      font-weight: 600;
+      flex-shrink: 0;
+    }
+
+    .project-count {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(62, 146, 204, 0.12);
+      color: var(--secondary);
+      font-weight: 600;
+      font-size: 13px;
+      min-width: 28px;
+      height: 28px;
+      border-radius: 14px;
+      padding: 0 8px;
+    }
 
     .allocation-cell {
       display: flex;
@@ -292,6 +514,21 @@ import { Allocation, Employee, Project, Manager } from '../../models';
       color: var(--primary);
     }
 
+    .btn-icon.save:hover {
+      color: #22c55e;
+      border-color: #22c55e;
+    }
+
+    .btn-icon.delete:hover {
+      color: #ef4444;
+      border-color: #ef4444;
+    }
+
+    .action-buttons {
+      display: flex;
+      gap: 6px;
+    }
+
     .modal-overlay {
       position: fixed;
       inset: 0;
@@ -311,6 +548,12 @@ import { Allocation, Employee, Project, Manager } from '../../models';
       max-width: 480px;
     }
 
+    .modal-wide {
+      max-width: 800px;
+      max-height: 80vh;
+      overflow-y: auto;
+    }
+
     .modal h2 {
       margin-bottom: 8px;
     }
@@ -319,6 +562,63 @@ import { Allocation, Employee, Project, Manager } from '../../models';
       color: var(--text-muted);
       font-size: 14px;
       margin-bottom: 20px;
+    }
+
+    .detail-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 16px;
+    }
+
+    .detail-header h2 {
+      margin-bottom: 4px;
+    }
+
+    .detail-table {
+      font-size: 14px;
+    }
+
+    .add-assignment-form {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 16px;
+      margin-bottom: 16px;
+    }
+
+    .form-row {
+      display: flex;
+      gap: 12px;
+      align-items: flex-end;
+      flex-wrap: wrap;
+    }
+
+    .form-row + .form-row {
+      margin-top: 12px;
+    }
+
+    .flex-1 {
+      flex: 1;
+      min-width: 160px;
+    }
+
+    .form-actions-inline {
+      display: flex;
+      gap: 8px;
+      align-items: flex-end;
+      padding-bottom: 2px;
+    }
+
+    .btn-sm {
+      padding: 6px 12px;
+      font-size: 13px;
+    }
+
+    .form-input-sm {
+      padding: 4px 8px;
+      font-size: 13px;
+      min-width: 100px;
     }
 
     .modal-actions {
@@ -437,12 +737,76 @@ import { Allocation, Employee, Project, Manager } from '../../models';
       outline: none;
       border-color: var(--primary);
     }
+
+    .searchable-select {
+      position: relative;
+    }
+
+    .searchable-select .form-input {
+      padding-right: 28px;
+    }
+
+    .clear-btn {
+      position: absolute;
+      right: 8px;
+      top: 50%;
+      transform: translateY(-50%);
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      font-size: 18px;
+      cursor: pointer;
+      line-height: 1;
+      padding: 0 4px;
+    }
+
+    .clear-btn:hover {
+      color: var(--text-primary);
+    }
+
+    .dropdown-list {
+      position: absolute;
+      top: 100%;
+      left: 0;
+      right: 0;
+      max-height: 200px;
+      overflow-y: auto;
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-top: none;
+      border-radius: 0 0 8px 8px;
+      z-index: 1010;
+      box-shadow: var(--shadow-md);
+    }
+
+    .dropdown-item {
+      padding: 8px 12px;
+      font-size: 14px;
+      color: var(--text-primary);
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+
+    .dropdown-item:hover {
+      background: var(--bg-hover);
+    }
+
+    .dropdown-item.disabled {
+      color: var(--text-muted);
+      cursor: default;
+      font-style: italic;
+    }
+
+    .dropdown-item.disabled:hover {
+      background: transparent;
+    }
   `]
 })
 export class AllocationsComponent implements OnInit {
   private destroyRef = inject(DestroyRef);
+  Math = Math;
 
-  allocations = signal<Allocation[]>([]);
+  employeeSummaries = signal<EmployeeAllocationSummary[]>([]);
   managers = signal<Manager[]>([]);
   employeesList = signal<Employee[]>([]);
   projectsList = signal<Project[]>([]);
@@ -453,15 +817,30 @@ export class AllocationsComponent implements OnInit {
   statusFilter = '';
   managerFilter = '';
 
-  // Create modal
+  // Create modal (from master page)
   showCreateModal = false;
   newAllocation: any = { status: 'ACTIVE', currentMonthAllocation: '1' };
 
-  // Edit modal
-  showEditModal = false;
-  editAllocationId: number | null = null;
-  editAllocationData: any = {};
+  // Searchable dropdown state
+  employeeSearchText = '';
+  showEmployeeDropdown = false;
+  createProjectSearchText = '';
+  showCreateProjectDropdown = false;
+  detailProjectSearchText = '';
+  showDetailProjectDropdown = false;
+
+  // Detail modal
+  showDetailModal = false;
+  selectedSummary: any = {};
+  detailAllocations = signal<Allocation[]>([]);
+
+  // Inline edit within detail modal
+  editingAllocationId: number | null = null;
   editAllocationValue = '';
+
+  // Add assignment within detail modal
+  showAddAssignment = false;
+  newDetailAllocation: any = { status: 'ACTIVE', currentMonthAllocation: '1' };
 
   // Pagination state
   currentPage = signal(0);
@@ -493,26 +872,35 @@ export class AllocationsComponent implements OnInit {
     const status = this.statusFilter || undefined;
     const managerId = this.managerFilter ? Number(this.managerFilter) : undefined;
 
-    this.apiService.getAllocations(this.currentPage(), this.pageSize(), search, status, managerId).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
-      next: (page) => {
-        this.allocations.set(page.content);
-        this.totalElements.set(page.totalElements);
-        this.totalPages.set(page.totalPages);
-        this.loading.set(false);
+    this.apiService.getGroupedAllocations(this.currentPage(), this.pageSize(), search, status, managerId)
+      .pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+        next: (page) => {
+          this.employeeSummaries.set(page.content);
+          this.totalElements.set(page.totalElements);
+          this.totalPages.set(page.totalPages);
+          this.loading.set(false);
 
-        if (scrollToBottom) {
-          setTimeout(() => {
-            const element = this.elementRef.nativeElement.querySelector('.pagination-controls');
-            if (element) {
-              element.scrollIntoView({ behavior: 'smooth', block: 'end' });
-            }
-          }, 100);
+          if (scrollToBottom) {
+            setTimeout(() => {
+              const element = this.elementRef.nativeElement.querySelector('.pagination-controls');
+              if (element) {
+                element.scrollIntoView({ behavior: 'smooth', block: 'end' });
+              }
+            }, 100);
+          }
+        },
+        error: () => {
+          this.loading.set(false);
         }
-      },
-      error: () => {
-        this.loading.set(false);
-      }
-    });
+      });
+  }
+
+  getInitials(name: string): string {
+    if (!name) return '?';
+    const parts = name.split(' ');
+    return parts.length >= 2
+      ? (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
+      : name.substring(0, 2).toUpperCase();
   }
 
   onSearch(): void {
@@ -565,9 +953,194 @@ export class AllocationsComponent implements OnInit {
     return range;
   }
 
+  // --- Searchable dropdown helpers ---
+
+  closeDropdownDelayed(which: string): void {
+    setTimeout(() => {
+      if (which === 'employee') this.showEmployeeDropdown = false;
+      else if (which === 'createProject') this.showCreateProjectDropdown = false;
+      else if (which === 'detailProject') this.showDetailProjectDropdown = false;
+    }, 200);
+  }
+
+  getFilteredEmployees(): Employee[] {
+    const term = this.employeeSearchText.toLowerCase();
+    if (!term) return this.employeesList();
+    return this.employeesList().filter(e =>
+      e.name.toLowerCase().includes(term) ||
+      (e.oracleId && e.oracleId.toLowerCase().includes(term))
+    );
+  }
+
+  selectEmployee(emp: Employee): void {
+    this.newAllocation.employeeId = emp.id;
+    this.employeeSearchText = `${emp.name} (${emp.oracleId || 'N/A'})`;
+    this.showEmployeeDropdown = false;
+  }
+
+  clearEmployeeSelection(event: Event): void {
+    event.preventDefault();
+    this.newAllocation.employeeId = undefined;
+    this.employeeSearchText = '';
+  }
+
+  getFilteredCreateProjects(): Project[] {
+    const term = this.createProjectSearchText.toLowerCase();
+    if (!term) return this.projectsList();
+    return this.projectsList().filter(p =>
+      p.name.toLowerCase().includes(term) ||
+      (p.projectId && p.projectId.toLowerCase().includes(term))
+    );
+  }
+
+  selectCreateProject(proj: Project): void {
+    this.newAllocation.projectId = proj.id;
+    this.createProjectSearchText = `${proj.name} (${proj.projectId})`;
+    this.showCreateProjectDropdown = false;
+  }
+
+  clearCreateProjectSelection(event: Event): void {
+    event.preventDefault();
+    this.newAllocation.projectId = undefined;
+    this.createProjectSearchText = '';
+  }
+
+  getFilteredDetailProjects(): Project[] {
+    const term = this.detailProjectSearchText.toLowerCase();
+    if (!term) return this.projectsList();
+    return this.projectsList().filter(p =>
+      p.name.toLowerCase().includes(term) ||
+      (p.projectId && p.projectId.toLowerCase().includes(term))
+    );
+  }
+
+  selectDetailProject(proj: Project): void {
+    this.newDetailAllocation.projectId = proj.id;
+    this.detailProjectSearchText = `${proj.name} (${proj.projectId})`;
+    this.showDetailProjectDropdown = false;
+  }
+
+  clearDetailProjectSelection(event: Event): void {
+    event.preventDefault();
+    this.newDetailAllocation.projectId = undefined;
+    this.detailProjectSearchText = '';
+  }
+
+  // --- Detail modal ---
+
+  openDetailModal(summary: EmployeeAllocationSummary): void {
+    this.selectedSummary = summary;
+    this.detailAllocations.set(summary.allocations || []);
+    this.editingAllocationId = null;
+    this.showAddAssignment = false;
+    this.showDetailModal = true;
+  }
+
+  refreshDetailAllocations(): void {
+    this.apiService.getAllocationsByEmployee(this.selectedSummary.employeeId)
+      .pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+        next: (allocations) => {
+          this.detailAllocations.set(allocations);
+          // Recalculate summary totals
+          let total = 0;
+          for (const a of allocations) {
+            total += a.allocationPercentage || 0;
+          }
+          this.selectedSummary.totalAllocationPercentage = total;
+          this.selectedSummary.projectCount = allocations.length;
+        },
+        error: () => {}
+      });
+  }
+
+  startInlineEdit(alloc: Allocation): void {
+    this.editingAllocationId = alloc.id;
+    this.editAllocationValue = alloc.currentMonthAllocation || '1';
+  }
+
+  cancelInlineEdit(): void {
+    this.editingAllocationId = null;
+    this.editAllocationValue = '';
+  }
+
+  saveInlineEdit(): void {
+    if (this.editingAllocationId == null) return;
+    this.apiService.updateAllocation(this.editingAllocationId, {
+      currentMonthAllocation: this.editAllocationValue
+    } as any).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: () => {
+        this.editingAllocationId = null;
+        this.refreshDetailAllocations();
+        this.loadAllocations();
+      },
+      error: (err) => {
+        alert('Failed to update allocation: ' + (err.error?.message || 'Unknown error'));
+      }
+    });
+  }
+
+  deleteAllocation(id: number): void {
+    if (!confirm('Are you sure you want to delete this assignment?')) return;
+    this.apiService.deleteAllocation(id).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: () => {
+        this.refreshDetailAllocations();
+        this.loadAllocations();
+      },
+      error: (err) => {
+        alert('Failed to delete allocation: ' + (err.error?.message || 'Unknown error'));
+      }
+    });
+  }
+
+  // --- Add assignment from detail modal ---
+
+  openAddAssignmentForm(): void {
+    this.newDetailAllocation = { status: 'ACTIVE', currentMonthAllocation: '1' };
+    this.detailProjectSearchText = '';
+    this.showDetailProjectDropdown = false;
+    this.apiService.getProjects(0, 100).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: (page) => this.projectsList.set(page.content),
+      error: () => {}
+    });
+    this.showAddAssignment = true;
+  }
+
+  createDetailAllocation(): void {
+    if (!this.newDetailAllocation.projectId) return;
+
+    const monthNames = ['janAllocation', 'febAllocation', 'marAllocation', 'aprAllocation',
+      'mayAllocation', 'junAllocation', 'julAllocation', 'augAllocation',
+      'sepAllocation', 'octAllocation', 'novAllocation', 'decAllocation'];
+    const currentMonth = new Date().getMonth();
+    const payload: any = {
+      employeeId: this.selectedSummary.employeeId,
+      projectId: this.newDetailAllocation.projectId,
+      startDate: this.newDetailAllocation.startDate,
+      endDate: this.newDetailAllocation.endDate,
+      status: this.newDetailAllocation.status
+    };
+    payload[monthNames[currentMonth]] = this.newDetailAllocation.currentMonthAllocation;
+
+    this.apiService.createAllocation(payload).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: () => {
+        this.showAddAssignment = false;
+        this.refreshDetailAllocations();
+        this.loadAllocations();
+      },
+      error: (err) => {
+        alert('Failed to create allocation: ' + (err.error?.message || 'Unknown error'));
+      }
+    });
+  }
+
+  // --- Create allocation from master page ---
+
   openCreateModal(): void {
     this.newAllocation = { status: 'ACTIVE', currentMonthAllocation: '1' };
-    // Load employees and projects for dropdowns
+    this.employeeSearchText = '';
+    this.createProjectSearchText = '';
+    this.showEmployeeDropdown = false;
+    this.showCreateProjectDropdown = false;
     this.apiService.getEmployees(0, 100).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: (page) => this.employeesList.set(page.content),
       error: () => {}
@@ -582,11 +1155,10 @@ export class AllocationsComponent implements OnInit {
   createAllocation(): void {
     if (!this.newAllocation.employeeId || !this.newAllocation.projectId) return;
 
-    // Build the allocation payload with the current month value set
     const monthNames = ['janAllocation', 'febAllocation', 'marAllocation', 'aprAllocation',
       'mayAllocation', 'junAllocation', 'julAllocation', 'augAllocation',
       'sepAllocation', 'octAllocation', 'novAllocation', 'decAllocation'];
-    const currentMonth = new Date().getMonth(); // 0-indexed
+    const currentMonth = new Date().getMonth();
     const payload: any = {
       employeeId: this.newAllocation.employeeId,
       projectId: this.newAllocation.projectId,
@@ -603,32 +1175,6 @@ export class AllocationsComponent implements OnInit {
       },
       error: (err) => {
         alert('Failed to create allocation: ' + (err.error?.message || 'Unknown error'));
-      }
-    });
-  }
-
-  openEditModal(alloc: Allocation): void {
-    this.editAllocationId = alloc.id;
-    this.editAllocationData = {
-      employeeName: alloc.employeeName,
-      projectName: alloc.projectName
-    };
-    this.editAllocationValue = alloc.currentMonthAllocation || '1';
-    this.showEditModal = true;
-  }
-
-  updateAllocation(): void {
-    if (this.editAllocationId == null) return;
-    this.apiService.updateAllocation(this.editAllocationId, {
-      currentMonthAllocation: this.editAllocationValue
-    } as any).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
-      next: () => {
-        this.showEditModal = false;
-        this.editAllocationId = null;
-        this.loadAllocations();
-      },
-      error: (err) => {
-        alert('Failed to update allocation: ' + (err.error?.message || 'Unknown error'));
       }
     });
   }
