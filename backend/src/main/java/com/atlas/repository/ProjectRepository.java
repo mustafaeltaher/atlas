@@ -65,4 +65,20 @@ public interface ProjectRepository extends JpaRepository<Project, Long> {
 
         @Query("SELECT DISTINCT p.tower FROM Project p WHERE p.tower IS NOT NULL")
         List<String> findDistinctTowers();
+
+        // Database-level paginated query with filters for projects by IDs (for non-admin hierarchy-based access)
+        @Query(value = "SELECT p FROM Project p WHERE p.id IN :projectIds " +
+                        "AND (:status IS NULL OR p.status = :status) " +
+                        "AND (:tower IS NULL OR p.tower = :tower) " +
+                        "AND (:search IS NULL OR LOWER(CAST(p.name AS string)) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%')))",
+                        countQuery = "SELECT COUNT(p) FROM Project p WHERE p.id IN :projectIds " +
+                        "AND (:status IS NULL OR p.status = :status) " +
+                        "AND (:tower IS NULL OR p.tower = :tower) " +
+                        "AND (:search IS NULL OR LOWER(CAST(p.name AS string)) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%')))")
+        org.springframework.data.domain.Page<Project> searchProjectsByIds(
+                        @Param("projectIds") List<Long> projectIds,
+                        @Param("search") String search,
+                        @Param("tower") String tower,
+                        @Param("status") Project.ProjectStatus status,
+                        org.springframework.data.domain.Pageable pageable);
 }

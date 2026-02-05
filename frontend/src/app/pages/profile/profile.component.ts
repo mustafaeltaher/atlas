@@ -72,7 +72,7 @@ import { Employee } from '../../models';
             </div>
             <div class="info-item">
               <span class="info-label">Allocation</span>
-              <span class="info-value allocation">{{ profile()?.currentAllocation || 0 }}%</span>
+              <span class="info-value allocation">{{ profile()?.totalAllocation || 0 }}%</span>
             </div>
           </div>
         </div>

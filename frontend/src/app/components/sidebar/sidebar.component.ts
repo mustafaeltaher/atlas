@@ -10,6 +10,7 @@ import { AuthService } from '../../services/auth.service';
   template: `
     <aside class="sidebar">
       <div class="sidebar-header">
+        <img src="assets/atlas-logo.png" alt="Atlas Logo" class="sidebar-logo">
         <h1 class="logo">Atlas</h1>
       </div>
       
@@ -69,10 +70,21 @@ import { AuthService } from '../../services/auth.service';
     }
     
     .sidebar-header {
-      padding: 24px;
+      padding: 20px 24px;
       border-bottom: 1px solid rgba(255,255,255,0.1);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
     }
-    
+
+    .sidebar-logo {
+      width: 120px;
+      height: 120px;
+      object-fit: contain;
+      border-radius: 8px;
+    }
+
     .logo {
       font-size: 1.75rem;
       font-weight: 700;

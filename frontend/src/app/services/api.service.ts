@@ -24,11 +24,17 @@ export class ApiService {
     }
 
     // Employees
-    getEmployees(page: number = 0, size: number = 10, search?: string, managerId?: number): Observable<Page<Employee>> {
+    getEmployees(page: number = 0, size: number = 10, search?: string, managerId?: number, tower?: string, status?: string): Observable<Page<Employee>> {
         let url = `${this.API_URL}/employees?page=${page}&size=${size}`;
         if (search) url += `&search=${encodeURIComponent(search)}`;
         if (managerId) url += `&managerId=${managerId}`;
+        if (tower) url += `&tower=${encodeURIComponent(tower)}`;
+        if (status) url += `&status=${encodeURIComponent(status)}`;
         return this.http.get<Page<Employee>>(url);
+    }
+
+    getEmployeeTowers(): Observable<{parentTowers: string[], towers: string[]}> {
+        return this.http.get<{parentTowers: string[], towers: string[]}>(`${this.API_URL}/employees/towers`);
     }
 
     getEmployee(id: number): Observable<Employee> {

@@ -4,7 +4,9 @@ import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
+import lombok.ToString;
 
 import java.time.LocalDate;
 
@@ -21,10 +23,14 @@ public class Allocation {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "employee_id", nullable = false)
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
     private Employee employee;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "project_id", nullable = false)
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
     private Project project;
 
     @Column(name = "confirmed_assignment")

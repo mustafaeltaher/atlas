@@ -65,7 +65,47 @@ public interface AllocationRepository extends JpaRepository<Allocation, Long> {
     @Query("SELECT a FROM Allocation a JOIN FETCH a.employee JOIN FETCH a.project WHERE a.id = :id")
     java.util.Optional<Allocation> findByIdWithDetails(@Param("id") Long id);
 
+    @Query("SELECT a FROM Allocation a JOIN FETCH a.employee JOIN FETCH a.project WHERE a.employee.id IN :employeeIds")
+    List<Allocation> findByEmployeeIdsWithDetails(@Param("employeeIds") List<Long> employeeIds);
+
     boolean existsByEmployeeAndProject(Employee employee, Project project);
+
+    // Database-level paginated query with all filters for admin/executive
+    @Query(value = "SELECT a FROM Allocation a JOIN FETCH a.employee e JOIN FETCH a.project p " +
+            "WHERE (:status IS NULL OR a.status = :status) " +
+            "AND (:managerId IS NULL OR e.manager.id = :managerId) " +
+            "AND (:search IS NULL OR LOWER(CAST(e.name AS string)) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%')) " +
+            "OR LOWER(CAST(p.name AS string)) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%')))",
+            countQuery = "SELECT COUNT(a) FROM Allocation a JOIN a.employee e JOIN a.project p " +
+            "WHERE (:status IS NULL OR a.status = :status) " +
+            "AND (:managerId IS NULL OR e.manager.id = :managerId) " +
+            "AND (:search IS NULL OR LOWER(CAST(e.name AS string)) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%')) " +
+            "OR LOWER(CAST(p.name AS string)) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%')))")
+    org.springframework.data.domain.Page<Allocation> findAllocationsWithFilters(
+            @Param("search") String search,
+            @Param("status") Allocation.AllocationStatus status,
+            @Param("managerId") Long managerId,
+            org.springframework.data.domain.Pageable pageable);
+
+    // Database-level paginated query with all filters for non-admin (employee ID restriction)
+    @Query(value = "SELECT a FROM Allocation a JOIN FETCH a.employee e JOIN FETCH a.project p " +
+            "WHERE e.id IN :employeeIds " +
+            "AND (:status IS NULL OR a.status = :status) " +
+            "AND (:managerId IS NULL OR e.manager.id = :managerId) " +
+            "AND (:search IS NULL OR LOWER(CAST(e.name AS string)) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%')) " +
+            "OR LOWER(CAST(p.name AS string)) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%')))",
+            countQuery = "SELECT COUNT(a) FROM Allocation a JOIN a.employee e JOIN a.project p " +
+            "WHERE e.id IN :employeeIds " +
+            "AND (:status IS NULL OR a.status = :status) " +
+            "AND (:managerId IS NULL OR e.manager.id = :managerId) " +
+            "AND (:search IS NULL OR LOWER(CAST(e.name AS string)) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%')) " +
+            "OR LOWER(CAST(p.name AS string)) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%')))")
+    org.springframework.data.domain.Page<Allocation> findAllocationsWithFiltersByEmployeeIds(
+            @Param("employeeIds") List<Long> employeeIds,
+            @Param("search") String search,
+            @Param("status") Allocation.AllocationStatus status,
+            @Param("managerId") Long managerId,
+            org.springframework.data.domain.Pageable pageable);
 
     // Pagination methods
     @Query("SELECT a FROM Allocation a WHERE a.status = 'ACTIVE'")

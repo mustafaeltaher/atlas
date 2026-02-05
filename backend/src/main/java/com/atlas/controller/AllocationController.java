@@ -82,7 +82,7 @@ public class AllocationController {
 
     @PutMapping("/{id}")
     public ResponseEntity<AllocationDTO> updateAllocation(@PathVariable Long id,
-            @Valid @RequestBody AllocationDTO allocationDTO) {
+            @RequestBody AllocationDTO allocationDTO) {
         return ResponseEntity.ok(allocationService.updateAllocation(id, allocationDTO));
     }
 

@@ -13,8 +13,9 @@ import { AuthService } from '../../services/auth.service';
     <div class="login-container">
       <div class="login-card">
         <div class="login-header">
+          <img src="assets/atlas-logo.png" alt="Atlas Logo" class="login-logo">
           <h1 class="logo">Atlas</h1>
-          <p>Employee Management System</p>
+          <p>GDC Management System</p>
         </div>
         
         <form (ngSubmit)="login()" class="login-form">
@@ -80,7 +81,15 @@ import { AuthService } from '../../services/auth.service';
       text-align: center;
       margin-bottom: 32px;
     }
-    
+
+    .login-logo {
+      width: 120px;
+      height: 120px;
+      object-fit: contain;
+      margin-bottom: 16px;
+      border-radius: 12px;
+    }
+
     .logo {
       font-size: 2.5rem;
       font-weight: 700;

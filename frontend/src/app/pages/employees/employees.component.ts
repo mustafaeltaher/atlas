@@ -2,6 +2,7 @@ import { Component, OnInit, signal, ElementRef, DestroyRef, inject } from '@angu
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { switchMap } from 'rxjs';
 import { SidebarComponent } from '../../components/sidebar/sidebar.component';
 import { HeaderComponent } from '../../components/header/header.component';
 import { ApiService } from '../../services/api.service';
@@ -84,7 +85,7 @@ import { Employee, Manager } from '../../models';
                   <th>Manager</th>
                   <th>Tower</th>
                   <th>Primary Skill</th>
-                  <th>Allocation</th>
+                  <th>Total Allocation</th>
                   <th>Status</th>
                 </tr>
               </thead>
@@ -108,13 +109,13 @@ import { Employee, Manager } from '../../models';
                       <div class="allocation-cell">
                         <div class="progress-bar">
                           <div class="progress-bar-fill"
-                               [class.high]="emp.currentAllocation >= 75"
-                               [class.medium]="emp.currentAllocation >= 50 && emp.currentAllocation < 75"
-                               [class.low]="emp.currentAllocation < 50"
-                               [style.width.%]="emp.currentAllocation">
+                               [class.high]="emp.totalAllocation >= 75"
+                               [class.medium]="emp.totalAllocation >= 50 && emp.totalAllocation < 75"
+                               [class.low]="emp.totalAllocation < 50"
+                               [style.width.%]="emp.totalAllocation">
                           </div>
                         </div>
-                        <span class="alloc-value">{{ emp.currentAllocation }}%</span>
+                        <span class="alloc-value">{{ emp.totalAllocation }}%</span>
                       </div>
                     </td>
                     <td>
@@ -136,6 +137,10 @@ import { Employee, Manager } from '../../models';
 
             <!-- Pagination Controls -->
             <div class="pagination-controls">
+              <span class="pagination-info">
+                Showing {{ currentPage() * pageSize() + 1 }}-{{ Math.min((currentPage() + 1) * pageSize(), totalElements()) }} of {{ totalElements() }}
+              </span>
+
               <button class="btn btn-secondary" (click)="previousPage()" [disabled]="currentPage() === 0 || loading()">
                 ← Previous
               </button>
@@ -284,9 +289,10 @@ import { Employee, Manager } from '../../models';
       border-color: var(--primary);
     }
 
-    .page-info {
+    .pagination-info {
       color: var(--text-muted);
       font-size: 14px;
+      white-space: nowrap;
     }
 
     .btn-secondary {
@@ -317,6 +323,7 @@ export class EmployeesComponent implements OnInit {
   towers = signal<string[]>([]);
   managers = signal<Manager[]>([]);
   loading = signal(true);
+  Math = Math; // Expose Math for template use
 
   searchTerm = '';
   statusFilter = '';
@@ -327,6 +334,7 @@ export class EmployeesComponent implements OnInit {
   totalElements = signal(0);
   totalPages = signal(0);
 
+
   constructor(
     private apiService: ApiService,
     private authService: AuthService,
@@ -335,7 +343,9 @@ export class EmployeesComponent implements OnInit {
 
   ngOnInit(): void {
     this.loadManagers();
-    this.loadEmployees();
+    this.loadTowers();
+    // Small delay to ensure auth context is fully initialized before loading employees
+    setTimeout(() => this.loadEmployees(), 100);
   }
 
   isN1Manager(): boolean {
@@ -346,24 +356,33 @@ export class EmployeesComponent implements OnInit {
   loadManagers(): void {
     this.apiService.getManagers().pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: (managers) => this.managers.set(managers),
-      error: () => {}
+      error: () => { }
     });
+  }
+
+  loadTowers(): void {
+    if (this.isN1Manager()) {
+      this.apiService.getEmployeeTowers().pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+        next: (data) => this.towers.set(data.towers),
+        error: () => { }
+      });
+    }
   }
 
   loadEmployees(scrollToBottom: boolean = false): void {
     this.loading.set(true);
     const search = this.searchTerm || undefined;
     const managerId = this.managerFilter ? Number(this.managerFilter) : undefined;
-    this.apiService.getEmployees(this.currentPage(), this.pageSize(), search, managerId).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+    const tower = this.towerFilter || undefined;
+    const status = this.statusFilter || undefined;
+    this.apiService.getEmployees(this.currentPage(), this.pageSize(), search, managerId, tower, status).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: (page) => {
+
         this.employees.set(page.content);
         this.filteredEmployees.set(page.content);
         this.totalElements.set(page.totalElements);
         this.totalPages.set(page.totalPages);
-        const uniqueTowers = [...new Set(page.content.map(e => e.tower).filter(Boolean))];
-        this.towers.set(uniqueTowers);
         this.loading.set(false);
-        this.applyClientFilters();
 
         if (scrollToBottom) {
           setTimeout(() => {
@@ -423,20 +442,6 @@ export class EmployeesComponent implements OnInit {
   filterEmployees(): void {
     this.currentPage.set(0);
     this.loadEmployees();
-  }
-
-  applyClientFilters(): void {
-    let filtered = this.employees();
-
-    if (this.statusFilter) {
-      filtered = filtered.filter(e => e.allocationStatus === this.statusFilter);
-    }
-
-    if (this.towerFilter) {
-      filtered = filtered.filter(e => e.tower === this.towerFilter);
-    }
-
-    this.filteredEmployees.set(filtered);
   }
 
   getInitials(name: string): string {

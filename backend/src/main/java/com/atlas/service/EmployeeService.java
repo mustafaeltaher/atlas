@@ -32,70 +32,39 @@ public class EmployeeService {
                 .collect(Collectors.toList());
     }
 
-    // Paginated version with search
+    // Paginated version with search and dynamic status filtering
     public org.springframework.data.domain.Page<EmployeeDTO> getAllEmployees(User currentUser,
-            org.springframework.data.domain.Pageable pageable, String search, Long managerId) {
-        if (currentUser.getRole() == User.Role.SYSTEM_ADMIN || currentUser.getRole() == User.Role.EXECUTIVE) {
-            if (managerId != null) {
-                // Manager filter takes priority - use in-memory filtering
-                List<Employee> allActive = employeeRepository.findByIsActiveTrueWithManager();
-                allActive = filterByManager(allActive, managerId);
-                return paginateAndConvert(allActive, search, pageable);
+            org.springframework.data.domain.Pageable pageable, String search, Long managerId, String tower,
+            String status) {
+
+        // Normalize filters
+        String searchParam = (search != null && !search.trim().isEmpty()) ? search.trim() : null;
+        String towerParam = (tower != null && !tower.trim().isEmpty()) ? tower.trim() : null;
+        String statusParam = (status != null && !status.trim().isEmpty()) ? status.trim() : null;
+
+        List<Long> accessibleIds = null;
+
+        if (currentUser.getRole() != User.Role.SYSTEM_ADMIN && currentUser.getRole() != User.Role.EXECUTIVE) {
+            // For non-admin managers: get accessible employee IDs first
+            List<Employee> accessibleEmployees = getAccessibleEmployees(currentUser);
+            if (accessibleEmployees.isEmpty()) {
+                return new org.springframework.data.domain.PageImpl<>(List.of(), pageable, 0);
             }
-            // Direct database pagination for admins
-            org.springframework.data.domain.Page<Employee> employeePage;
-            if (search != null && !search.trim().isEmpty()) {
-                employeePage = employeeRepository.searchActiveEmployees(search.trim(), pageable);
-            } else {
-                employeePage = employeeRepository.findByIsActiveTrue(pageable);
-            }
-            Map<Long, List<Allocation>> allocationsByEmployee = batchFetchAllocations(employeePage.getContent());
-            return employeePage.map(e -> toDTO(e, allocationsByEmployee.getOrDefault(e.getId(), Collections.emptyList())));
-        }
-
-        // For managers: fetch all accessible employees, then filter and paginate
-        List<Employee> allAccessible = getAccessibleEmployees(currentUser);
-
-        if (managerId != null) {
-            allAccessible = filterByManager(allAccessible, managerId);
-        }
-
-        return paginateAndConvert(allAccessible, search, pageable);
-    }
-
-    private List<Employee> filterByManager(List<Employee> employees, Long managerId) {
-        return employees.stream()
-                .filter(e -> e.getManager() != null && e.getManager().getId().equals(managerId))
-                .collect(Collectors.toList());
-    }
-
-    private org.springframework.data.domain.Page<EmployeeDTO> paginateAndConvert(
-            List<Employee> employees, String search, org.springframework.data.domain.Pageable pageable) {
-        // Apply search filter if provided
-        if (search != null && !search.trim().isEmpty()) {
-            String searchLower = search.toLowerCase().trim();
-            employees = employees.stream()
-                    .filter(e -> (e.getName() != null && e.getName().toLowerCase().contains(searchLower)) ||
-                            (e.getPrimarySkill() != null && e.getPrimarySkill().toLowerCase().contains(searchLower)) ||
-                            (e.getTower() != null && e.getTower().toLowerCase().contains(searchLower)) ||
-                            (e.getEmail() != null && e.getEmail().toLowerCase().contains(searchLower)))
+            accessibleIds = accessibleEmployees.stream()
+                    .map(Employee::getId)
                     .collect(Collectors.toList());
         }
 
-        // Manual pagination from the filtered list
-        int start = (int) pageable.getOffset();
-        int end = Math.min(start + pageable.getPageSize(), employees.size());
-        List<Employee> pageEmployees = start < employees.size() ? employees.subList(start, end) : List.of();
+        // Create Specification
+        org.springframework.data.jpa.domain.Specification<Employee> spec = com.atlas.specification.EmployeeSpecification
+                .withFilters(searchParam, towerParam, managerId, statusParam, accessibleIds);
 
-        Map<Long, List<Allocation>> allocationsByEmployee = batchFetchAllocations(pageEmployees);
-        List<EmployeeDTO> pageContent = pageEmployees.stream()
-                .map(e -> toDTO(e, allocationsByEmployee.getOrDefault(e.getId(), Collections.emptyList())))
-                .collect(Collectors.toList());
+        // Execute Query
+        org.springframework.data.domain.Page<Employee> employeePage = employeeRepository.findAll(spec, pageable);
 
-        return new org.springframework.data.domain.PageImpl<>(
-                pageContent,
-                pageable,
-                employees.size());
+        // Batch fetch allocations for DTO conversion
+        Map<Long, List<Allocation>> allocationsByEmployee = batchFetchAllocations(employeePage.getContent());
+        return employeePage.map(e -> toDTO(e, allocationsByEmployee.getOrDefault(e.getId(), Collections.emptyList())));
     }
 
     public EmployeeDTO getEmployeeById(Long id, User currentUser) {
@@ -245,7 +214,7 @@ public class EmployeeService {
                 .managerId(employee.getManager() != null ? employee.getManager().getId() : null)
                 .managerName(employee.getManager() != null ? employee.getManager().getName() : null)
                 .isActive(employee.getIsActive())
-                .currentAllocation(totalAllocation * 100)
+                .totalAllocation(totalAllocation * 100)
                 .allocationStatus(status)
                 .build();
     }
@@ -263,36 +232,21 @@ public class EmployeeService {
     }
 
     public List<EmployeeDTO> getAccessibleManagers(User currentUser) {
-        List<Employee> managers;
-        switch (currentUser.getRole()) {
-            case SYSTEM_ADMIN, EXECUTIVE:
-                managers = employeeRepository.findActiveManagers();
-                break;
-            case HEAD:
-                if (currentUser.getEmployee() != null && currentUser.getEmployee().getParentTower() != null) {
-                    managers = employeeRepository.findActiveManagersByParentTower(currentUser.getEmployee().getParentTower());
-                } else {
-                    managers = List.of();
-                }
-                break;
-            case DEPARTMENT_MANAGER:
-                if (currentUser.getEmployee() != null && currentUser.getEmployee().getTower() != null) {
-                    managers = employeeRepository.findActiveManagersByTower(currentUser.getEmployee().getTower());
-                } else {
-                    managers = List.of();
-                }
-                break;
-            case TEAM_LEAD:
-                if (currentUser.getEmployee() != null) {
-                    managers = List.of(currentUser.getEmployee());
-                } else {
-                    managers = List.of();
-                }
-                break;
-            default:
-                managers = List.of();
+        if (currentUser.getRole() == User.Role.SYSTEM_ADMIN || currentUser.getRole() == User.Role.EXECUTIVE) {
+            return employeeRepository.findActiveManagers().stream()
+                    .map(m -> EmployeeDTO.builder().id(m.getId()).name(m.getName()).oracleId(m.getOracleId()).build())
+                    .collect(Collectors.toList());
         }
-        return managers.stream()
+
+        // Get all employees in the reporting chain, then filter to those who are
+        // managers
+        List<Employee> accessible = getAccessibleEmployees(currentUser);
+        Long currentEmployeeId = currentUser.getEmployee() != null ? currentUser.getEmployee().getId() : null;
+
+        return accessible.stream()
+                .filter(e -> !e.getId().equals(currentEmployeeId))
+                .filter(e -> accessible.stream()
+                        .anyMatch(sub -> sub.getManager() != null && sub.getManager().getId().equals(e.getId())))
                 .map(m -> EmployeeDTO.builder().id(m.getId()).name(m.getName()).oracleId(m.getOracleId()).build())
                 .collect(Collectors.toList());
     }

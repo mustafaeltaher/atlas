@@ -17,8 +17,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -30,6 +28,7 @@ public class AllocationService {
     private final AllocationRepository allocationRepository;
     private final EmployeeRepository employeeRepository;
     private final ProjectRepository projectRepository;
+    private final EmployeeService employeeService;
 
     public List<AllocationDTO> getAllAllocations(User currentUser) {
         List<Allocation> allocations = getFilteredAllocations(currentUser);
@@ -38,7 +37,7 @@ public class AllocationService {
                 .collect(Collectors.toList());
     }
 
-    // Paginated version with search and filters
+    // Paginated version with search and filters - uses database-level pagination
     public org.springframework.data.domain.Page<AllocationDTO> getAllAllocations(User currentUser,
             org.springframework.data.domain.Pageable pageable, String search, String status, Long managerId) {
 
@@ -53,56 +52,27 @@ public class AllocationService {
 
         String searchParam = (search != null && !search.trim().isEmpty()) ? search.trim() : null;
 
-        List<Allocation> allAllocations;
         if (currentUser.getRole() == User.Role.SYSTEM_ADMIN || currentUser.getRole() == User.Role.EXECUTIVE) {
-            if (managerId == null && searchParam == null && statusEnum == null) {
-                // No filters — use direct database pagination
-                org.springframework.data.domain.Page<Allocation> allocationPage = allocationRepository.searchAllocations(
-                        null, null, pageable);
-                return allocationPage.map(this::toDTO);
-            }
-            allAllocations = allocationRepository.findAllWithEmployeeAndProject();
-        } else {
-            allAllocations = getFilteredAllocations(currentUser);
+            // DATABASE-LEVEL pagination for admin/executive with all filters
+            org.springframework.data.domain.Page<Allocation> allocationPage = allocationRepository.findAllocationsWithFilters(
+                    searchParam, statusEnum, managerId, pageable);
+            return allocationPage.map(this::toDTO);
         }
 
-        // Apply manager filter
-        if (managerId != null) {
-            final Long mId = managerId;
-            allAllocations = allAllocations.stream()
-                    .filter(a -> a.getEmployee() != null && a.getEmployee().getManager() != null
-                            && a.getEmployee().getManager().getId().equals(mId))
-                    .collect(Collectors.toList());
+        // For non-admin managers: get accessible employee IDs first
+        List<Employee> accessibleEmployees = employeeService.getAccessibleEmployees(currentUser);
+        if (accessibleEmployees.isEmpty()) {
+            return new org.springframework.data.domain.PageImpl<>(List.of(), pageable, 0);
         }
 
-        // Apply search and status filters
-        final String searchLower = searchParam != null ? searchParam.toLowerCase() : null;
-        final Allocation.AllocationStatus statusFinal = statusEnum;
-
-        allAllocations = allAllocations.stream()
-                .filter(a -> searchLower == null ||
-                        (a.getEmployee() != null && a.getEmployee().getName() != null
-                                && a.getEmployee().getName().toLowerCase().contains(searchLower))
-                        ||
-                        (a.getProject() != null && a.getProject().getName() != null
-                                && a.getProject().getName().toLowerCase().contains(searchLower)))
-                .filter(a -> statusFinal == null || a.getStatus() == statusFinal)
+        List<Long> accessibleIds = accessibleEmployees.stream()
+                .map(Employee::getId)
                 .collect(Collectors.toList());
 
-        List<AllocationDTO> dtoList = allAllocations.stream()
-                .map(this::toDTO)
-                .collect(Collectors.toList());
-
-        // Manual pagination from the filtered list
-        int start = (int) pageable.getOffset();
-        int end = Math.min(start + pageable.getPageSize(), dtoList.size());
-
-        List<AllocationDTO> pageContent = start < dtoList.size() ? dtoList.subList(start, end) : List.of();
-
-        return new org.springframework.data.domain.PageImpl<>(
-                pageContent,
-                pageable,
-                dtoList.size());
+        // DATABASE-LEVEL pagination for non-admin managers with all filters
+        org.springframework.data.domain.Page<Allocation> allocationPage = allocationRepository.findAllocationsWithFiltersByEmployeeIds(
+                accessibleIds, searchParam, statusEnum, managerId, pageable);
+        return allocationPage.map(this::toDTO);
     }
 
     public Page<EmployeeAllocationSummaryDTO> getGroupedAllocations(User currentUser,
@@ -119,75 +89,73 @@ public class AllocationService {
 
         String searchParam = (search != null && !search.trim().isEmpty()) ? search.trim() : null;
 
-        List<Allocation> allAllocations;
+        Page<Employee> employeePage;
         if (currentUser.getRole() == User.Role.SYSTEM_ADMIN || currentUser.getRole() == User.Role.EXECUTIVE) {
-            allAllocations = allocationRepository.findAllWithEmployeeAndProject();
+            // Admin/Executive: use the full view with no ID restriction
+            employeePage = employeeRepository.findEmployeesForAllocationView(
+                    searchParam, managerId, statusEnum, null, null, pageable);
         } else {
-            allAllocations = getFilteredAllocations(currentUser);
+            // Other roles: restrict to employees in the reporting chain
+            List<Employee> accessible = employeeService.getAccessibleEmployees(currentUser);
+            if (accessible.isEmpty()) {
+                return new PageImpl<>(List.of(), pageable, 0);
+            }
+            List<Long> accessibleIds = accessible.stream()
+                    .map(Employee::getId).collect(Collectors.toList());
+            employeePage = employeeRepository.findEmployeesForAllocationViewByIds(
+                    accessibleIds, searchParam, managerId, statusEnum, pageable);
         }
 
-        // Apply manager filter
-        if (managerId != null) {
-            final Long mId = managerId;
-            allAllocations = allAllocations.stream()
-                    .filter(a -> a.getEmployee() != null && a.getEmployee().getManager() != null
-                            && a.getEmployee().getManager().getId().equals(mId))
-                    .collect(Collectors.toList());
+        List<Employee> employees = employeePage.getContent();
+        if (employees.isEmpty()) {
+            return new PageImpl<>(List.of(), pageable, employeePage.getTotalElements());
         }
 
-        // Apply search and status filters
-        final String searchLower = searchParam != null ? searchParam.toLowerCase() : null;
+        // Batch-fetch allocations for the employees on this page
+        List<Long> employeeIds = employees.stream()
+                .map(Employee::getId)
+                .collect(Collectors.toList());
+        List<Allocation> allocations = allocationRepository.findByEmployeeIdsWithDetails(employeeIds);
+
+        // Group allocations by employee ID
+        Map<Long, List<Allocation>> allocationsByEmployee = allocations.stream()
+                .collect(Collectors.groupingBy(a -> a.getEmployee().getId()));
+
+        // Build summary DTOs for each employee on the page
         final Allocation.AllocationStatus statusFinal = statusEnum;
+        List<EmployeeAllocationSummaryDTO> summaries = employees.stream()
+                .map(emp -> {
+                    List<Allocation> empAllocations = allocationsByEmployee
+                            .getOrDefault(emp.getId(), List.of());
 
-        allAllocations = allAllocations.stream()
-                .filter(a -> searchLower == null ||
-                        (a.getEmployee() != null && a.getEmployee().getName() != null
-                                && a.getEmployee().getName().toLowerCase().contains(searchLower))
-                        ||
-                        (a.getProject() != null && a.getProject().getName() != null
-                                && a.getProject().getName().toLowerCase().contains(searchLower)))
-                .filter(a -> statusFinal == null || a.getStatus() == statusFinal)
+                    // Apply status filter to allocations if specified
+                    if (statusFinal != null) {
+                        empAllocations = empAllocations.stream()
+                                .filter(a -> a.getStatus() == statusFinal)
+                                .collect(Collectors.toList());
+                    }
+
+                    List<AllocationDTO> allocationDTOs = empAllocations.stream()
+                            .map(this::toDTO)
+                            .collect(Collectors.toList());
+
+                    double totalPercentage = allocationDTOs.stream()
+                            .mapToDouble(dto -> dto.getAllocationPercentage() != null
+                                    ? dto.getAllocationPercentage() : 0.0)
+                            .sum();
+
+                    return EmployeeAllocationSummaryDTO.builder()
+                            .employeeId(emp.getId())
+                            .employeeName(emp.getName())
+                            .employeeOracleId(emp.getOracleId())
+                            .totalAllocationPercentage(totalPercentage)
+                            .projectCount(empAllocations.size())
+                            .allocations(allocationDTOs)
+                            .build();
+                })
                 .collect(Collectors.toList());
 
-        // Group by employee
-        Map<Long, List<Allocation>> groupedByEmployee = new LinkedHashMap<>();
-        for (Allocation a : allAllocations) {
-            if (a.getEmployee() != null) {
-                groupedByEmployee.computeIfAbsent(a.getEmployee().getId(), k -> new ArrayList<>()).add(a);
-            }
-        }
-
-        // Build summary DTOs
-        List<EmployeeAllocationSummaryDTO> summaries = new ArrayList<>();
-        for (Map.Entry<Long, List<Allocation>> entry : groupedByEmployee.entrySet()) {
-            List<Allocation> employeeAllocations = entry.getValue();
-            Allocation first = employeeAllocations.get(0);
-
-            List<AllocationDTO> allocationDTOs = employeeAllocations.stream()
-                    .map(this::toDTO)
-                    .collect(Collectors.toList());
-
-            double totalPercentage = allocationDTOs.stream()
-                    .mapToDouble(dto -> dto.getAllocationPercentage() != null ? dto.getAllocationPercentage() : 0.0)
-                    .sum();
-
-            summaries.add(EmployeeAllocationSummaryDTO.builder()
-                    .employeeId(first.getEmployee().getId())
-                    .employeeName(first.getEmployee().getName())
-                    .employeeOracleId(first.getEmployee().getOracleId())
-                    .totalAllocationPercentage(totalPercentage)
-                    .projectCount(employeeAllocations.size())
-                    .allocations(allocationDTOs)
-                    .build());
-        }
-
-        // Manual pagination
-        int start = (int) pageable.getOffset();
-        int end = Math.min(start + pageable.getPageSize(), summaries.size());
-        List<EmployeeAllocationSummaryDTO> pageContent = start < summaries.size()
-                ? summaries.subList(start, end) : List.of();
-
-        return new PageImpl<>(pageContent, pageable, summaries.size());
+        return new PageImpl<>(summaries, pageable, employeePage.getTotalElements());
     }
 
     public AllocationDTO getAllocationById(Long id, User currentUser) {
@@ -276,19 +244,13 @@ public class AllocationService {
             return allocationRepository.findAllWithEmployeeAndProject();
         }
 
-        var userEmployee = user.getEmployee();
-        if (userEmployee == null) {
+        List<Employee> accessible = employeeService.getAccessibleEmployees(user);
+        if (accessible.isEmpty()) {
             return List.of();
         }
 
-        String parentTower = userEmployee.getParentTower();
-        String tower = userEmployee.getTower();
-
-        return switch (user.getRole()) {
-            case HEAD -> allocationRepository.findByParentTower(parentTower);
-            case DEPARTMENT_MANAGER, TEAM_LEAD -> allocationRepository.findByTower(tower);
-            default -> List.of();
-        };
+        List<Long> ids = accessible.stream().map(Employee::getId).collect(Collectors.toList());
+        return allocationRepository.findByEmployeeIdsWithDetails(ids);
     }
 
     private boolean hasAccessToAllocation(User user, Allocation allocation) {
@@ -301,15 +263,20 @@ public class AllocationService {
             return false;
         }
 
-        String userTower = userEmployee.getTower();
-        String userParentTower = userEmployee.getParentTower();
         Employee allocationEmployee = allocation.getEmployee();
+        if (userEmployee.getId().equals(allocationEmployee.getId())) {
+            return true;
+        }
 
-        return switch (user.getRole()) {
-            case HEAD -> userParentTower != null && userParentTower.equals(allocationEmployee.getParentTower());
-            case DEPARTMENT_MANAGER, TEAM_LEAD -> userTower != null && userTower.equals(allocationEmployee.getTower());
-            default -> false;
-        };
+        // Walk up the chain from the allocation's employee to check if current user is an ancestor
+        Employee mgr = allocationEmployee.getManager();
+        while (mgr != null) {
+            if (mgr.getId().equals(userEmployee.getId())) {
+                return true;
+            }
+            mgr = mgr.getManager();
+        }
+        return false;
     }
 
     private AllocationDTO toDTO(Allocation allocation) {

@@ -118,6 +118,9 @@ import { Allocation, EmployeeAllocationSummary, Employee, Project, Manager } fro
 
             <!-- Pagination Controls -->
             <div class="pagination-controls">
+              <span class="pagination-info">
+                Showing {{ currentPage() * pageSize() + 1 }}-{{ Math.min((currentPage() + 1) * pageSize(), totalElements()) }} of {{ totalElements() }}
+              </span>
               <button class="btn btn-secondary" (click)="previousPage()" [disabled]="currentPage() === 0 || loading()">
                 ← Previous
               </button>
@@ -667,6 +670,12 @@ import { Allocation, EmployeeAllocationSummary, Employee, Project, Manager } fro
       border-color: var(--primary);
     }
 
+    .pagination-info {
+        color: var(--text-muted);
+        font-size: 14px;
+        white-space: nowrap;
+    }
+
     .btn-secondary {
       background: var(--surface);
       border: 1px solid var(--border);
@@ -862,7 +871,7 @@ export class AllocationsComponent implements OnInit {
   loadManagers(): void {
     this.apiService.getManagers().pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: (managers) => this.managers.set(managers),
-      error: () => {}
+      error: () => { }
     });
   }
 
@@ -1049,7 +1058,7 @@ export class AllocationsComponent implements OnInit {
           this.selectedSummary.totalAllocationPercentage = total;
           this.selectedSummary.projectCount = allocations.length;
         },
-        error: () => {}
+        error: () => { }
       });
   }
 
@@ -1100,7 +1109,7 @@ export class AllocationsComponent implements OnInit {
     this.showDetailProjectDropdown = false;
     this.apiService.getProjects(0, 100).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: (page) => this.projectsList.set(page.content),
-      error: () => {}
+      error: () => { }
     });
     this.showAddAssignment = true;
   }
@@ -1143,11 +1152,11 @@ export class AllocationsComponent implements OnInit {
     this.showCreateProjectDropdown = false;
     this.apiService.getEmployees(0, 100).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: (page) => this.employeesList.set(page.content),
-      error: () => {}
+      error: () => { }
     });
     this.apiService.getProjects(0, 100).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: (page) => this.projectsList.set(page.content),
-      error: () => {}
+      error: () => { }
     });
     this.showCreateModal = true;
   }

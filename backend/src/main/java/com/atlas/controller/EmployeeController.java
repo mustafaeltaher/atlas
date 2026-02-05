@@ -31,12 +31,14 @@ public class EmployeeController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size,
             @RequestParam(required = false) String search,
-            @RequestParam(required = false) Long managerId) {
+            @RequestParam(required = false) Long managerId,
+            @RequestParam(required = false) String tower,
+            @RequestParam(required = false) String status) {
         page = Math.max(0, page);
         size = Math.max(1, Math.min(size, MAX_PAGE_SIZE));
         User currentUser = userDetailsService.getUserByUsername(authentication.getName());
         return ResponseEntity.ok(employeeService.getAllEmployees(currentUser,
-                org.springframework.data.domain.PageRequest.of(page, size), search, managerId));
+                org.springframework.data.domain.PageRequest.of(page, size), search, managerId, tower, status));
     }
 
     @GetMapping("/{id}")

@@ -5,6 +5,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { SidebarComponent } from '../../components/sidebar/sidebar.component';
 import { HeaderComponent } from '../../components/header/header.component';
 import { ApiService } from '../../services/api.service';
+import { AuthService } from '../../services/auth.service';
 import { Project } from '../../models';
 
 @Component({
@@ -60,12 +61,14 @@ import { Project } from '../../models';
             </svg>
             <input type="text" placeholder="Search projects..." [(ngModel)]="searchTerm" (input)="onSearch()">
           </div>
-          <select class="filter-select" [(ngModel)]="towerFilter" (change)="onFilter()">
-            <option value="">All Towers</option>
-            @for (tower of towers(); track tower) {
-              <option [value]="tower">{{ tower }}</option>
-            }
-          </select>
+          @if (isN1Manager()) {
+            <select class="filter-select" [(ngModel)]="towerFilter" (change)="onFilter()">
+              <option value="">All Towers</option>
+              @for (tower of towers(); track tower) {
+                <option [value]="tower">{{ tower }}</option>
+              }
+            </select>
+          }
           <select class="filter-select" [(ngModel)]="statusFilter" (change)="onFilter()">
             <option value="">All Statuses</option>
             <option value="ACTIVE">Active</option>
@@ -163,6 +166,9 @@ import { Project } from '../../models';
           }
             <!-- Pagination Controls -->
             <div class="pagination-controls">
+              <span class="pagination-info">
+                Showing {{ currentPage() * pageSize() + 1 }}-{{ Math.min((currentPage() + 1) * pageSize(), totalElements()) }} of {{ totalElements() }}
+              </span>
               <button class="btn btn-secondary" (click)="previousPage()" [disabled]="currentPage() === 0 || loading()">
                 ← Previous
               </button>
@@ -503,6 +509,12 @@ import { Project } from '../../models';
       background: var(--surface-hover);
     }
 
+    .pagination-info {
+      color: var(--text-muted);
+      font-size: 14px;
+      white-space: nowrap;
+    }
+
     .page-btn.active {
       background: var(--primary);
       color: white;
@@ -604,12 +616,18 @@ export class ProjectsComponent implements OnInit {
   pageSize = signal(10);
   totalElements = signal(0);
   totalPages = signal(0);
+  Math = Math;
 
-  constructor(private apiService: ApiService, private elementRef: ElementRef) { }
+  constructor(private apiService: ApiService, private authService: AuthService, private elementRef: ElementRef) { }
 
   ngOnInit(): void {
     this.loadTowers();
     this.loadProjects();
+  }
+
+  isN1Manager(): boolean {
+    const user = this.authService.currentUser();
+    return user?.role === 'EXECUTIVE';
   }
 
   loadTowers(): void {

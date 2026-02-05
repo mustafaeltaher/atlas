@@ -36,7 +36,7 @@ public class EmployeeDTO {
     private String managerName;
     private Boolean isActive;
 
-    // Current month allocation (calculated)
-    private Double currentAllocation;
+    // Total allocation for current month (sum across all projects)
+    private Double totalAllocation;
     private String allocationStatus; // ACTIVE, BENCH, PROSPECT
 }

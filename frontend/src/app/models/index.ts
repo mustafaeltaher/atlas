@@ -33,9 +33,10 @@ export interface Employee {
     email: string;
     parentTower: string;
     tower: string;
+    managerId?: number;
     managerName?: string;
     isActive: boolean;
-    currentAllocation: number;
+    totalAllocation: number;
     allocationStatus: 'ACTIVE' | 'BENCH' | 'PROSPECT';
 }
 
