@@ -1,5 +1,5 @@
 import { Injectable } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { Employee, Project, Allocation, EmployeeAllocationSummary, DashboardStats, Page, Manager } from '../models';
 
@@ -33,16 +33,41 @@ export class ApiService {
         return this.http.get<Page<Employee>>(url);
     }
 
-    getEmployeeTowers(): Observable<{parentTowers: string[], towers: string[]}> {
-        return this.http.get<{parentTowers: string[], towers: string[]}>(`${this.API_URL}/employees/towers`);
+    getEmployeeTowers(managerId?: number, status?: string): Observable<{ parentTowers: string[], towers: string[] }> {
+        let url = `${this.API_URL}/employees/towers?`;
+        if (managerId) url += `managerId=${managerId}&`;
+        if (status) url += `status=${encodeURIComponent(status)}&`;
+        return this.http.get<{ parentTowers: string[], towers: string[] }>(url);
+    }
+
+    getEmployeeStatuses(managerId?: number, tower?: string): Observable<string[]> {
+        let params = new HttpParams();
+        if (managerId) params = params.set('managerId', managerId.toString());
+        if (tower) params = params.set('tower', tower);
+        return this.http.get<string[]>(`${this.API_URL}/employees/statuses`, { params });
+    }
+
+    getProjectStatuses(tower?: string): Observable<string[]> {
+        let params = new HttpParams();
+        if (tower) params = params.set('tower', tower);
+        return this.http.get<string[]>(`${this.API_URL}/projects/statuses`, { params });
+    }
+
+    getAllocationStatuses(managerId?: number): Observable<string[]> {
+        let params = new HttpParams();
+        if (managerId) params = params.set('managerId', managerId.toString());
+        return this.http.get<string[]>(`${this.API_URL}/allocations/statuses`, { params });
     }
 
     getEmployee(id: number): Observable<Employee> {
         return this.http.get<Employee>(`${this.API_URL}/employees/${id}`);
     }
 
-    getManagers(): Observable<Manager[]> {
-        return this.http.get<Manager[]>(`${this.API_URL}/employees/managers`);
+    getManagers(tower?: string, status?: string): Observable<Manager[]> {
+        let url = `${this.API_URL}/employees/managers?`;
+        if (tower) url += `tower=${encodeURIComponent(tower)}&`;
+        if (status) url += `status=${encodeURIComponent(status)}&`;
+        return this.http.get<Manager[]>(url);
     }
 
     importEmployees(file: File): Observable<any> {
@@ -60,8 +85,10 @@ export class ApiService {
         return this.http.get<Page<Project>>(url);
     }
 
-    getProjectTowers(): Observable<string[]> {
-        return this.http.get<string[]>(`${this.API_URL}/projects/towers`);
+    getProjectTowers(status?: string): Observable<string[]> {
+        let url = `${this.API_URL}/projects/towers?`;
+        if (status) url += `status=${encodeURIComponent(status)}&`;
+        return this.http.get<string[]>(url);
     }
 
     getProject(id: number): Observable<Project> {

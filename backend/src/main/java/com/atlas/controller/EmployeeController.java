@@ -48,16 +48,32 @@ public class EmployeeController {
     }
 
     @GetMapping("/managers")
-    public ResponseEntity<List<EmployeeDTO>> getManagers(Authentication authentication) {
+    public ResponseEntity<List<EmployeeDTO>> getManagers(
+            Authentication authentication,
+            @RequestParam(required = false) String tower,
+            @RequestParam(required = false) String status) {
         User currentUser = userDetailsService.getUserByUsername(authentication.getName());
-        return ResponseEntity.ok(employeeService.getAccessibleManagers(currentUser));
+        return ResponseEntity.ok(employeeService.getAccessibleManagers(currentUser, tower, status));
     }
 
     @GetMapping("/towers")
-    public ResponseEntity<Map<String, List<String>>> getTowers() {
+    public ResponseEntity<Map<String, List<String>>> getTowers(
+            Authentication authentication,
+            @RequestParam(required = false) Long managerId,
+            @RequestParam(required = false) String status) {
+        User currentUser = userDetailsService.getUserByUsername(authentication.getName());
         return ResponseEntity.ok(Map.of(
                 "parentTowers", employeeService.getDistinctParentTowers(),
-                "towers", employeeService.getDistinctTowers()));
+                "towers", employeeService.getDistinctTowers(currentUser, managerId, status)));
+    }
+
+    @GetMapping("/statuses")
+    public ResponseEntity<List<String>> getStatuses(
+            Authentication authentication,
+            @RequestParam(required = false) Long managerId,
+            @RequestParam(required = false) String tower) {
+        User currentUser = userDetailsService.getUserByUsername(authentication.getName());
+        return ResponseEntity.ok(employeeService.getDistinctStatuses(currentUser, managerId, tower));
     }
 
     @PostMapping("/import")

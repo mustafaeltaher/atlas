@@ -54,8 +54,9 @@ public class AllocationService {
 
         if (currentUser.getRole() == User.Role.SYSTEM_ADMIN || currentUser.getRole() == User.Role.EXECUTIVE) {
             // DATABASE-LEVEL pagination for admin/executive with all filters
-            org.springframework.data.domain.Page<Allocation> allocationPage = allocationRepository.findAllocationsWithFilters(
-                    searchParam, statusEnum, managerId, pageable);
+            org.springframework.data.domain.Page<Allocation> allocationPage = allocationRepository
+                    .findAllocationsWithFilters(
+                            searchParam, statusEnum, managerId, pageable);
             return allocationPage.map(this::toDTO);
         }
 
@@ -70,8 +71,9 @@ public class AllocationService {
                 .collect(Collectors.toList());
 
         // DATABASE-LEVEL pagination for non-admin managers with all filters
-        org.springframework.data.domain.Page<Allocation> allocationPage = allocationRepository.findAllocationsWithFiltersByEmployeeIds(
-                accessibleIds, searchParam, statusEnum, managerId, pageable);
+        org.springframework.data.domain.Page<Allocation> allocationPage = allocationRepository
+                .findAllocationsWithFiltersByEmployeeIds(
+                        accessibleIds, searchParam, statusEnum, managerId, pageable);
         return allocationPage.map(this::toDTO);
     }
 
@@ -141,7 +143,8 @@ public class AllocationService {
 
                     double totalPercentage = allocationDTOs.stream()
                             .mapToDouble(dto -> dto.getAllocationPercentage() != null
-                                    ? dto.getAllocationPercentage() : 0.0)
+                                    ? dto.getAllocationPercentage()
+                                    : 0.0)
                             .sum();
 
                     return EmployeeAllocationSummaryDTO.builder()
@@ -268,7 +271,8 @@ public class AllocationService {
             return true;
         }
 
-        // Walk up the chain from the allocation's employee to check if current user is an ancestor
+        // Walk up the chain from the allocation's employee to check if current user is
+        // an ancestor
         Employee mgr = allocationEmployee.getManager();
         while (mgr != null) {
             if (mgr.getId().equals(userEmployee.getId())) {
@@ -326,5 +330,11 @@ public class AllocationService {
             }
         }
         return percentage;
+    }
+
+    public List<String> getDistinctStatuses(Long managerId) {
+        return allocationRepository.findDistinctStatusesByManager(managerId).stream()
+                .map(Enum::name)
+                .collect(Collectors.toList());
     }
 }

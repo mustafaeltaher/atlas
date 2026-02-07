@@ -55,6 +55,11 @@ public class AllocationController {
                 PageRequest.of(page, size), search, status, managerId));
     }
 
+    @GetMapping("/statuses")
+    public ResponseEntity<List<String>> getStatuses(@RequestParam(required = false) Long managerId) {
+        return ResponseEntity.ok(allocationService.getDistinctStatuses(managerId));
+    }
+
     @GetMapping("/{id}")
     public ResponseEntity<AllocationDTO> getAllocationById(@PathVariable Long id, Authentication authentication) {
         User currentUser = userDetailsService.getUserByUsername(authentication.getName());

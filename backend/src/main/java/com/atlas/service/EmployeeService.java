@@ -168,26 +168,32 @@ public class EmployeeService {
     private EmployeeDTO toDTO(Employee employee, List<Allocation> allocations) {
         int currentMonth = LocalDate.now().getMonthValue();
 
+        boolean hasActive = false;
+        boolean hasProspect = false;
         double totalAllocation = 0.0;
-        String status = "BENCH";
 
         for (Allocation allocation : allocations) {
             String alloc = allocation.getAllocationForMonth(currentMonth);
             if (alloc != null) {
                 if (alloc.equalsIgnoreCase("B")) {
-                    status = "BENCH";
+                    // Bench - ignored for status calculation purposes
                 } else if (alloc.equalsIgnoreCase("P")) {
-                    if (status.equals("BENCH")) {
-                        status = "PROSPECT";
-                    }
+                    hasProspect = true;
                 } else {
                     try {
                         totalAllocation += Double.parseDouble(alloc);
-                        status = "ACTIVE";
+                        hasActive = true;
                     } catch (NumberFormatException ignored) {
                     }
                 }
             }
+        }
+
+        String status = "BENCH";
+        if (hasActive) {
+            status = "ACTIVE";
+        } else if (hasProspect) {
+            status = "PROSPECT";
         }
 
         return EmployeeDTO.builder()
@@ -227,28 +233,73 @@ public class EmployeeService {
         return employeeRepository.findDistinctParentTowers();
     }
 
-    public List<String> getDistinctTowers() {
-        return employeeRepository.findDistinctTowers();
+    public List<String> getDistinctStatuses(User currentUser, Long managerId, String tower) {
+        return getFilteredEmployeeStream(currentUser, managerId, tower, null)
+                .map(EmployeeDTO::getAllocationStatus)
+                .distinct()
+                .sorted()
+                .collect(Collectors.toList());
     }
 
-    public List<EmployeeDTO> getAccessibleManagers(User currentUser) {
-        if (currentUser.getRole() == User.Role.SYSTEM_ADMIN || currentUser.getRole() == User.Role.EXECUTIVE) {
-            return employeeRepository.findActiveManagers().stream()
-                    .map(m -> EmployeeDTO.builder().id(m.getId()).name(m.getName()).oracleId(m.getOracleId()).build())
-                    .collect(Collectors.toList());
-        }
-
-        // Get all employees in the reporting chain, then filter to those who are
-        // managers
-        List<Employee> accessible = getAccessibleEmployees(currentUser);
-        Long currentEmployeeId = currentUser.getEmployee() != null ? currentUser.getEmployee().getId() : null;
-
-        return accessible.stream()
-                .filter(e -> !e.getId().equals(currentEmployeeId))
-                .filter(e -> accessible.stream()
-                        .anyMatch(sub -> sub.getManager() != null && sub.getManager().getId().equals(e.getId())))
-                .map(m -> EmployeeDTO.builder().id(m.getId()).name(m.getName()).oracleId(m.getOracleId()).build())
+    public List<String> getDistinctTowers(User currentUser, Long managerId, String status) {
+        return getFilteredEmployeeStream(currentUser, managerId, null, status)
+                .map(EmployeeDTO::getTower)
+                .filter(t -> t != null && !t.isEmpty())
+                .distinct()
+                .sorted()
                 .collect(Collectors.toList());
+    }
+
+    public List<EmployeeDTO> getAccessibleManagers(User currentUser, String tower, String status) {
+        // For managers list: we want to find managers who have employees matching the
+        // filters
+        // This is slightly different from "find employees matching filters"
+        // But previously we defined it as: "Managers who have accessible reports
+        // matching the criteria"
+
+        List<Employee> accessible = getAccessibleEmployees(currentUser);
+
+        // 1. Identify which employees match the criteria
+        List<EmployeeDTO> matchingEmployees = getFilteredEmployeeStream(currentUser, null, tower, status)
+                .collect(Collectors.toList());
+
+        // 2. Collect their managers
+        return matchingEmployees.stream()
+                .map(dto -> {
+                    // We need the Employee entity to get the manager, but DTO only has ID/Name
+                    // Map back from filtered ID to original list
+                    return accessible.stream().filter(e -> e.getId().equals(dto.getId())).findFirst().orElse(null);
+                })
+                .filter(e -> e != null && e.getManager() != null)
+                .map(Employee::getManager)
+                .distinct()
+                .filter(m -> m.getIsActive()) // ensure manager is active
+                .map(m -> EmployeeDTO.builder()
+                        .id(m.getId())
+                        .name(m.getName())
+                        .oracleId(m.getOracleId())
+                        .build())
+                .sorted((m1, m2) -> m1.getName().compareTo(m2.getName()))
+                .collect(Collectors.toList());
+    }
+
+    private java.util.stream.Stream<EmployeeDTO> getFilteredEmployeeStream(User currentUser, Long managerId,
+            String tower, String status) {
+        List<Employee> accessible = getAccessibleEmployees(currentUser);
+
+        // Filter by structural attributes first
+        List<Employee> structurallyFiltered = accessible.stream()
+                .filter(e -> managerId == null || (e.getManager() != null && e.getManager().getId().equals(managerId)))
+                .filter(e -> tower == null || (e.getTower() != null && e.getTower().equals(tower)))
+                .collect(Collectors.toList());
+
+        // Batch fetch allocations for these employees
+        Map<Long, List<Allocation>> allocationsByEmployee = batchFetchAllocations(structurallyFiltered);
+
+        // Map to DTO (calculates status) and filter by status
+        return structurallyFiltered.stream()
+                .map(e -> toDTO(e, allocationsByEmployee.getOrDefault(e.getId(), Collections.emptyList())))
+                .filter(dto -> status == null || dto.getAllocationStatus().equalsIgnoreCase(status));
     }
 
     @Transactional

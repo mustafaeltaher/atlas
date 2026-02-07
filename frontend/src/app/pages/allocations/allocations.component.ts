@@ -46,9 +46,9 @@ import { Allocation, EmployeeAllocationSummary, Employee, Project, Manager } fro
           </div>
           <select class="filter-select" [(ngModel)]="statusFilter" (change)="onFilter()">
             <option value="">All Statuses</option>
-            <option value="ACTIVE">Active</option>
-            <option value="PENDING">Pending</option>
-            <option value="COMPLETED">Completed</option>
+            @for (status of statuses(); track status) {
+              <option [value]="status">{{ status | titlecase }}</option>
+            }
           </select>
           <select class="filter-select" [(ngModel)]="managerFilter" (change)="onFilter()">
             <option value="">All Managers</option>
@@ -157,7 +157,7 @@ import { Allocation, EmployeeAllocationSummary, Employee, Project, Manager } fro
                     <line x1="12" y1="5" x2="12" y2="19"></line>
                     <line x1="5" y1="12" x2="19" y2="12"></line>
                   </svg>
-                  Add Assignment
+                  Create Allocation
                 </button>
               </div>
 
@@ -819,6 +819,7 @@ export class AllocationsComponent implements OnInit {
   managers = signal<Manager[]>([]);
   employeesList = signal<Employee[]>([]);
   projectsList = signal<Project[]>([]);
+  statuses = signal<string[]>([]);
   loading = signal(true);
 
   // Search and filter state
@@ -865,12 +866,22 @@ export class AllocationsComponent implements OnInit {
 
   ngOnInit(): void {
     this.loadManagers();
+    this.loadStatuses();
     this.loadAllocations();
   }
 
   loadManagers(): void {
-    this.apiService.getManagers().pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+    const status = this.statusFilter || undefined;
+    this.apiService.getManagers(undefined, status).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: (managers) => this.managers.set(managers),
+      error: () => { }
+    });
+  }
+
+  loadStatuses(): void {
+    const managerId = this.managerFilter ? Number(this.managerFilter) : undefined;
+    this.apiService.getAllocationStatuses(managerId).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: (statuses) => this.statuses.set(statuses),
       error: () => { }
     });
   }
@@ -920,6 +931,8 @@ export class AllocationsComponent implements OnInit {
   onFilter(): void {
     this.currentPage.set(0);
     this.loadAllocations();
+    this.loadManagers();
+    this.loadStatuses();
   }
 
   nextPage(): void {

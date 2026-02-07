@@ -28,6 +28,7 @@ export interface Employee {
     hiringType: string;
     location: string;
     legalEntity: string;
+    costCenter: string;
     nationality: string;
     hireDate: string;
     email: string;

@@ -2,7 +2,7 @@ import { Component, OnInit, signal, ElementRef, DestroyRef, inject } from '@angu
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { switchMap } from 'rxjs';
+import { switchMap, Subject } from 'rxjs';
 import { SidebarComponent } from '../../components/sidebar/sidebar.component';
 import { HeaderComponent } from '../../components/header/header.component';
 import { ApiService } from '../../services/api.service';
@@ -48,9 +48,9 @@ import { Employee, Manager } from '../../models';
 
           <select class="form-input filter-select" [(ngModel)]="statusFilter" (ngModelChange)="filterEmployees()">
             <option value="">All Status</option>
-            <option value="ACTIVE">Active</option>
-            <option value="BENCH">Bench</option>
-            <option value="PROSPECT">Prospect</option>
+            @for (status of statuses(); track status) {
+              <option [value]="status">{{ status | titlecase }}</option>
+            }
           </select>
 
           <select class="form-input filter-select" [(ngModel)]="managerFilter" (ngModelChange)="filterEmployees()">
@@ -87,6 +87,7 @@ import { Employee, Manager } from '../../models';
                   <th>Primary Skill</th>
                   <th>Total Allocation</th>
                   <th>Status</th>
+                  <th>Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -126,10 +127,18 @@ import { Employee, Manager } from '../../models';
                         {{ emp.allocationStatus }}
                       </span>
                     </td>
+                    <td>
+                      <button class="icon-btn" (click)="viewDetails(emp)" title="View Details">
+                        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+                          <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                          <circle cx="12" cy="12" r="3"></circle>
+                        </svg>
+                      </button>
+                    </td>
                   </tr>
                 } @empty {
                   <tr>
-                    <td colspan="10" class="empty-state">No employees found</td>
+                    <td colspan="11" class="empty-state">No employees found</td>
                   </tr>
                 }
               </tbody>
@@ -159,6 +168,117 @@ import { Employee, Manager } from '../../models';
               <button class="btn btn-secondary" (click)="nextPage()" [disabled]="currentPage() >= totalPages() - 1 || loading()">
                 Next →
               </button>
+            </div>
+          </div>
+        }
+
+        <!-- Employee Details Modal -->
+        @if (selectedEmployee()) {
+          <div class="modal-overlay" (click)="closeDetails()">
+            <div class="modal-content" (click)="$event.stopPropagation()">
+              <div class="modal-header">
+                <h2>Employee Details</h2>
+              </div>
+              <div class="modal-body">
+                <div class="detail-section">
+                  <h3>Personal Information</h3>
+                  <div class="detail-grid">
+                    <div class="detail-item">
+                      <label>Full Name</label>
+                      <span>{{ selectedEmployee()?.name }}</span>
+                    </div>
+                    <div class="detail-item">
+                      <label>Email</label>
+                      <span>{{ selectedEmployee()?.email }}</span>
+                    </div>
+                    <div class="detail-item">
+                      <label>Oracle ID</label>
+                      <span>{{ selectedEmployee()?.oracleId || 'N/A' }}</span>
+                    </div>
+                    <div class="detail-item">
+                      <label>Gender</label>
+                      <span>{{ selectedEmployee()?.gender || 'N/A' }}</span>
+                    </div>
+                    <div class="detail-item">
+                      <label>Nationality</label>
+                      <span>{{ selectedEmployee()?.nationality || 'N/A' }}</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="detail-section">
+                  <h3>Job Details</h3>
+                  <div class="detail-grid">
+                    <div class="detail-item">
+                      <label>Title</label>
+                      <span>{{ selectedEmployee()?.title }}</span>
+                    </div>
+                    <div class="detail-item">
+                      <label>Grade</label>
+                      <span>{{ selectedEmployee()?.grade }}</span>
+                    </div>
+                    <div class="detail-item">
+                      <label>Job Level</label>
+                      <span>{{ selectedEmployee()?.jobLevel || 'N/A' }}</span>
+                    </div>
+                    <div class="detail-item">
+                      <label>Hiring Type</label>
+                      <span>{{ selectedEmployee()?.hiringType || 'N/A' }}</span>
+                    </div>
+                    <div class="detail-item">
+                      <label>Hire Date</label>
+                      <span>{{ selectedEmployee()?.hireDate | date:'mediumDate' }}</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="detail-section">
+                  <h3>Organization</h3>
+                  <div class="detail-grid">
+                    <div class="detail-item">
+                      <label>Tower</label>
+                      <span>{{ selectedEmployee()?.tower }}</span>
+                    </div>
+                    <div class="detail-item">
+                      <label>Parent Tower</label>
+                      <span>{{ selectedEmployee()?.parentTower || 'N/A' }}</span>
+                    </div>
+                    <div class="detail-item">
+                      <label>Manager</label>
+                      <span>{{ selectedEmployee()?.managerName || 'N/A' }}</span>
+                    </div>
+                    <div class="detail-item">
+                      <label>Legal Entity</label>
+                      <span>{{ selectedEmployee()?.legalEntity || 'N/A' }}</span>
+                    </div>
+                    <div class="detail-item">
+                      <label>Location</label>
+                      <span>{{ selectedEmployee()?.location || 'N/A' }}</span>
+                    </div>
+                    <div class="detail-item">
+                      <label>Cost Center</label>
+                      <span>{{ selectedEmployee()?.costCenter || 'N/A' }}</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="detail-section">
+                  <h3>Skills</h3>
+                  <div class="detail-grid">
+                    <div class="detail-item">
+                      <label>Primary Skill</label>
+                      <span>{{ selectedEmployee()?.primarySkill || 'N/A' }}</span>
+                    </div>
+                    <div class="detail-item">
+                      <label>Secondary Skill</label>
+                      <span>{{ selectedEmployee()?.secondarySkill || 'N/A' }}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div class="modal-actions">
+                <button class="btn btn-primary" (click)="closeDetails()">Close</button>
+              </div>
             </div>
           </div>
         }
@@ -313,6 +433,125 @@ import { Employee, Manager } from '../../models';
       opacity: 0.5;
       cursor: not-allowed;
     }
+
+    .icon-btn {
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      cursor: pointer;
+      padding: 4px;
+      border-radius: 4px;
+      transition: color 0.2s;
+    }
+
+    .icon-btn:hover {
+      color: var(--primary);
+      background: var(--surface-hover);
+    }
+
+    /* Modal Styles */
+    .modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.7);
+      z-index: 1000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      animation: fadeIn 0.2s ease-out;
+    }
+
+    .modal-content {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      width: 90%;
+      max-width: 800px;
+      max-height: 90vh;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+      animation: slideUp 0.3s ease-out;
+    }
+
+    .modal-header {
+      padding: 24px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-shrink: 0;
+    }
+
+    .modal-header h2 {
+      margin: 0;
+      font-size: 20px;
+    }
+
+    .modal-actions {
+      padding: 16px 24px;
+      /* Removed border-top */
+      display: flex;
+      justify-content: flex-end;
+      gap: 12px;
+      background: var(--bg-card);
+      border-bottom-left-radius: 12px;
+      border-bottom-right-radius: 12px;
+      flex-shrink: 0;
+    }
+
+    .modal-body {
+      padding: 24px;
+      overflow-y: auto;
+      flex: 1;
+    }
+
+    .detail-section {
+      margin-bottom: 32px;
+    }
+
+    .detail-section:last-child {
+      margin-bottom: 0;
+    }
+
+    .detail-section h3 {
+      font-size: 16px;
+      color: var(--text-muted);
+      margin-bottom: 16px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      font-weight: 600;
+    }
+
+    .detail-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+      gap: 20px;
+    }
+
+    .detail-item {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .detail-item label {
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+
+    .detail-item span {
+      font-weight: 500;
+      color: var(--text);
+    }
+
+    @keyframes slideUp {
+      from { transform: translateY(20px); opacity: 0; }
+      to { transform: translateY(0); opacity: 1; }
+    }
   `]
 })
 export class EmployeesComponent implements OnInit {
@@ -321,7 +560,12 @@ export class EmployeesComponent implements OnInit {
   employees = signal<Employee[]>([]);
   filteredEmployees = signal<Employee[]>([]);
   towers = signal<string[]>([]);
+  statuses = signal<string[]>([]);
   managers = signal<Manager[]>([]);
+
+  // Search and Filter signals
+  currentSearch = signal<string>('');
+  private searchSubject = new Subject<string>();
   loading = signal(true);
   Math = Math; // Expose Math for template use
 
@@ -334,6 +578,16 @@ export class EmployeesComponent implements OnInit {
   totalElements = signal(0);
   totalPages = signal(0);
 
+  selectedEmployee = signal<Employee | null>(null);
+
+  viewDetails(employee: Employee): void {
+    this.selectedEmployee.set(employee);
+  }
+
+  closeDetails(): void {
+    this.selectedEmployee.set(null);
+  }
+
 
   constructor(
     private apiService: ApiService,
@@ -344,6 +598,7 @@ export class EmployeesComponent implements OnInit {
   ngOnInit(): void {
     this.loadManagers();
     this.loadTowers();
+    this.loadStatuses();
     // Small delay to ensure auth context is fully initialized before loading employees
     setTimeout(() => this.loadEmployees(), 100);
   }
@@ -354,7 +609,9 @@ export class EmployeesComponent implements OnInit {
   }
 
   loadManagers(): void {
-    this.apiService.getManagers().pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+    const tower = this.towerFilter || undefined;
+    const status = this.statusFilter || undefined;
+    this.apiService.getManagers(tower, status).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: (managers) => this.managers.set(managers),
       error: () => { }
     });
@@ -362,7 +619,9 @@ export class EmployeesComponent implements OnInit {
 
   loadTowers(): void {
     if (this.isN1Manager()) {
-      this.apiService.getEmployeeTowers().pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      const managerId = this.managerFilter ? Number(this.managerFilter) : undefined;
+      const status = this.statusFilter || undefined;
+      this.apiService.getEmployeeTowers(managerId, status).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
         next: (data) => this.towers.set(data.towers),
         error: () => { }
       });
@@ -439,9 +698,33 @@ export class EmployeesComponent implements OnInit {
     return range;
   }
 
+  loadStatuses(): void {
+    const managerId = this.managerFilter ? parseInt(this.managerFilter) : undefined;
+    const tower = this.towerFilter || undefined;
+
+    this.apiService.getEmployeeStatuses(managerId, tower)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (statuses) => this.statuses.set(statuses),
+        error: (err) => console.error('Failed to load statuses', err)
+      });
+  }
+
   filterEmployees(): void {
     this.currentPage.set(0);
     this.loadEmployees();
+
+    // cascading filters
+    // If manager changes, reload towers and statuses
+    // But wait, if I change Status, I should reload Managers and Towers?
+    // Using a simple approach: Reload all "other" dropdowns based on current selection
+
+    // We need to be careful not to reset the selection if it's still valid, 
+    // but the options might change.
+
+    this.loadManagers();
+    this.loadTowers();
+    this.loadStatuses();
   }
 
   getInitials(name: string): string {

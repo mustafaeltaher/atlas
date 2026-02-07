@@ -221,4 +221,28 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long>, JpaSp
                         @Param("parentTower") String parentTower,
                         @Param("tower") String tower,
                         Pageable pageable);
+
+        // Faceted Search: Get Towers based on filters
+        @Query("SELECT DISTINCT e.tower FROM Employee e WHERE e.tower IS NOT NULL " +
+                        "AND (:managerId IS NULL OR e.manager.id = :managerId) " +
+                        "AND (:status IS NULL " +
+                        "  OR EXISTS (SELECT a FROM Allocation a WHERE a.employee = e AND a.status = :status) " +
+                        "  OR (:status = 'BENCH' AND NOT EXISTS (SELECT a FROM Allocation a WHERE a.employee = e))) " +
+                        "AND e.isActive = true")
+        List<String> findDistinctTowersByFilters(
+                        @Param("managerId") Long managerId,
+                        @Param("status") String status);
+
+        // Faceted Search: Get Managers based on filters
+        @Query("SELECT DISTINCT m FROM Employee m WHERE m.isActive = true " +
+                        "AND EXISTS (SELECT e FROM Employee e WHERE e.manager = m AND e.isActive = true " +
+                        "  AND (:tower IS NULL OR e.tower = :tower) " +
+                        "  AND (:status IS NULL " +
+                        "    OR EXISTS (SELECT a FROM Allocation a WHERE a.employee = e AND a.status = :status) " +
+                        "    OR (:status = 'BENCH' AND NOT EXISTS (SELECT a FROM Allocation a WHERE a.employee = e))) "
+                        +
+                        ")")
+        List<Employee> findManagersByFilters(
+                        @Param("tower") String tower,
+                        @Param("status") String status);
 }

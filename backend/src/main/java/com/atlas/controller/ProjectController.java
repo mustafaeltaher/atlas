@@ -38,8 +38,21 @@ public class ProjectController {
     }
 
     @GetMapping("/towers")
-    public ResponseEntity<java.util.List<String>> getTowers() {
-        return ResponseEntity.ok(projectService.getDistinctTowers());
+    public ResponseEntity<java.util.List<String>> getTowers(@RequestParam(required = false) String status) {
+        com.atlas.entity.Project.ProjectStatus projectStatus = null;
+        if (status != null && !status.isEmpty()) {
+            try {
+                projectStatus = com.atlas.entity.Project.ProjectStatus.valueOf(status);
+            } catch (IllegalArgumentException e) {
+                // ignore invalid status
+            }
+        }
+        return ResponseEntity.ok(projectService.getDistinctTowers(projectStatus));
+    }
+
+    @GetMapping("/statuses")
+    public ResponseEntity<java.util.List<String>> getStatuses(@RequestParam(required = false) String tower) {
+        return ResponseEntity.ok(projectService.getDistinctStatuses(tower));
     }
 
     @GetMapping("/{id}")

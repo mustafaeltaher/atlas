@@ -54,7 +54,8 @@ public class ProjectService {
             org.springframework.data.domain.Page<Project> projectPage = projectRepository.searchProjects(
                     searchParam, towerParam, statusEnum, pageable);
             Map<Long, List<Allocation>> allocationsByProject = batchFetchAllocations(projectPage.getContent());
-            return projectPage.map(p -> toDTO(p, allocationsByProject.getOrDefault(p.getId(), Collections.emptyList())));
+            return projectPage
+                    .map(p -> toDTO(p, allocationsByProject.getOrDefault(p.getId(), Collections.emptyList())));
         }
 
         // For non-admin managers: get accessible project IDs first
@@ -74,8 +75,14 @@ public class ProjectService {
         return projectPage.map(p -> toDTO(p, allocationsByProject.getOrDefault(p.getId(), Collections.emptyList())));
     }
 
-    public List<String> getDistinctTowers() {
-        return projectRepository.findDistinctTowers();
+    public List<String> getDistinctTowers(Project.ProjectStatus status) {
+        return projectRepository.findDistinctTowersByStatus(status);
+    }
+
+    public List<String> getDistinctStatuses(String tower) {
+        return projectRepository.findDistinctStatusesByTower(tower).stream()
+                .map(Enum::name)
+                .collect(Collectors.toList());
     }
 
     public ProjectDTO getProjectById(Long id, User currentUser) {

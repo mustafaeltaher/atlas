@@ -71,10 +71,9 @@ import { Project } from '../../models';
           }
           <select class="filter-select" [(ngModel)]="statusFilter" (change)="onFilter()">
             <option value="">All Statuses</option>
-            <option value="ACTIVE">Active</option>
-            <option value="COMPLETED">Completed</option>
-            <option value="ON_HOLD">On Hold</option>
-            <option value="PLANNED">Planned</option>
+            @for (status of statuses(); track status) {
+              <option [value]="status">{{ status | titlecase }}</option>
+            }
           </select>
         </div>
 
@@ -598,6 +597,7 @@ export class ProjectsComponent implements OnInit {
 
   projects = signal<Project[]>([]);
   towers = signal<string[]>([]);
+  statuses = signal<string[]>([]);
   loading = signal(true);
   viewMode = signal<'grid' | 'list'>('list');
   showModal = false;
@@ -622,6 +622,7 @@ export class ProjectsComponent implements OnInit {
 
   ngOnInit(): void {
     this.loadTowers();
+    this.loadStatuses();
     this.loadProjects();
   }
 
@@ -631,9 +632,18 @@ export class ProjectsComponent implements OnInit {
   }
 
   loadTowers(): void {
-    this.apiService.getProjectTowers().pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+    const status = this.statusFilter || undefined;
+    this.apiService.getProjectTowers(status).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: (towers) => this.towers.set(towers),
       error: (err) => console.error('Failed to load towers', err)
+    });
+  }
+
+  loadStatuses(): void {
+    const tower = this.towerFilter || undefined;
+    this.apiService.getProjectStatuses(tower).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: (statuses) => this.statuses.set(statuses),
+      error: (err) => console.error('Failed to load statuses', err)
     });
   }
 
@@ -713,6 +723,8 @@ export class ProjectsComponent implements OnInit {
   onFilter(): void {
     this.currentPage.set(0);
     this.loadProjects();
+    this.loadTowers();
+    this.loadStatuses();
   }
 
   createProject(): void {
