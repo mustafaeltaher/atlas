@@ -85,4 +85,12 @@ public class Employee {
     @Column(name = "is_active")
     @Builder.Default
     private Boolean isActive = true;
+
+    @Enumerated(EnumType.STRING)
+    @Builder.Default
+    private EmployeeStatus status = EmployeeStatus.ACTIVE;
+
+    public enum EmployeeStatus {
+        ACTIVE, MATERNITY, LONG_LEAVE, RESIGNED
+    }
 }

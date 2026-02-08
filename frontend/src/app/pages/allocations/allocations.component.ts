@@ -96,7 +96,11 @@ import { Allocation, EmployeeAllocationSummary, Employee, Project, Manager } fro
                                [style.width.%]="Math.min(summary.totalAllocationPercentage, 100)">
                           </div>
                         </div>
-                        <span class="alloc-value">{{ summary.totalAllocationPercentage }}%</span>
+                        @if (summary.totalAllocationPercentage === 0) {
+                          <span class="badge-bench">Bench</span>
+                        } @else {
+                          <span class="alloc-value">{{ summary.totalAllocationPercentage }}%</span>
+                        }
                       </div>
                     </td>
                     <td>
@@ -194,23 +198,23 @@ import { Allocation, EmployeeAllocationSummary, Employee, Project, Manager } fro
                       </div>
                     </div>
                     <div class="form-group">
-                      <label class="form-label">Allocation</label>
-                      <select class="form-input" [(ngModel)]="newDetailAllocation.currentMonthAllocation" name="detailAllocation">
-                        <option value="1">100%</option>
-                        <option value="0.5">50%</option>
-                        <option value="0.25">25%</option>
-                        <option value="B">Bench</option>
-                        <option value="P">Prospect</option>
-                      </select>
-                    </div>
-                    <div class="form-group">
                       <label class="form-label">Status</label>
-                      <select class="form-input" [(ngModel)]="newDetailAllocation.status" name="detailStatus">
+                      <select class="form-input" [(ngModel)]="newDetailAllocation.status" name="detailStatus" (change)="onDetailStatusChange()">
                         <option value="ACTIVE">Active</option>
-                        <option value="PENDING">Pending</option>
-                        <option value="COMPLETED">Completed</option>
+                        <option value="PROSPECT">Prospect</option>
                       </select>
                     </div>
+                    @if (newDetailAllocation.status !== 'PROSPECT') {
+                      <div class="form-group">
+                        <label class="form-label">Allocation</label>
+                        <select class="form-input" [(ngModel)]="newDetailAllocation.currentMonthAllocation" name="detailAllocation">
+                          <option value="1">100%</option>
+                          <option value="0.75">75%</option>
+                          <option value="0.5">50%</option>
+                          <option value="0.25">25%</option>
+                        </select>
+                      </div>
+                    }
                   </div>
                   <div class="form-row">
                     <div class="form-group">
@@ -247,14 +251,15 @@ import { Allocation, EmployeeAllocationSummary, Employee, Project, Manager } fro
                       <td>{{ alloc.projectName }}</td>
                       <td>{{ alloc.confirmedAssignment || '-' }}</td>
                       <td>
-                        @if (editingAllocationId === alloc.id) {
+                        @if (editingAllocationId === alloc.id && alloc.status !== 'PROSPECT') {
                           <select class="form-input form-input-sm" [(ngModel)]="editAllocationValue" name="inlineEdit">
                             <option value="1">100%</option>
+                            <option value="0.75">75%</option>
                             <option value="0.5">50%</option>
                             <option value="0.25">25%</option>
-                            <option value="B">Bench</option>
-                            <option value="P">Prospect</option>
                           </select>
+                        } @else if (alloc.status === 'PROSPECT') {
+                          <span class="prospect-badge">Prospect</span>
                         } @else {
                           <div class="allocation-cell">
                             <div class="progress-bar">
@@ -272,8 +277,7 @@ import { Allocation, EmployeeAllocationSummary, Employee, Project, Manager } fro
                       <td>
                         <span class="status-pill"
                               [class.active]="alloc.status === 'ACTIVE'"
-                              [class.pending]="alloc.status === 'PENDING'"
-                              [class.completed]="alloc.status === 'COMPLETED'">
+                              [class.prospect]="alloc.status === 'PROSPECT'">
                           {{ alloc.status }}
                         </span>
                       </td>
@@ -387,15 +391,23 @@ import { Allocation, EmployeeAllocationSummary, Employee, Project, Manager } fro
                   </div>
                 </div>
                 <div class="form-group">
-                  <label class="form-label">Allocation (current month)</label>
-                  <select class="form-input" [(ngModel)]="newAllocation.currentMonthAllocation" name="allocation">
-                    <option value="1">100%</option>
-                    <option value="0.5">50%</option>
-                    <option value="0.25">25%</option>
-                    <option value="B">Bench</option>
-                    <option value="P">Prospect</option>
+                  <label class="form-label">Status</label>
+                  <select class="form-input" [(ngModel)]="newAllocation.status" name="status" (change)="onCreateStatusChange()">
+                    <option value="ACTIVE">Active</option>
+                    <option value="PROSPECT">Prospect</option>
                   </select>
                 </div>
+                @if (newAllocation.status !== 'PROSPECT') {
+                  <div class="form-group">
+                    <label class="form-label">Allocation (current month)</label>
+                    <select class="form-input" [(ngModel)]="newAllocation.currentMonthAllocation" name="allocation">
+                      <option value="1">100%</option>
+                      <option value="0.75">75%</option>
+                      <option value="0.5">50%</option>
+                      <option value="0.25">25%</option>
+                    </select>
+                  </div>
+                }
                 <div class="form-group">
                   <label class="form-label">Start Date</label>
                   <input type="date" class="form-input" [(ngModel)]="newAllocation.startDate" name="startDate">
@@ -403,14 +415,6 @@ import { Allocation, EmployeeAllocationSummary, Employee, Project, Manager } fro
                 <div class="form-group">
                   <label class="form-label">End Date</label>
                   <input type="date" class="form-input" [(ngModel)]="newAllocation.endDate" name="endDate">
-                </div>
-                <div class="form-group">
-                  <label class="form-label">Status</label>
-                  <select class="form-input" [(ngModel)]="newAllocation.status" name="status">
-                    <option value="ACTIVE">Active</option>
-                    <option value="PENDING">Pending</option>
-                    <option value="COMPLETED">Completed</option>
-                  </select>
                 </div>
                 <div class="modal-actions">
                   <button type="button" class="btn btn-secondary" (click)="showCreateModal = false">Cancel</button>
@@ -493,9 +497,30 @@ import { Allocation, EmployeeAllocationSummary, Employee, Project, Manager } fro
       min-width: 40px;
     }
 
-    .status-pill.completed {
-      background: rgba(62, 146, 204, 0.15);
-      color: var(--secondary);
+    .badge-bench {
+      background: #e2e8f0;
+      color: #64748b;
+      padding: 4px 8px;
+      border-radius: 6px;
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .status-pill.prospect {
+      background: rgba(251, 191, 36, 0.15);
+      color: #d97706;
+    }
+
+    .prospect-badge {
+      display: inline-block;
+      padding: 4px 8px;
+      background: rgba(251, 191, 36, 0.15);
+      color: #d97706;
+      border-radius: 4px;
+      font-size: 12px;
+      font-weight: 500;
     }
 
     .btn-icon {
@@ -1077,7 +1102,7 @@ export class AllocationsComponent implements OnInit {
 
   startInlineEdit(alloc: Allocation): void {
     this.editingAllocationId = alloc.id;
-    this.editAllocationValue = alloc.currentMonthAllocation || '1';
+    this.editAllocationValue = alloc.currentMonthAllocation?.toString() || '1';
   }
 
   cancelInlineEdit(): void {
@@ -1087,9 +1112,20 @@ export class AllocationsComponent implements OnInit {
 
   saveInlineEdit(): void {
     if (this.editingAllocationId == null) return;
-    this.apiService.updateAllocation(this.editingAllocationId, {
-      currentMonthAllocation: this.editAllocationValue
-    } as any).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+
+    const currentYear = new Date().getFullYear();
+    const currentMonth = new Date().getMonth() + 1; // 1-indexed for backend
+
+    const payload: any = {
+      year: currentYear,
+      monthlyAllocations: [{
+        year: currentYear,
+        month: currentMonth,
+        percentage: parseFloat(this.editAllocationValue) || 1.0
+      }]
+    };
+
+    this.apiService.updateAllocation(this.editingAllocationId, payload).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: () => {
         this.editingAllocationId = null;
         this.refreshDetailAllocations();
@@ -1130,18 +1166,28 @@ export class AllocationsComponent implements OnInit {
   createDetailAllocation(): void {
     if (!this.newDetailAllocation.projectId) return;
 
-    const monthNames = ['janAllocation', 'febAllocation', 'marAllocation', 'aprAllocation',
-      'mayAllocation', 'junAllocation', 'julAllocation', 'augAllocation',
-      'sepAllocation', 'octAllocation', 'novAllocation', 'decAllocation'];
-    const currentMonth = new Date().getMonth();
+    const currentYear = new Date().getFullYear();
+    const currentMonth = new Date().getMonth() + 1; // 1-indexed for backend
+
     const payload: any = {
       employeeId: this.selectedSummary.employeeId,
       projectId: this.newDetailAllocation.projectId,
       startDate: this.newDetailAllocation.startDate,
       endDate: this.newDetailAllocation.endDate,
-      status: this.newDetailAllocation.status
+      status: this.newDetailAllocation.status,
+      year: currentYear
     };
-    payload[monthNames[currentMonth]] = this.newDetailAllocation.currentMonthAllocation;
+
+    // Only set allocation percentage for ACTIVE status, not for PROSPECT
+    if (this.newDetailAllocation.status !== 'PROSPECT') {
+      payload.monthlyAllocations = [{
+        year: currentYear,
+        month: currentMonth,
+        percentage: parseFloat(this.newDetailAllocation.currentMonthAllocation) || 1.0
+      }];
+    } else {
+      payload.monthlyAllocations = [];
+    }
 
     this.apiService.createAllocation(payload).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: () => {
@@ -1177,18 +1223,28 @@ export class AllocationsComponent implements OnInit {
   createAllocation(): void {
     if (!this.newAllocation.employeeId || !this.newAllocation.projectId) return;
 
-    const monthNames = ['janAllocation', 'febAllocation', 'marAllocation', 'aprAllocation',
-      'mayAllocation', 'junAllocation', 'julAllocation', 'augAllocation',
-      'sepAllocation', 'octAllocation', 'novAllocation', 'decAllocation'];
-    const currentMonth = new Date().getMonth();
+    const currentYear = new Date().getFullYear();
+    const currentMonth = new Date().getMonth() + 1; // 1-indexed for backend
+
     const payload: any = {
       employeeId: this.newAllocation.employeeId,
       projectId: this.newAllocation.projectId,
       startDate: this.newAllocation.startDate,
       endDate: this.newAllocation.endDate,
-      status: this.newAllocation.status
+      status: this.newAllocation.status,
+      year: currentYear
     };
-    payload[monthNames[currentMonth]] = this.newAllocation.currentMonthAllocation;
+
+    // Only set allocation percentage for ACTIVE status, not for PROSPECT
+    if (this.newAllocation.status !== 'PROSPECT') {
+      payload.monthlyAllocations = [{
+        year: currentYear,
+        month: currentMonth,
+        percentage: parseFloat(this.newAllocation.currentMonthAllocation) || 1.0
+      }];
+    } else {
+      payload.monthlyAllocations = [];
+    }
 
     this.apiService.createAllocation(payload).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: () => {
@@ -1199,5 +1255,20 @@ export class AllocationsComponent implements OnInit {
         alert('Failed to create allocation: ' + (err.error?.message || 'Unknown error'));
       }
     });
+  }
+
+  // Status change handlers
+  onCreateStatusChange(): void {
+    // Reset allocation when switching to ACTIVE
+    if (this.newAllocation.status === 'ACTIVE') {
+      this.newAllocation.currentMonthAllocation = '1';
+    }
+  }
+
+  onDetailStatusChange(): void {
+    // Reset allocation when switching to ACTIVE
+    if (this.newDetailAllocation.status === 'ACTIVE') {
+      this.newDetailAllocation.currentMonthAllocation = '1';
+    }
   }
 }

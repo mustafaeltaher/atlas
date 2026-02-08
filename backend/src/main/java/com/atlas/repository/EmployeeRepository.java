@@ -222,6 +222,260 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long>, JpaSp
                         @Param("tower") String tower,
                         Pageable pageable);
 
+        // Find BENCH employees: those with no active numeric allocation in current
+        // year/month
+        // Uses monthly_allocations table for normalized data model
+        @Query(value = "SELECT DISTINCT e.* FROM employees e " +
+                        "WHERE e.is_active = true " +
+                        "AND e.status = 'ACTIVE' " +
+                        "AND (:search IS NULL OR LOWER(e.name) LIKE LOWER(CONCAT('%', :search, '%'))) " +
+                        "AND (:managerId IS NULL OR e.manager_id = :managerId) " +
+                        "AND NOT EXISTS (" +
+                        "  SELECT 1 FROM allocations a " +
+                        "  JOIN monthly_allocations ma ON ma.allocation_id = a.id " +
+                        "  WHERE a.employee_id = e.id " +
+                        "  AND a.status = 'ACTIVE' " +
+                        "  AND ma.year = :currentYear " +
+                        "  AND ma.month = :currentMonth " +
+                        "  AND ma.percentage > 0" +
+                        ") " +
+                        "ORDER BY e.name", countQuery = "SELECT COUNT(DISTINCT e.id) FROM employees e " +
+                                        "WHERE e.is_active = true " +
+                                        "AND e.status = 'ACTIVE' " +
+                                        "AND (:search IS NULL OR LOWER(e.name) LIKE LOWER(CONCAT('%', :search, '%'))) "
+                                        +
+                                        "AND (:managerId IS NULL OR e.manager_id = :managerId) " +
+                                        "AND NOT EXISTS (" +
+                                        "  SELECT 1 FROM allocations a " +
+                                        "  JOIN monthly_allocations ma ON ma.allocation_id = a.id " +
+                                        "  WHERE a.employee_id = e.id " +
+                                        "  AND a.status = 'ACTIVE' " +
+                                        "  AND ma.year = :currentYear " +
+                                        "  AND ma.month = :currentMonth " +
+                                        "  AND ma.percentage > 0" +
+                                        ")", nativeQuery = true)
+        Page<Employee> findBenchEmployees(
+                        @Param("search") String search,
+                        @Param("managerId") Long managerId,
+                        @Param("currentYear") int currentYear,
+                        @Param("currentMonth") int currentMonth,
+                        Pageable pageable);
+
+        // Find BENCH employees by IDs (for non-admin access)
+        @Query(value = "SELECT DISTINCT e.* FROM employees e " +
+                        "WHERE e.is_active = true " +
+                        "AND e.status = 'ACTIVE' " +
+                        "AND e.id IN :employeeIds " +
+                        "AND (:search IS NULL OR LOWER(e.name) LIKE LOWER(CONCAT('%', :search, '%'))) " +
+                        "AND (:managerId IS NULL OR e.manager_id = :managerId) " +
+                        "AND NOT EXISTS (" +
+                        "  SELECT 1 FROM allocations a " +
+                        "  JOIN monthly_allocations ma ON ma.allocation_id = a.id " +
+                        "  WHERE a.employee_id = e.id " +
+                        "  AND a.status = 'ACTIVE' " +
+                        "  AND ma.year = :currentYear " +
+                        "  AND ma.month = :currentMonth " +
+                        "  AND ma.percentage > 0" +
+                        ") " +
+                        "ORDER BY e.name", countQuery = "SELECT COUNT(DISTINCT e.id) FROM employees e " +
+                                        "WHERE e.is_active = true " +
+                                        "AND e.status = 'ACTIVE' " +
+                                        "AND e.id IN :employeeIds " +
+                                        "AND (:search IS NULL OR LOWER(e.name) LIKE LOWER(CONCAT('%', :search, '%'))) "
+                                        +
+                                        "AND (:managerId IS NULL OR e.manager_id = :managerId) " +
+                                        "AND NOT EXISTS (" +
+                                        "  SELECT 1 FROM allocations a " +
+                                        "  JOIN monthly_allocations ma ON ma.allocation_id = a.id " +
+                                        "  WHERE a.employee_id = e.id " +
+                                        "  AND a.status = 'ACTIVE' " +
+                                        "  AND ma.year = :currentYear " +
+                                        "  AND ma.month = :currentMonth " +
+                                        "  AND ma.percentage > 0" +
+                                        ")", nativeQuery = true)
+        Page<Employee> findBenchEmployeesByIds(
+                        @Param("employeeIds") List<Long> employeeIds,
+                        @Param("search") String search,
+                        @Param("managerId") Long managerId,
+                        @Param("currentYear") int currentYear,
+                        @Param("currentMonth") int currentMonth,
+                        Pageable pageable);
+
+        // Find PROSPECT employees: those with PROSPECT allocation status
+        @Query(value = "SELECT DISTINCT e.* FROM employees e " +
+                        "WHERE e.is_active = true " +
+                        "AND e.status = 'ACTIVE' " +
+                        "AND (:search IS NULL OR LOWER(e.name) LIKE LOWER(CONCAT('%', :search, '%'))) " +
+                        "AND (:managerId IS NULL OR e.manager_id = :managerId) " +
+                        "AND EXISTS (" +
+                        "  SELECT 1 FROM allocations a " +
+                        "  WHERE a.employee_id = e.id " +
+                        "  AND a.status = 'PROSPECT'" +
+                        ") " +
+                        "AND NOT EXISTS (" +
+                        "  SELECT 1 FROM allocations a " +
+                        "  JOIN monthly_allocations ma ON ma.allocation_id = a.id " +
+                        "  WHERE a.employee_id = e.id " +
+                        "  AND a.status = 'ACTIVE' " +
+                        "  AND ma.year = :currentYear " +
+                        "  AND ma.month = :currentMonth " +
+                        "  AND ma.percentage > 0" +
+                        ") " +
+                        "ORDER BY e.name", countQuery = "SELECT COUNT(DISTINCT e.id) FROM employees e " +
+                                        "WHERE e.is_active = true " +
+                                        "AND e.status = 'ACTIVE' " +
+                                        "AND (:search IS NULL OR LOWER(e.name) LIKE LOWER(CONCAT('%', :search, '%'))) "
+                                        +
+                                        "AND (:managerId IS NULL OR e.manager_id = :managerId) " +
+                                        "AND EXISTS (" +
+                                        "  SELECT 1 FROM allocations a " +
+                                        "  WHERE a.employee_id = e.id " +
+                                        "  AND a.status = 'PROSPECT'" +
+                                        ") " +
+                                        "AND NOT EXISTS (" +
+                                        "  SELECT 1 FROM allocations a " +
+                                        "  JOIN monthly_allocations ma ON ma.allocation_id = a.id " +
+                                        "  WHERE a.employee_id = e.id " +
+                                        "  AND a.status = 'ACTIVE' " +
+                                        "  AND ma.year = :currentYear " +
+                                        "  AND ma.month = :currentMonth " +
+                                        "  AND ma.percentage > 0" +
+                                        ")", nativeQuery = true)
+        Page<Employee> findProspectEmployees(
+                        @Param("search") String search,
+                        @Param("managerId") Long managerId,
+                        @Param("currentYear") int currentYear,
+                        @Param("currentMonth") int currentMonth,
+                        Pageable pageable);
+
+        // Find PROSPECT employees by IDs (for non-admin access)
+        @Query(value = "SELECT DISTINCT e.* FROM employees e " +
+                        "WHERE e.is_active = true " +
+                        "AND e.status = 'ACTIVE' " +
+                        "AND e.id IN :employeeIds " +
+                        "AND (:search IS NULL OR LOWER(e.name) LIKE LOWER(CONCAT('%', :search, '%'))) " +
+                        "AND (:managerId IS NULL OR e.manager_id = :managerId) " +
+                        "AND EXISTS (" +
+                        "  SELECT 1 FROM allocations a " +
+                        "  WHERE a.employee_id = e.id " +
+                        "  AND a.status = 'PROSPECT'" +
+                        ") " +
+                        "AND NOT EXISTS (" +
+                        "  SELECT 1 FROM allocations a " +
+                        "  JOIN monthly_allocations ma ON ma.allocation_id = a.id " +
+                        "  WHERE a.employee_id = e.id " +
+                        "  AND a.status = 'ACTIVE' " +
+                        "  AND ma.year = :currentYear " +
+                        "  AND ma.month = :currentMonth " +
+                        "  AND ma.percentage > 0" +
+                        ") " +
+                        "ORDER BY e.name", countQuery = "SELECT COUNT(DISTINCT e.id) FROM employees e " +
+                                        "WHERE e.is_active = true " +
+                                        "AND e.status = 'ACTIVE' " +
+                                        "AND e.id IN :employeeIds " +
+                                        "AND (:search IS NULL OR LOWER(e.name) LIKE LOWER(CONCAT('%', :search, '%'))) "
+                                        +
+                                        "AND (:managerId IS NULL OR e.manager_id = :managerId) " +
+                                        "AND EXISTS (" +
+                                        "  SELECT 1 FROM allocations a " +
+                                        "  WHERE a.employee_id = e.id " +
+                                        "  AND a.status = 'PROSPECT'" +
+                                        ") " +
+                                        "AND NOT EXISTS (" +
+                                        "  SELECT 1 FROM allocations a " +
+                                        "  JOIN monthly_allocations ma ON ma.allocation_id = a.id " +
+                                        "  WHERE a.employee_id = e.id " +
+                                        "  AND a.status = 'ACTIVE' " +
+                                        "  AND ma.year = :currentYear " +
+                                        "  AND ma.month = :currentMonth " +
+                                        "  AND ma.percentage > 0" +
+                                        ")", nativeQuery = true)
+        Page<Employee> findProspectEmployeesByIds(
+                        @Param("employeeIds") List<Long> employeeIds,
+                        @Param("search") String search,
+                        @Param("managerId") Long managerId,
+                        @Param("currentYear") int currentYear,
+                        @Param("currentMonth") int currentMonth,
+                        Pageable pageable);
+
+        // Find ACTIVE employees: those with active numeric allocation in current
+        // year/month
+        @Query(value = "SELECT DISTINCT e.* FROM employees e " +
+                        "WHERE e.is_active = true " +
+                        "AND e.status = 'ACTIVE' " +
+                        "AND (:search IS NULL OR LOWER(e.name) LIKE LOWER(CONCAT('%', :search, '%'))) " +
+                        "AND (:managerId IS NULL OR e.manager_id = :managerId) " +
+                        "AND EXISTS (" +
+                        "  SELECT 1 FROM allocations a " +
+                        "  JOIN monthly_allocations ma ON ma.allocation_id = a.id " +
+                        "  WHERE a.employee_id = e.id " +
+                        "  AND a.status = 'ACTIVE' " +
+                        "  AND ma.year = :currentYear " +
+                        "  AND ma.month = :currentMonth " +
+                        "  AND ma.percentage > 0" +
+                        ") " +
+                        "ORDER BY e.name", countQuery = "SELECT COUNT(DISTINCT e.id) FROM employees e " +
+                                        "WHERE e.is_active = true " +
+                                        "AND e.status = 'ACTIVE' " +
+                                        "AND (:search IS NULL OR LOWER(e.name) LIKE LOWER(CONCAT('%', :search, '%'))) "
+                                        +
+                                        "AND (:managerId IS NULL OR e.manager_id = :managerId) " +
+                                        "AND EXISTS (" +
+                                        "  SELECT 1 FROM allocations a " +
+                                        "  JOIN monthly_allocations ma ON ma.allocation_id = a.id " +
+                                        "  WHERE a.employee_id = e.id " +
+                                        "  AND a.status = 'ACTIVE' " +
+                                        "  AND ma.year = :currentYear " +
+                                        "  AND ma.month = :currentMonth " +
+                                        "  AND ma.percentage > 0" +
+                                        ")", nativeQuery = true)
+        Page<Employee> findActiveAllocatedEmployees(
+                        @Param("search") String search,
+                        @Param("managerId") Long managerId,
+                        @Param("currentYear") int currentYear,
+                        @Param("currentMonth") int currentMonth,
+                        Pageable pageable);
+
+        // Find ACTIVE employees by IDs (for non-admin access)
+        @Query(value = "SELECT DISTINCT e.* FROM employees e " +
+                        "WHERE e.is_active = true " +
+                        "AND e.status = 'ACTIVE' " +
+                        "AND e.id IN :employeeIds " +
+                        "AND (:search IS NULL OR LOWER(e.name) LIKE LOWER(CONCAT('%', :search, '%'))) " +
+                        "AND (:managerId IS NULL OR e.manager_id = :managerId) " +
+                        "AND EXISTS (" +
+                        "  SELECT 1 FROM allocations a " +
+                        "  JOIN monthly_allocations ma ON ma.allocation_id = a.id " +
+                        "  WHERE a.employee_id = e.id " +
+                        "  AND a.status = 'ACTIVE' " +
+                        "  AND ma.year = :currentYear " +
+                        "  AND ma.month = :currentMonth " +
+                        "  AND ma.percentage > 0" +
+                        ") " +
+                        "ORDER BY e.name", countQuery = "SELECT COUNT(DISTINCT e.id) FROM employees e " +
+                                        "WHERE e.is_active = true " +
+                                        "AND e.status = 'ACTIVE' " +
+                                        "AND e.id IN :employeeIds " +
+                                        "AND (:search IS NULL OR LOWER(e.name) LIKE LOWER(CONCAT('%', :search, '%'))) "
+                                        +
+                                        "AND (:managerId IS NULL OR e.manager_id = :managerId) " +
+                                        "AND EXISTS (" +
+                                        "  SELECT 1 FROM allocations a " +
+                                        "  JOIN monthly_allocations ma ON ma.allocation_id = a.id " +
+                                        "  WHERE a.employee_id = e.id " +
+                                        "  AND a.status = 'ACTIVE' " +
+                                        "  AND ma.year = :currentYear " +
+                                        "  AND ma.month = :currentMonth " +
+                                        "  AND ma.percentage > 0" +
+                                        ")", nativeQuery = true)
+        Page<Employee> findActiveAllocatedEmployeesByIds(
+                        @Param("employeeIds") List<Long> employeeIds,
+                        @Param("search") String search,
+                        @Param("managerId") Long managerId,
+                        @Param("currentYear") int currentYear,
+                        @Param("currentMonth") int currentMonth,
+                        Pageable pageable);
+
         // Faceted Search: Get Towers based on filters
         @Query("SELECT DISTINCT e.tower FROM Employee e WHERE e.tower IS NOT NULL " +
                         "AND (:managerId IS NULL OR e.manager.id = :managerId) " +

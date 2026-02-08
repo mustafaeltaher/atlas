@@ -35,8 +35,9 @@ public class EmployeeDTO {
     private Long managerId;
     private String managerName;
     private Boolean isActive;
+    private String status; // Employee status: ACTIVE, MATERNITY, LONG_LEAVE, RESIGNED
 
     // Total allocation for current month (sum across all projects)
     private Double totalAllocation;
-    private String allocationStatus; // ACTIVE, BENCH, PROSPECT
+    private String allocationStatus; // Derived allocation status: ACTIVE, BENCH, PROSPECT
 }

@@ -2,6 +2,7 @@ package com.atlas.specification;
 
 import com.atlas.entity.Allocation;
 import com.atlas.entity.Employee;
+import com.atlas.entity.MonthlyAllocation;
 import jakarta.persistence.criteria.*;
 import org.springframework.data.jpa.domain.Specification;
 
@@ -48,102 +49,90 @@ public class EmployeeSpecification {
                 predicates.add(cb.or(nameLike, skillLike, towerLike, emailLike));
             }
 
-            // Status filter (Complex Logic)
+            // Status filter (handles both Employee status and Allocation-based status)
             if (status != null && !status.trim().isEmpty()) {
-                int currentMonth = LocalDate.now().getMonthValue();
-                String monthColumn = getMonthColumn(currentMonth);
+                // Check if it's an employee status (MATERNITY, LONG_LEAVE, RESIGNED)
+                if ("MATERNITY".equalsIgnoreCase(status)) {
+                    predicates.add(cb.equal(root.get("status"), Employee.EmployeeStatus.MATERNITY));
+                } else if ("LONG_LEAVE".equalsIgnoreCase(status)) {
+                    predicates.add(cb.equal(root.get("status"), Employee.EmployeeStatus.LONG_LEAVE));
+                } else if ("RESIGNED".equalsIgnoreCase(status)) {
+                    predicates.add(cb.equal(root.get("status"), Employee.EmployeeStatus.RESIGNED));
+                } else {
+                    // For allocation-based statuses (ACTIVE, BENCH, PROSPECT),
+                    // only consider employees with ACTIVE employee status
+                    predicates.add(cb.equal(root.get("status"), Employee.EmployeeStatus.ACTIVE));
 
-                // Join with Allocations
-                Subquery<Long> allocationSubquery = query.subquery(Long.class);
-                Root<Allocation> allocRoot = allocationSubquery.from(Allocation.class);
-                allocationSubquery.select(allocRoot.get("employee").get("id"));
+                    int currentYear = LocalDate.now().getYear();
+                    int currentMonth = LocalDate.now().getMonthValue();
 
-                // Correlated subquery
-                Predicate employeeMatch = cb.equal(allocRoot.get("employee"), root);
+                    if ("BENCH".equalsIgnoreCase(status)) {
+                        // BENCH = No active allocation (no positive percentage in current month/year)
+                        Subquery<Long> activeAllocationSubquery = query.subquery(Long.class);
+                        Root<Allocation> allocRoot = activeAllocationSubquery.from(Allocation.class);
+                        Join<Allocation, MonthlyAllocation> maJoin = allocRoot.join("monthlyAllocations");
+                        activeAllocationSubquery.select(allocRoot.get("employee").get("id"));
 
-                // Get the monthly allocation value
-                Expression<String> monthValue = allocRoot.get(monthColumn);
+                        activeAllocationSubquery.where(cb.and(
+                                cb.equal(allocRoot.get("employee"), root),
+                                cb.equal(allocRoot.get("status"), Allocation.AllocationStatus.ACTIVE),
+                                cb.equal(maJoin.get("year"), currentYear),
+                                cb.equal(maJoin.get("month"), currentMonth),
+                                cb.gt(maJoin.get("percentage"), 0.0)));
 
-                if ("BENCH".equalsIgnoreCase(status)) {
-                    // BENCH = No allocation OR allocation is 'B'
-                    // Implementation: NOT EXISTS (allocations where value is numeric OR value is
-                    // 'P')
+                        predicates.add(cb.not(cb.exists(activeAllocationSubquery)));
 
-                    // Subquery for employees who have ANY active/prospect allocation
-                    Subquery<Long> activeOrProspectSubquery = query.subquery(Long.class);
-                    Root<Allocation> apRoot = activeOrProspectSubquery.from(Allocation.class);
-                    activeOrProspectSubquery.select(apRoot.get("employee").get("id"));
+                    } else if ("PROSPECT".equalsIgnoreCase(status)) {
+                        // PROSPECT = Has PROSPECT allocation status but no ACTIVE allocation with
+                        // percentage > 0
 
-                    Expression<String> apMonthValue = apRoot.get(monthColumn);
-                    Predicate apEmployeeMatch = cb.equal(apRoot.get("employee"), root);
+                        // 1. Must have at least one PROSPECT allocation
+                        Subquery<Long> prospectSubquery = query.subquery(Long.class);
+                        Root<Allocation> pRoot = prospectSubquery.from(Allocation.class);
+                        prospectSubquery.select(pRoot.get("employee").get("id"));
+                        prospectSubquery.where(cb.and(
+                                cb.equal(pRoot.get("employee"), root),
+                                cb.equal(pRoot.get("status"), Allocation.AllocationStatus.PROSPECT)));
 
-                    // Is Numeric (Active) OR 'P' (Prospect)
-                    // Note: Since we store as String, checking "not B" and "not null" is easier but
-                    // "P" is prospect.
-                    // Let's define "Non-Bench" as: (value != 'B' AND value != null)
-                    Predicate notBench = cb.and(
-                            cb.isNotNull(apMonthValue),
-                            cb.notEqual(apMonthValue, "B"));
+                        // 2. Must NOT have ACTIVE allocation with percentage > 0 in current month/year
+                        Subquery<Long> activeSubquery = query.subquery(Long.class);
+                        Root<Allocation> aRoot = activeSubquery.from(Allocation.class);
+                        Join<Allocation, MonthlyAllocation> amaJoin = aRoot.join("monthlyAllocations");
+                        activeSubquery.select(aRoot.get("employee").get("id"));
+                        activeSubquery.where(cb.and(
+                                cb.equal(aRoot.get("employee"), root),
+                                cb.equal(aRoot.get("status"), Allocation.AllocationStatus.ACTIVE),
+                                cb.equal(amaJoin.get("year"), currentYear),
+                                cb.equal(amaJoin.get("month"), currentMonth),
+                                cb.gt(amaJoin.get("percentage"), 0.0)));
 
-                    activeOrProspectSubquery.where(cb.and(apEmployeeMatch, notBench));
+                        predicates.add(cb.and(
+                                cb.exists(prospectSubquery),
+                                cb.not(cb.exists(activeSubquery))));
 
-                    predicates.add(cb.not(cb.exists(activeOrProspectSubquery)));
+                    } else if ("ACTIVE".equalsIgnoreCase(status)) {
+                        // ACTIVE = Has ACTIVE allocation with percentage > 0 in current month/year
+                        Subquery<Long> allocationSubquery = query.subquery(Long.class);
+                        Root<Allocation> allocRoot = allocationSubquery.from(Allocation.class);
+                        Join<Allocation, MonthlyAllocation> maJoin = allocRoot.join("monthlyAllocations");
+                        allocationSubquery.select(allocRoot.get("employee").get("id"));
 
-                } else if ("PROSPECT".equalsIgnoreCase(status)) {
-                    // PROSPECT = Has 'P' AND Does NOT have Numeric
+                        allocationSubquery.where(cb.and(
+                                cb.equal(allocRoot.get("employee"), root),
+                                cb.equal(allocRoot.get("status"), Allocation.AllocationStatus.ACTIVE),
+                                cb.equal(maJoin.get("year"), currentYear),
+                                cb.equal(maJoin.get("month"), currentMonth),
+                                cb.gt(maJoin.get("percentage"), 0.0)));
 
-                    // 1. Must have 'P'
-                    Subquery<Long> prospectSubquery = query.subquery(Long.class);
-                    Root<Allocation> pRoot = prospectSubquery.from(Allocation.class);
-                    prospectSubquery.select(pRoot.get("employee").get("id"));
-                    prospectSubquery.where(cb.and(
-                            cb.equal(pRoot.get("employee"), root),
-                            cb.equal(pRoot.get(monthColumn), "P")));
-
-                    // 2. Must NOT have Numeric (Active)
-                    Subquery<Long> activeSubquery = query.subquery(Long.class);
-                    Root<Allocation> aRoot = activeSubquery.from(Allocation.class);
-                    activeSubquery.select(aRoot.get("employee").get("id"));
-
-                    // Numeric check is hard in standard JPA/SQL without native queries if column is
-                    // string.
-                    // Assuming standard format: 'B', 'P', or numbers.
-                    // "Active" means NOT 'B' AND NOT 'P' AND NOT NULL
-                    activeSubquery.where(cb.and(
-                            cb.equal(aRoot.get("employee"), root),
-                            cb.isNotNull(aRoot.get(monthColumn)),
-                            cb.notEqual(aRoot.get(monthColumn), "B"),
-                            cb.notEqual(aRoot.get(monthColumn), "P")));
-
-                    predicates.add(cb.and(
-                            cb.exists(prospectSubquery),
-                            cb.not(cb.exists(activeSubquery))));
-
-                } else if ("ACTIVE".equalsIgnoreCase(status)) {
-                    // ACTIVE = Has ANY Numeric allocation
-                    allocationSubquery.where(cb.and(
-                            employeeMatch,
-                            cb.isNotNull(monthValue),
-                            cb.notEqual(monthValue, "B"),
-                            cb.notEqual(monthValue, "P")));
-                    predicates.add(cb.exists(allocationSubquery));
+                        predicates.add(cb.exists(allocationSubquery));
+                    }
                 }
             }
 
-            // Apply Distinct if necessary (though usually handled by repository/query
-            // config)
+            // Apply Distinct if necessary
             query.distinct(true);
 
             return cb.and(predicates.toArray(new Predicate[0]));
         };
-    }
-
-    private static String getMonthColumn(int month) {
-        String[] columns = {
-                "janAllocation", "febAllocation", "marAllocation", "aprAllocation",
-                "mayAllocation", "junAllocation", "julAllocation", "augAllocation",
-                "sepAllocation", "octAllocation", "novAllocation", "decAllocation"
-        };
-        return columns[month - 1];
     }
 }

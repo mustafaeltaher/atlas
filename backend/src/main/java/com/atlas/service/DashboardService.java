@@ -41,6 +41,7 @@ public class DashboardService {
             allocations = allocationRepository.findActiveByEmployees(employees);
         }
 
+        int currentYear = LocalDate.now().getYear();
         int currentMonth = LocalDate.now().getMonthValue();
 
         long benchCount = 0;
@@ -49,21 +50,16 @@ public class DashboardService {
         int allocationCount = 0;
 
         for (Allocation allocation : allocations) {
-            String alloc = allocation.getAllocationForMonth(currentMonth);
-            if (alloc != null) {
-                if ("B".equalsIgnoreCase(alloc)) {
-                    benchCount++;
-                } else if ("P".equalsIgnoreCase(alloc)) {
-                    prospectCount++;
+            if (allocation.getStatus() == Allocation.AllocationStatus.PROSPECT) {
+                prospectCount++;
+            } else {
+                Double alloc = allocation.getAllocationForYearMonth(currentYear, currentMonth);
+                if (alloc != null && alloc > 0) {
+                    totalAllocation += alloc;
+                    allocationCount++;
+                    activeEmployeesIds.add(allocation.getEmployee().getId());
                 } else {
-                    try {
-                        if (Character.isDigit(alloc.charAt(0))) {
-                            totalAllocation += Double.parseDouble(alloc);
-                            allocationCount++;
-                            activeEmployeesIds.add(allocation.getEmployee().getId());
-                        }
-                    } catch (NumberFormatException ignored) {
-                    }
+                    // No allocation for this month = effectively bench for this employee
                 }
             }
         }

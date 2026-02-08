@@ -37,8 +37,9 @@ export interface Employee {
     managerId?: number;
     managerName?: string;
     isActive: boolean;
+    status: 'ACTIVE' | 'MATERNITY' | 'LONG_LEAVE' | 'RESIGNED';
     totalAllocation: number;
-    allocationStatus: 'ACTIVE' | 'BENCH' | 'PROSPECT';
+    allocationStatus: 'ACTIVE' | 'BENCH' | 'PROSPECT' | null;
 }
 
 export interface Project {
@@ -50,10 +51,18 @@ export interface Project {
     tower: string;
     startDate: string;
     endDate: string;
-    status: 'ACTIVE' | 'PENDING' | 'COMPLETED' | 'ON_HOLD';
+    status: 'ACTIVE' | 'COMPLETED' | 'ON_HOLD';
     managerName?: string;
     allocatedEmployees: number;
     averageAllocation: number;
+}
+
+export interface MonthlyAllocation {
+    id?: number;
+    allocationId?: number;
+    year: number;
+    month: number;
+    percentage: number;
 }
 
 export interface Allocation {
@@ -63,12 +72,13 @@ export interface Allocation {
     employeeOracleId: string;
     projectId: number;
     projectName: string;
-    confirmedAssignment: string;
     startDate: string;
     endDate: string;
-    status: 'ACTIVE' | 'PENDING' | 'COMPLETED';
-    currentMonthAllocation: string;
+    status: 'ACTIVE' | 'PROSPECT';
+    currentMonthAllocation: number | null;
     allocationPercentage: number;
+    year?: number;
+    monthlyAllocations?: MonthlyAllocation[];
 }
 
 export interface EmployeeAllocationSummary {
@@ -93,7 +103,8 @@ export interface DashboardStats {
     benchCount: number;
     prospectCount: number;
     activeProjects: number;
-    pendingProjects: number;
+    completedProjects: number;
+    onHoldProjects: number;
     employeeTrend: number;
     allocationTrend: number;
     benchTrend: number;

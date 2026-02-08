@@ -120,12 +120,23 @@ import { Employee, Manager } from '../../models';
                       </div>
                     </td>
                     <td>
-                      <span class="status-pill"
-                            [class.active]="emp.allocationStatus === 'ACTIVE'"
-                            [class.bench]="emp.allocationStatus === 'BENCH'"
-                            [class.prospect]="emp.allocationStatus === 'PROSPECT'">
-                        {{ emp.allocationStatus }}
-                      </span>
+                      <div class="status-container">
+                        @if (emp.status && emp.status !== 'ACTIVE') {
+                          <span class="status-pill employee-status"
+                                [class.maternity]="emp.status === 'MATERNITY'"
+                                [class.long_leave]="emp.status === 'LONG_LEAVE'"
+                                [class.resigned]="emp.status === 'RESIGNED'">
+                            {{ formatEmployeeStatus(emp.status) }}
+                          </span>
+                        } @else if (emp.allocationStatus) {
+                          <span class="status-pill"
+                                [class.active]="emp.allocationStatus === 'ACTIVE'"
+                                [class.bench]="emp.allocationStatus === 'BENCH'"
+                                [class.prospect]="emp.allocationStatus === 'PROSPECT'">
+                            {{ emp.allocationStatus }}
+                          </span>
+                        }
+                      </div>
                     </td>
                     <td>
                       <button class="icon-btn" (click)="viewDetails(emp)" title="View Details">
@@ -228,6 +239,10 @@ import { Employee, Manager } from '../../models';
                     <div class="detail-item">
                       <label>Hire Date</label>
                       <span>{{ selectedEmployee()?.hireDate | date:'mediumDate' }}</span>
+                    </div>
+                    <div class="detail-item">
+                      <label>Status</label>
+                      <span>{{ selectedEmployee()?.status ? formatEmployeeStatus(selectedEmployee()!.status) : 'Active' }}</span>
                     </div>
                   </div>
                 </div>
@@ -552,6 +567,27 @@ import { Employee, Manager } from '../../models';
       from { transform: translateY(20px); opacity: 0; }
       to { transform: translateY(0); opacity: 1; }
     }
+
+    .status-container {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .status-pill.employee-status.maternity {
+      background: rgba(236, 72, 153, 0.15);
+      color: #db2777;
+    }
+
+    .status-pill.employee-status.long_leave {
+      background: rgba(251, 191, 36, 0.15);
+      color: #d97706;
+    }
+
+    .status-pill.employee-status.resigned {
+      background: rgba(107, 114, 128, 0.15);
+      color: #6b7280;
+    }
   `]
 })
 export class EmployeesComponent implements OnInit {
@@ -729,6 +765,15 @@ export class EmployeesComponent implements OnInit {
 
   getInitials(name: string): string {
     return name.split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase();
+  }
+
+  formatEmployeeStatus(status: string): string {
+    switch (status) {
+      case 'LONG_LEAVE': return 'Long Leave';
+      case 'MATERNITY': return 'Maternity';
+      case 'RESIGNED': return 'Resigned';
+      default: return status;
+    }
   }
 
   onFileSelected(event: Event): void {

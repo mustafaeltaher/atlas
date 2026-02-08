@@ -171,18 +171,16 @@ public class ProjectService {
     }
 
     private ProjectDTO toDTO(Project project, List<Allocation> allocations) {
+        int currentYear = LocalDate.now().getYear();
         int currentMonth = LocalDate.now().getMonthValue();
         double totalAllocation = 0.0;
         int count = 0;
 
         for (Allocation allocation : allocations) {
-            String alloc = allocation.getAllocationForMonth(currentMonth);
-            if (alloc != null && Character.isDigit(alloc.charAt(0))) {
-                try {
-                    totalAllocation += Double.parseDouble(alloc);
-                    count++;
-                } catch (NumberFormatException ignored) {
-                }
+            Double alloc = allocation.getAllocationForYearMonth(currentYear, currentMonth);
+            if (alloc != null && alloc > 0) {
+                totalAllocation += alloc;
+                count++;
             }
         }
 

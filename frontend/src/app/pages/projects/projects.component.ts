@@ -231,7 +231,6 @@ import { Project } from '../../models';
                   <label class="form-label">Status</label>
                   <select class="form-input" [(ngModel)]="editProject.status" name="editStatus">
                     <option value="ACTIVE">Active</option>
-                    <option value="PENDING">Pending</option>
                     <option value="COMPLETED">Completed</option>
                     <option value="ON_HOLD">On Hold</option>
                   </select>
@@ -416,7 +415,6 @@ import { Project } from '../../models';
     }
 
     .status-pill.active { background: rgba(46, 204, 113, 0.15); color: var(--accent); }
-    .status-pill.pending { background: rgba(243, 156, 18, 0.15); color: var(--warning); }
     .status-pill.completed { background: rgba(62, 146, 204, 0.15); color: var(--secondary); }
     .status-pill.on_hold { background: rgba(231, 76, 60, 0.15); color: var(--danger); }
 

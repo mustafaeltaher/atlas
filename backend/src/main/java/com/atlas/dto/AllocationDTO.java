@@ -8,6 +8,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDate;
+import java.util.List;
 
 @Data
 @Builder
@@ -26,27 +27,17 @@ public class AllocationDTO {
     private Long projectId;
 
     private String projectName;
-    private String confirmedAssignment;
-    private String prospectAssignment;
     private LocalDate startDate;
     private LocalDate endDate;
     private Allocation.AllocationStatus status;
 
-    // Current month allocation
-    private String currentMonthAllocation;
+    // Current month allocation (for display)
+    private Double currentMonthAllocation;
     private Double allocationPercentage;
 
-    // Monthly allocation (for editing)
-    private String janAllocation;
-    private String febAllocation;
-    private String marAllocation;
-    private String aprAllocation;
-    private String mayAllocation;
-    private String junAllocation;
-    private String julAllocation;
-    private String augAllocation;
-    private String sepAllocation;
-    private String octAllocation;
-    private String novAllocation;
-    private String decAllocation;
+    // Year for creating/editing allocations
+    private Integer year;
+
+    // Monthly allocations (normalized structure)
+    private List<MonthlyAllocationDTO> monthlyAllocations;
 }

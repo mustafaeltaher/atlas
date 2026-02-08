@@ -166,6 +166,7 @@ public class EmployeeService {
     }
 
     private EmployeeDTO toDTO(Employee employee, List<Allocation> allocations) {
+        int currentYear = LocalDate.now().getYear();
         int currentMonth = LocalDate.now().getMonthValue();
 
         boolean hasActive = false;
@@ -173,27 +174,36 @@ public class EmployeeService {
         double totalAllocation = 0.0;
 
         for (Allocation allocation : allocations) {
-            String alloc = allocation.getAllocationForMonth(currentMonth);
-            if (alloc != null) {
-                if (alloc.equalsIgnoreCase("B")) {
-                    // Bench - ignored for status calculation purposes
-                } else if (alloc.equalsIgnoreCase("P")) {
-                    hasProspect = true;
-                } else {
-                    try {
-                        totalAllocation += Double.parseDouble(alloc);
-                        hasActive = true;
-                    } catch (NumberFormatException ignored) {
-                    }
+            if (allocation.getStatus() == Allocation.AllocationStatus.PROSPECT) {
+                hasProspect = true;
+            } else {
+                Double alloc = allocation.getAllocationForYearMonth(currentYear, currentMonth);
+                if (alloc != null && alloc > 0) {
+                    totalAllocation += alloc;
+                    hasActive = true;
                 }
             }
         }
 
-        String status = "BENCH";
-        if (hasActive) {
-            status = "ACTIVE";
-        } else if (hasProspect) {
-            status = "PROSPECT";
+        // Determine allocation status
+        // Employees with MATERNITY, LONG_LEAVE, or RESIGNED status are NOT considered
+        // bench
+        String allocationStatus;
+        Employee.EmployeeStatus empStatus = employee.getStatus();
+        if (empStatus == Employee.EmployeeStatus.MATERNITY ||
+                empStatus == Employee.EmployeeStatus.LONG_LEAVE ||
+                empStatus == Employee.EmployeeStatus.RESIGNED) {
+            // These employees are not active allocations, but also not "bench"
+            allocationStatus = hasActive ? "ACTIVE" : (hasProspect ? "PROSPECT" : null);
+        } else {
+            // Normal status calculation for ACTIVE employees
+            if (hasActive) {
+                allocationStatus = "ACTIVE";
+            } else if (hasProspect) {
+                allocationStatus = "PROSPECT";
+            } else {
+                allocationStatus = "BENCH";
+            }
         }
 
         return EmployeeDTO.builder()
@@ -220,8 +230,9 @@ public class EmployeeService {
                 .managerId(employee.getManager() != null ? employee.getManager().getId() : null)
                 .managerName(employee.getManager() != null ? employee.getManager().getName() : null)
                 .isActive(employee.getIsActive())
+                .status(employee.getStatus() != null ? employee.getStatus().name() : "ACTIVE")
                 .totalAllocation(totalAllocation * 100)
-                .allocationStatus(status)
+                .allocationStatus(allocationStatus)
                 .build();
     }
 
@@ -234,11 +245,23 @@ public class EmployeeService {
     }
 
     public List<String> getDistinctStatuses(User currentUser, Long managerId, String tower) {
-        return getFilteredEmployeeStream(currentUser, managerId, tower, null)
-                .map(EmployeeDTO::getAllocationStatus)
-                .distinct()
-                .sorted()
+        List<EmployeeDTO> employees = getFilteredEmployeeStream(currentUser, managerId, tower, null)
                 .collect(Collectors.toList());
+
+        java.util.Set<String> statuses = new java.util.LinkedHashSet<>();
+
+        for (EmployeeDTO emp : employees) {
+            // Add employee status if not ACTIVE
+            if (emp.getStatus() != null && !"ACTIVE".equals(emp.getStatus())) {
+                statuses.add(emp.getStatus());
+            }
+            // Add allocation status if present (for ACTIVE employees)
+            if (emp.getAllocationStatus() != null && "ACTIVE".equals(emp.getStatus())) {
+                statuses.add(emp.getAllocationStatus());
+            }
+        }
+
+        return new java.util.ArrayList<>(statuses);
     }
 
     public List<String> getDistinctTowers(User currentUser, Long managerId, String status) {
@@ -307,6 +330,33 @@ public class EmployeeService {
         if (employeeRepository.existsByEmail(employee.getEmail())) {
             throw new RuntimeException("Employee with email already exists: " + employee.getEmail());
         }
+        validateEmployeeStatus(employee);
         return employeeRepository.save(employee);
+    }
+
+    @Transactional
+    public Employee updateEmployee(Long id, Employee updatedEmployee) {
+        Employee existing = employeeRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Employee not found: " + id));
+
+        validateEmployeeStatus(updatedEmployee);
+
+        // Update fields
+        if (updatedEmployee.getStatus() != null) {
+            existing.setStatus(updatedEmployee.getStatus());
+        }
+        // Add other field updates as needed
+
+        return employeeRepository.save(existing);
+    }
+
+    private void validateEmployeeStatus(Employee employee) {
+        // Maternity status is only valid for female employees
+        if (employee.getStatus() == Employee.EmployeeStatus.MATERNITY) {
+            String gender = employee.getGender();
+            if (gender == null || !gender.equalsIgnoreCase("Female") && !gender.equalsIgnoreCase("F")) {
+                throw new RuntimeException("Maternity status is only valid for female employees");
+            }
+        }
     }
 }

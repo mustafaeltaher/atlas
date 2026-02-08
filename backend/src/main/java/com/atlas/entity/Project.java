@@ -47,6 +47,6 @@ public class Project {
     private Employee manager;
 
     public enum ProjectStatus {
-        ACTIVE, PENDING, COMPLETED, ON_HOLD
+        ACTIVE, COMPLETED, ON_HOLD
     }
 }

@@ -107,24 +107,30 @@ public class ExcelImportService {
                     Allocation allocation = Allocation.builder()
                             .employee(savedEmployee)
                             .project(project)
-                            .confirmedAssignment(getStringValue(row, columnIndex.get("Confirmed Assignment")))
-                            .prospectAssignment(getStringValue(row, columnIndex.get("Prospect Assignment")))
                             .endDate(getDateValue(row, columnIndex.get("Current Assignment End Date")))
-                            .janAllocation(getStringValue(row, columnIndex.get("Jan 26")))
-                            .febAllocation(getStringValue(row, columnIndex.get("Feb 26")))
-                            .marAllocation(getStringValue(row, columnIndex.get("Mar 26")))
-                            .aprAllocation(getStringValue(row, columnIndex.get("Apr 26")))
-                            .mayAllocation(getStringValue(row, columnIndex.get("May 26")))
-                            .junAllocation(getStringValue(row, columnIndex.get("Jun 26")))
-                            .julAllocation(getStringValue(row, columnIndex.get("Jul 26")))
-                            .augAllocation(getStringValue(row, columnIndex.get("Aug 26")))
-                            .sepAllocation(getStringValue(row, columnIndex.get("Sep 26")))
-                            .octAllocation(getStringValue(row, columnIndex.get("Oct 26")))
-                            .novAllocation(getStringValue(row, columnIndex.get("Nov 26")))
-                            .decAllocation(getStringValue(row, columnIndex.get("Dec 26")))
                             .status(Allocation.AllocationStatus.ACTIVE)
                             .build();
 
+                    allocation = allocationRepository.save(allocation);
+
+                    // Parse monthly allocations from Excel and create MonthlyAllocation entries
+                    int year = LocalDate.now().getYear();
+                    String[] months = { "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov",
+                            "Dec" };
+                    for (int m = 0; m < months.length; m++) {
+                        String columnName = months[m] + " 26"; // e.g., "Jan 26"
+                        String allocValue = getStringValue(row, columnIndex.get(columnName));
+                        if (allocValue != null && !allocValue.isEmpty()) {
+                            try {
+                                double percentage = Double.parseDouble(allocValue);
+                                if (percentage > 0) {
+                                    allocation.setAllocationForYearMonth(year, m + 1, percentage);
+                                }
+                            } catch (NumberFormatException ignored) {
+                                // Skip non-numeric values like "P" or "B"
+                            }
+                        }
+                    }
                     allocationRepository.save(allocation);
                 }
 
