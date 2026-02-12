@@ -1,5 +1,6 @@
 package com.atlas.repository;
 
+import com.atlas.entity.Allocation;
 import com.atlas.entity.Employee;
 import com.atlas.entity.Project;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -17,79 +18,129 @@ public interface ProjectRepository extends JpaRepository<Project, Long> {
 
         List<Project> findByStatus(Project.ProjectStatus status);
 
-        List<Project> findByParentTower(String parentTower);
+        long countByStatus(Project.ProjectStatus status);
 
-        List<Project> findByTower(String tower);
+        default List<Project> findActiveProjects() {
+                return findByStatus(Project.ProjectStatus.ACTIVE);
+        }
 
-        @Query("SELECT p FROM Project p WHERE p.status = 'ACTIVE'")
-        List<Project> findActiveProjects();
+        default long countActiveProjects() {
+                return countByStatus(Project.ProjectStatus.ACTIVE);
+        }
 
-        @Query("SELECT p FROM Project p WHERE p.parentTower = :parentTower AND p.status = 'ACTIVE'")
-        List<Project> findActiveByParentTower(@Param("parentTower") String parentTower);
+        @Query("SELECT DISTINCT a.project FROM Allocation a WHERE a.employee IN :employees AND a.allocationType = :allocationType AND a.project.status = :projectStatus")
+        List<Project> findActiveProjectsByEmployeesWithParams(
+                        @Param("employees") List<Employee> employees,
+                        @Param("allocationType") Allocation.AllocationType allocationType,
+                        @Param("projectStatus") Project.ProjectStatus projectStatus);
 
-        @Query("SELECT p FROM Project p WHERE p.tower = :tower AND p.status = 'ACTIVE'")
-        List<Project> findActiveByTower(@Param("tower") String tower);
+        default List<Project> findActiveProjectsByEmployees(List<Employee> employees) {
+                return findActiveProjectsByEmployeesWithParams(employees,
+                                Allocation.AllocationType.PROJECT, Project.ProjectStatus.ACTIVE);
+        }
 
-        @Query("SELECT COUNT(p) FROM Project p WHERE p.status = 'ACTIVE'")
-        long countActiveProjects();
+        @Query("SELECT COUNT(DISTINCT a.project) FROM Allocation a WHERE a.employee IN :employees AND a.allocationType = :allocationType AND a.project.status = :projectStatus")
+        long countActiveProjectsByEmployeesWithParams(
+                        @Param("employees") List<Employee> employees,
+                        @Param("allocationType") Allocation.AllocationType allocationType,
+                        @Param("projectStatus") Project.ProjectStatus projectStatus);
 
-        @Query("SELECT COUNT(p) FROM Project p WHERE p.parentTower = :parentTower AND p.status = 'ACTIVE'")
-        long countActiveByParentTower(@Param("parentTower") String parentTower);
-
-        @Query("SELECT COUNT(p) FROM Project p WHERE p.tower = :tower AND p.status = 'ACTIVE'")
-        long countActiveByTower(@Param("tower") String tower);
-
-        @Query("SELECT DISTINCT a.project FROM Allocation a WHERE a.employee IN :employees AND a.status = 'ACTIVE' AND a.project.status = 'ACTIVE'")
-        List<Project> findActiveProjectsByEmployees(@Param("employees") List<Employee> employees);
-
-        @Query("SELECT COUNT(DISTINCT a.project) FROM Allocation a WHERE a.employee IN :employees AND a.status = 'ACTIVE' AND a.project.status = 'ACTIVE'")
-        long countActiveProjectsByEmployees(@Param("employees") List<Employee> employees);
+        default long countActiveProjectsByEmployees(List<Employee> employees) {
+                return countActiveProjectsByEmployeesWithParams(employees,
+                                Allocation.AllocationType.PROJECT, Project.ProjectStatus.ACTIVE);
+        }
 
         boolean existsByProjectId(String projectId);
 
-        // Pagination methods
-        @Query("SELECT p FROM Project p WHERE p.status = 'ACTIVE'")
-        org.springframework.data.domain.Page<Project> findActiveProjects(
-                        org.springframework.data.domain.Pageable pageable);
-
-        // Search with pagination and filters
+        // Search with status filter (search param must be pre-formatted: lowercase with % wildcards)
         @Query("SELECT p FROM Project p WHERE " +
-                        "(:status IS NULL OR p.status = :status) AND " +
-                        "(:tower IS NULL OR p.tower = :tower) AND " +
-                        "(:search IS NULL OR LOWER(CAST(p.name AS string)) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%')))")
-        org.springframework.data.domain.Page<Project> searchProjects(
+                        "p.status = :status AND " +
+                        "(:region IS NULL OR p.region = :region) AND " +
+                        "(:search IS NULL OR LOWER(p.description) LIKE :search)")
+        org.springframework.data.domain.Page<Project> searchProjectsWithStatus(
                         @Param("search") String search,
-                        @Param("tower") String tower,
+                        @Param("region") String region,
                         @Param("status") Project.ProjectStatus status,
                         org.springframework.data.domain.Pageable pageable);
 
-        @Query("SELECT DISTINCT p.tower FROM Project p WHERE p.tower IS NOT NULL")
-        List<String> findDistinctTowers();
+        // Search without status filter
+        @Query("SELECT p FROM Project p WHERE " +
+                        "(:region IS NULL OR p.region = :region) AND " +
+                        "(:search IS NULL OR LOWER(p.description) LIKE :search)")
+        org.springframework.data.domain.Page<Project> searchProjectsNoStatus(
+                        @Param("search") String search,
+                        @Param("region") String region,
+                        org.springframework.data.domain.Pageable pageable);
 
-        // Database-level paginated query with filters for projects by IDs (for
-        // non-admin hierarchy-based access)
+        default org.springframework.data.domain.Page<Project> searchProjects(
+                        String search, String region, Project.ProjectStatus status,
+                        org.springframework.data.domain.Pageable pageable) {
+                if (status != null) {
+                        return searchProjectsWithStatus(search, region, status, pageable);
+                }
+                return searchProjectsNoStatus(search, region, pageable);
+        }
+
+        // Search by IDs with status filter
         @Query(value = "SELECT p FROM Project p WHERE p.id IN :projectIds " +
-                        "AND (:status IS NULL OR p.status = :status) " +
-                        "AND (:tower IS NULL OR p.tower = :tower) " +
-                        "AND (:search IS NULL OR LOWER(CAST(p.name AS string)) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%')))", countQuery = "SELECT COUNT(p) FROM Project p WHERE p.id IN :projectIds "
-                                        +
-                                        "AND (:status IS NULL OR p.status = :status) " +
-                                        "AND (:tower IS NULL OR p.tower = :tower) " +
-                                        "AND (:search IS NULL OR LOWER(CAST(p.name AS string)) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%')))")
-        org.springframework.data.domain.Page<Project> searchProjectsByIds(
+                        "AND p.status = :status " +
+                        "AND (:region IS NULL OR p.region = :region) " +
+                        "AND (:search IS NULL OR LOWER(p.description) LIKE :search)",
+                        countQuery = "SELECT COUNT(p) FROM Project p WHERE p.id IN :projectIds " +
+                                        "AND p.status = :status " +
+                                        "AND (:region IS NULL OR p.region = :region) " +
+                                        "AND (:search IS NULL OR LOWER(p.description) LIKE :search)")
+        org.springframework.data.domain.Page<Project> searchProjectsByIdsWithStatus(
                         @Param("projectIds") List<Long> projectIds,
                         @Param("search") String search,
-                        @Param("tower") String tower,
+                        @Param("region") String region,
                         @Param("status") Project.ProjectStatus status,
                         org.springframework.data.domain.Pageable pageable);
 
-        // Faceted Search: Get Towers based on Status
-        @Query("SELECT DISTINCT p.tower FROM Project p WHERE p.tower IS NOT NULL " +
-                        "AND (:status IS NULL OR p.status = :status)")
-        List<String> findDistinctTowersByStatus(@Param("status") Project.ProjectStatus status);
+        // Search by IDs without status filter
+        @Query(value = "SELECT p FROM Project p WHERE p.id IN :projectIds " +
+                        "AND (:region IS NULL OR p.region = :region) " +
+                        "AND (:search IS NULL OR LOWER(p.description) LIKE :search)",
+                        countQuery = "SELECT COUNT(p) FROM Project p WHERE p.id IN :projectIds " +
+                                        "AND (:region IS NULL OR p.region = :region) " +
+                                        "AND (:search IS NULL OR LOWER(p.description) LIKE :search)")
+        org.springframework.data.domain.Page<Project> searchProjectsByIdsNoStatus(
+                        @Param("projectIds") List<Long> projectIds,
+                        @Param("search") String search,
+                        @Param("region") String region,
+                        org.springframework.data.domain.Pageable pageable);
 
-        // Faceted Search: Get Statuses based on Tower
+        default org.springframework.data.domain.Page<Project> searchProjectsByIds(
+                        List<Long> projectIds, String search, String region,
+                        Project.ProjectStatus status, org.springframework.data.domain.Pageable pageable) {
+                if (status != null) {
+                        return searchProjectsByIdsWithStatus(projectIds, search, region, status, pageable);
+                }
+                return searchProjectsByIdsNoStatus(projectIds, search, region, pageable);
+        }
+
+        @Query("SELECT DISTINCT p.region FROM Project p WHERE p.region IS NOT NULL")
+        List<String> findDistinctRegions();
+
+        @Query("SELECT DISTINCT p.vertical FROM Project p WHERE p.vertical IS NOT NULL")
+        List<String> findDistinctVerticals();
+
+        // Faceted Search
+        @Query("SELECT DISTINCT p.region FROM Project p WHERE p.region IS NOT NULL " +
+                        "AND p.status = :status")
+        List<String> findDistinctRegionsByStatusWithParam(@Param("status") Project.ProjectStatus status);
+
+        @Query("SELECT DISTINCT p.region FROM Project p WHERE p.region IS NOT NULL")
+        List<String> findDistinctRegionsAll();
+
+        default List<String> findDistinctRegionsByStatus(Project.ProjectStatus status) {
+                if (status != null) {
+                        return findDistinctRegionsByStatusWithParam(status);
+                }
+                return findDistinctRegionsAll();
+        }
+
         @Query("SELECT DISTINCT p.status FROM Project p WHERE " +
-                        "(:tower IS NULL OR p.tower = :tower)")
-        List<Project.ProjectStatus> findDistinctStatusesByTower(@Param("tower") String tower);
+                        "(:region IS NULL OR p.region = :region)")
+        List<Project.ProjectStatus> findDistinctStatusesByRegion(@Param("region") String region);
 }

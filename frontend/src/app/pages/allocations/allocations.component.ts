@@ -44,10 +44,10 @@ import { Allocation, EmployeeAllocationSummary, Employee, Project, Manager } fro
             </svg>
             <input type="text" placeholder="Search by employee or project..." [(ngModel)]="searchTerm" (input)="onSearch()">
           </div>
-          <select class="filter-select" [(ngModel)]="statusFilter" (change)="onFilter()">
-            <option value="">All Statuses</option>
-            @for (status of statuses(); track status) {
-              <option [value]="status">{{ status | titlecase }}</option>
+          <select class="filter-select" [(ngModel)]="allocationTypeFilter" (change)="onFilter()">
+            <option value="">All Types</option>
+            @for (type of allocationTypes(); track type) {
+              <option [value]="type">{{ type | titlecase }}</option>
             }
           </select>
           <select class="filter-select" [(ngModel)]="managerFilter" (change)="onFilter()">
@@ -188,7 +188,7 @@ import { Allocation, EmployeeAllocationSummary, Employee, Project, Manager } fro
                           <div class="dropdown-list">
                             @for (proj of getFilteredDetailProjects(); track proj.id) {
                               <div class="dropdown-item" (mousedown)="selectDetailProject(proj)">
-                                {{ proj.name }} ({{ proj.projectId }})
+                                {{ proj.description }} ({{ proj.projectId }})
                               </div>
                             } @empty {
                               <div class="dropdown-item disabled">No matches found</div>
@@ -198,20 +198,22 @@ import { Allocation, EmployeeAllocationSummary, Employee, Project, Manager } fro
                       </div>
                     </div>
                     <div class="form-group">
-                      <label class="form-label">Status</label>
-                      <select class="form-input" [(ngModel)]="newDetailAllocation.status" name="detailStatus" (change)="onDetailStatusChange()">
-                        <option value="ACTIVE">Active</option>
+                      <label class="form-label">Type</label>
+                      <select class="form-input" [(ngModel)]="newDetailAllocation.allocationType" name="detailAllocationType" (change)="onDetailStatusChange()">
+                        <option value="PROJECT">Project</option>
                         <option value="PROSPECT">Prospect</option>
+                        <option value="VACATION">Vacation</option>
+                        <option value="MATERNITY">Maternity</option>
                       </select>
                     </div>
-                    @if (newDetailAllocation.status !== 'PROSPECT') {
+                    @if (newDetailAllocation.allocationType === 'PROJECT') {
                       <div class="form-group">
                         <label class="form-label">Allocation</label>
                         <select class="form-input" [(ngModel)]="newDetailAllocation.currentMonthAllocation" name="detailAllocation">
-                          <option value="1">100%</option>
-                          <option value="0.75">75%</option>
-                          <option value="0.5">50%</option>
-                          <option value="0.25">25%</option>
+                          <option value="100">100%</option>
+                          <option value="75">75%</option>
+                          <option value="50">50%</option>
+                          <option value="25">25%</option>
                         </select>
                       </div>
                     }
@@ -238,7 +240,7 @@ import { Allocation, EmployeeAllocationSummary, Employee, Project, Manager } fro
                 <thead>
                   <tr>
                     <th>Project</th>
-                    <th>Assignment</th>
+                    <th>Type</th>
                     <th>Allocation</th>
                     <th>Status</th>
                     <th>End Date</th>
@@ -249,17 +251,17 @@ import { Allocation, EmployeeAllocationSummary, Employee, Project, Manager } fro
                   @for (alloc of detailAllocations(); track alloc.id) {
                     <tr>
                       <td>{{ alloc.projectName }}</td>
-                      <td>{{ alloc.confirmedAssignment || '-' }}</td>
+                      <td>{{ alloc.allocationType }}</td>
                       <td>
-                        @if (editingAllocationId === alloc.id && alloc.status !== 'PROSPECT') {
+                        @if (editingAllocationId === alloc.id && alloc.allocationType === 'PROJECT') {
                           <select class="form-input form-input-sm" [(ngModel)]="editAllocationValue" name="inlineEdit">
-                            <option value="1">100%</option>
-                            <option value="0.75">75%</option>
-                            <option value="0.5">50%</option>
-                            <option value="0.25">25%</option>
+                            <option value="100">100%</option>
+                            <option value="75">75%</option>
+                            <option value="50">50%</option>
+                            <option value="25">25%</option>
                           </select>
-                        } @else if (alloc.status === 'PROSPECT') {
-                          <span class="prospect-badge">Prospect</span>
+                        } @else if (alloc.allocationType !== 'PROJECT') {
+                          <span class="prospect-badge">{{ alloc.allocationType }}</span>
                         } @else {
                           <div class="allocation-cell">
                             <div class="progress-bar">
@@ -276,9 +278,11 @@ import { Allocation, EmployeeAllocationSummary, Employee, Project, Manager } fro
                       </td>
                       <td>
                         <span class="status-pill"
-                              [class.active]="alloc.status === 'ACTIVE'"
-                              [class.prospect]="alloc.status === 'PROSPECT'">
-                          {{ alloc.status }}
+                              [class.active]="alloc.allocationType === 'PROJECT'"
+                              [class.prospect]="alloc.allocationType === 'PROSPECT'"
+                              [class.vacation]="alloc.allocationType === 'VACATION'"
+                              [class.maternity]="alloc.allocationType === 'MATERNITY'">
+                          {{ alloc.allocationType }}
                         </span>
                       </td>
                       <td>{{ alloc.endDate | date:'mediumDate' }}</td>
@@ -381,7 +385,7 @@ import { Allocation, EmployeeAllocationSummary, Employee, Project, Manager } fro
                       <div class="dropdown-list">
                         @for (proj of getFilteredCreateProjects(); track proj.id) {
                           <div class="dropdown-item" (mousedown)="selectCreateProject(proj)">
-                            {{ proj.name }} ({{ proj.projectId }})
+                            {{ proj.description }} ({{ proj.projectId }})
                           </div>
                         } @empty {
                           <div class="dropdown-item disabled">No matches found</div>
@@ -391,20 +395,22 @@ import { Allocation, EmployeeAllocationSummary, Employee, Project, Manager } fro
                   </div>
                 </div>
                 <div class="form-group">
-                  <label class="form-label">Status</label>
-                  <select class="form-input" [(ngModel)]="newAllocation.status" name="status" (change)="onCreateStatusChange()">
-                    <option value="ACTIVE">Active</option>
+                  <label class="form-label">Allocation Type</label>
+                  <select class="form-input" [(ngModel)]="newAllocation.allocationType" name="allocationType" (change)="onCreateStatusChange()">
+                    <option value="PROJECT">Project</option>
                     <option value="PROSPECT">Prospect</option>
+                    <option value="VACATION">Vacation</option>
+                    <option value="MATERNITY">Maternity</option>
                   </select>
                 </div>
-                @if (newAllocation.status !== 'PROSPECT') {
+                @if (newAllocation.allocationType === 'PROJECT') {
                   <div class="form-group">
                     <label class="form-label">Allocation (current month)</label>
                     <select class="form-input" [(ngModel)]="newAllocation.currentMonthAllocation" name="allocation">
-                      <option value="1">100%</option>
-                      <option value="0.75">75%</option>
-                      <option value="0.5">50%</option>
-                      <option value="0.25">25%</option>
+                      <option value="100">100%</option>
+                      <option value="75">75%</option>
+                      <option value="50">50%</option>
+                      <option value="25">25%</option>
                     </select>
                   </div>
                 }
@@ -844,17 +850,17 @@ export class AllocationsComponent implements OnInit {
   managers = signal<Manager[]>([]);
   employeesList = signal<Employee[]>([]);
   projectsList = signal<Project[]>([]);
-  statuses = signal<string[]>([]);
+  allocationTypes = signal<string[]>([]);
   loading = signal(true);
 
   // Search and filter state
   searchTerm = '';
-  statusFilter = '';
+  allocationTypeFilter = '';
   managerFilter = '';
 
   // Create modal (from master page)
   showCreateModal = false;
-  newAllocation: any = { status: 'ACTIVE', currentMonthAllocation: '1' };
+  newAllocation: any = { allocationType: 'PROJECT', currentMonthAllocation: '100' };
 
   // Searchable dropdown state
   employeeSearchText = '';
@@ -875,7 +881,7 @@ export class AllocationsComponent implements OnInit {
 
   // Add assignment within detail modal
   showAddAssignment = false;
-  newDetailAllocation: any = { status: 'ACTIVE', currentMonthAllocation: '1' };
+  newDetailAllocation: any = { allocationType: 'PROJECT', currentMonthAllocation: '100' };
 
   // Pagination state
   currentPage = signal(0);
@@ -891,22 +897,22 @@ export class AllocationsComponent implements OnInit {
 
   ngOnInit(): void {
     this.loadManagers();
-    this.loadStatuses();
+    this.loadAllocationTypes();
     this.loadAllocations();
   }
 
   loadManagers(): void {
-    const status = this.statusFilter || undefined;
-    this.apiService.getManagers(undefined, status).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+    const allocationType = this.allocationTypeFilter || undefined;
+    this.apiService.getAllocationManagers(allocationType).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: (managers) => this.managers.set(managers),
       error: () => { }
     });
   }
 
-  loadStatuses(): void {
+  loadAllocationTypes(): void {
     const managerId = this.managerFilter ? Number(this.managerFilter) : undefined;
-    this.apiService.getAllocationStatuses(managerId).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
-      next: (statuses) => this.statuses.set(statuses),
+    this.apiService.getAllocationTypes(managerId).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: (types) => this.allocationTypes.set(types),
       error: () => { }
     });
   }
@@ -914,10 +920,10 @@ export class AllocationsComponent implements OnInit {
   loadAllocations(scrollToBottom: boolean = false): void {
     this.loading.set(true);
     const search = this.searchTerm || undefined;
-    const status = this.statusFilter || undefined;
+    const allocationType = this.allocationTypeFilter || undefined;
     const managerId = this.managerFilter ? Number(this.managerFilter) : undefined;
 
-    this.apiService.getGroupedAllocations(this.currentPage(), this.pageSize(), search, status, managerId)
+    this.apiService.getGroupedAllocations(this.currentPage(), this.pageSize(), search, allocationType, managerId)
       .pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
         next: (page) => {
           this.employeeSummaries.set(page.content);
@@ -957,7 +963,7 @@ export class AllocationsComponent implements OnInit {
     this.currentPage.set(0);
     this.loadAllocations();
     this.loadManagers();
-    this.loadStatuses();
+    this.loadAllocationTypes();
   }
 
   nextPage(): void {
@@ -1015,13 +1021,13 @@ export class AllocationsComponent implements OnInit {
     if (!term) return this.employeesList();
     return this.employeesList().filter(e =>
       e.name.toLowerCase().includes(term) ||
-      (e.oracleId && e.oracleId.toLowerCase().includes(term))
+      (e.oracleId && String(e.oracleId).toLowerCase().includes(term))
     );
   }
 
   selectEmployee(emp: Employee): void {
     this.newAllocation.employeeId = emp.id;
-    this.employeeSearchText = `${emp.name} (${emp.oracleId || 'N/A'})`;
+    this.employeeSearchText = `${emp.name} (${emp.oracleId ?? 'N/A'})`;
     this.showEmployeeDropdown = false;
   }
 
@@ -1035,14 +1041,14 @@ export class AllocationsComponent implements OnInit {
     const term = this.createProjectSearchText.toLowerCase();
     if (!term) return this.projectsList();
     return this.projectsList().filter(p =>
-      p.name.toLowerCase().includes(term) ||
+      p.description.toLowerCase().includes(term) ||
       (p.projectId && p.projectId.toLowerCase().includes(term))
     );
   }
 
   selectCreateProject(proj: Project): void {
     this.newAllocation.projectId = proj.id;
-    this.createProjectSearchText = `${proj.name} (${proj.projectId})`;
+    this.createProjectSearchText = `${proj.description} (${proj.projectId})`;
     this.showCreateProjectDropdown = false;
   }
 
@@ -1056,14 +1062,14 @@ export class AllocationsComponent implements OnInit {
     const term = this.detailProjectSearchText.toLowerCase();
     if (!term) return this.projectsList();
     return this.projectsList().filter(p =>
-      p.name.toLowerCase().includes(term) ||
+      p.description.toLowerCase().includes(term) ||
       (p.projectId && p.projectId.toLowerCase().includes(term))
     );
   }
 
   selectDetailProject(proj: Project): void {
     this.newDetailAllocation.projectId = proj.id;
-    this.detailProjectSearchText = `${proj.name} (${proj.projectId})`;
+    this.detailProjectSearchText = `${proj.description} (${proj.projectId})`;
     this.showDetailProjectDropdown = false;
   }
 
@@ -1102,7 +1108,7 @@ export class AllocationsComponent implements OnInit {
 
   startInlineEdit(alloc: Allocation): void {
     this.editingAllocationId = alloc.id;
-    this.editAllocationValue = alloc.currentMonthAllocation?.toString() || '1';
+    this.editAllocationValue = alloc.currentMonthAllocation?.toString() || '100';
   }
 
   cancelInlineEdit(): void {
@@ -1118,11 +1124,7 @@ export class AllocationsComponent implements OnInit {
 
     const payload: any = {
       year: currentYear,
-      monthlyAllocations: [{
-        year: currentYear,
-        month: currentMonth,
-        percentage: parseFloat(this.editAllocationValue) || 1.0
-      }]
+      currentMonthAllocation: parseInt(this.editAllocationValue) || 100
     };
 
     this.apiService.updateAllocation(this.editingAllocationId, payload).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
@@ -1153,7 +1155,7 @@ export class AllocationsComponent implements OnInit {
   // --- Add assignment from detail modal ---
 
   openAddAssignmentForm(): void {
-    this.newDetailAllocation = { status: 'ACTIVE', currentMonthAllocation: '1' };
+    this.newDetailAllocation = { allocationType: 'PROJECT', currentMonthAllocation: '100' };
     this.detailProjectSearchText = '';
     this.showDetailProjectDropdown = false;
     this.apiService.getProjects(0, 100).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
@@ -1164,29 +1166,24 @@ export class AllocationsComponent implements OnInit {
   }
 
   createDetailAllocation(): void {
-    if (!this.newDetailAllocation.projectId) return;
+    const allocType = this.newDetailAllocation.allocationType || 'PROJECT';
+    const requiresProject = allocType === 'PROJECT' || allocType === 'PROSPECT';
+    if (requiresProject && !this.newDetailAllocation.projectId) return;
 
     const currentYear = new Date().getFullYear();
-    const currentMonth = new Date().getMonth() + 1; // 1-indexed for backend
 
     const payload: any = {
       employeeId: this.selectedSummary.employeeId,
-      projectId: this.newDetailAllocation.projectId,
+      projectId: requiresProject ? this.newDetailAllocation.projectId : null,
       startDate: this.newDetailAllocation.startDate,
       endDate: this.newDetailAllocation.endDate,
-      status: this.newDetailAllocation.status,
+      allocationType: allocType,
       year: currentYear
     };
 
-    // Only set allocation percentage for ACTIVE status, not for PROSPECT
-    if (this.newDetailAllocation.status !== 'PROSPECT') {
-      payload.monthlyAllocations = [{
-        year: currentYear,
-        month: currentMonth,
-        percentage: parseFloat(this.newDetailAllocation.currentMonthAllocation) || 1.0
-      }];
-    } else {
-      payload.monthlyAllocations = [];
+    // Only set allocation percentage for PROJECT type
+    if (allocType === 'PROJECT') {
+      payload.currentMonthAllocation = parseInt(this.newDetailAllocation.currentMonthAllocation) || 100;
     }
 
     this.apiService.createAllocation(payload).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
@@ -1204,7 +1201,7 @@ export class AllocationsComponent implements OnInit {
   // --- Create allocation from master page ---
 
   openCreateModal(): void {
-    this.newAllocation = { status: 'ACTIVE', currentMonthAllocation: '1' };
+    this.newAllocation = { allocationType: 'PROJECT', currentMonthAllocation: '100' };
     this.employeeSearchText = '';
     this.createProjectSearchText = '';
     this.showEmployeeDropdown = false;
@@ -1221,29 +1218,24 @@ export class AllocationsComponent implements OnInit {
   }
 
   createAllocation(): void {
-    if (!this.newAllocation.employeeId || !this.newAllocation.projectId) return;
+    const allocType = this.newAllocation.allocationType || 'PROJECT';
+    const requiresProject = allocType === 'PROJECT' || allocType === 'PROSPECT';
+    if (!this.newAllocation.employeeId || (requiresProject && !this.newAllocation.projectId)) return;
 
     const currentYear = new Date().getFullYear();
-    const currentMonth = new Date().getMonth() + 1; // 1-indexed for backend
 
     const payload: any = {
       employeeId: this.newAllocation.employeeId,
-      projectId: this.newAllocation.projectId,
+      projectId: requiresProject ? this.newAllocation.projectId : null,
       startDate: this.newAllocation.startDate,
       endDate: this.newAllocation.endDate,
-      status: this.newAllocation.status,
+      allocationType: allocType,
       year: currentYear
     };
 
-    // Only set allocation percentage for ACTIVE status, not for PROSPECT
-    if (this.newAllocation.status !== 'PROSPECT') {
-      payload.monthlyAllocations = [{
-        year: currentYear,
-        month: currentMonth,
-        percentage: parseFloat(this.newAllocation.currentMonthAllocation) || 1.0
-      }];
-    } else {
-      payload.monthlyAllocations = [];
+    // Only set allocation percentage for PROJECT type
+    if (allocType === 'PROJECT') {
+      payload.currentMonthAllocation = parseInt(this.newAllocation.currentMonthAllocation) || 100;
     }
 
     this.apiService.createAllocation(payload).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
@@ -1257,18 +1249,16 @@ export class AllocationsComponent implements OnInit {
     });
   }
 
-  // Status change handlers
+  // Allocation type change handlers
   onCreateStatusChange(): void {
-    // Reset allocation when switching to ACTIVE
-    if (this.newAllocation.status === 'ACTIVE') {
-      this.newAllocation.currentMonthAllocation = '1';
+    if (this.newAllocation.allocationType === 'PROJECT') {
+      this.newAllocation.currentMonthAllocation = '100';
     }
   }
 
   onDetailStatusChange(): void {
-    // Reset allocation when switching to ACTIVE
-    if (this.newDetailAllocation.status === 'ACTIVE') {
-      this.newDetailAllocation.currentMonthAllocation = '1';
+    if (this.newDetailAllocation.allocationType === 'PROJECT') {
+      this.newDetailAllocation.currentMonthAllocation = '100';
     }
   }
 }

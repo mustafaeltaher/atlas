@@ -45,8 +45,8 @@ import { AuthService } from '../../services/auth.service';
         <a routerLink="/profile" routerLinkActive="active" class="user-profile-widget" title="My Profile">
           <div class="user-avatar">{{ getInitials() }}</div>
           <div class="user-details">
-            <span class="user-name">{{ authService.currentUser()?.username }}</span>
-            <span class="user-role">{{ authService.currentUser()?.role }}</span>
+            <span class="user-name">{{ authService.currentUser()?.employeeName || authService.currentUser()?.username }}</span>
+            <span class="user-role">{{ authService.currentUser()?.isTopLevel ? 'Top Level' : 'Manager' }}</span>
           </div>
         </a>
         <button class="logout-btn" (click)="logout()" title="Logout">

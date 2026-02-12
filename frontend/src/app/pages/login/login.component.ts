@@ -6,10 +6,10 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { AuthService } from '../../services/auth.service';
 
 @Component({
-    selector: 'app-login',
-    standalone: true,
-    imports: [CommonModule, FormsModule],
-    template: `
+  selector: 'app-login',
+  standalone: true,
+  imports: [CommonModule, FormsModule],
+  template: `
     <div class="login-container">
       <div class="login-card">
         <div class="login-header">
@@ -52,13 +52,12 @@ import { AuthService } from '../../services/auth.service';
         
         <div class="login-footer">
           <p>Demo Credentials:</p>
-          <p><strong>Admin:</strong> admin / admin123</p>
-          <p><strong>Manager:</strong> ahmed.el-sayed / password123</p>
+          <p><strong>Top level Manager:</strong> ahmed.el-sayed / password123</p>
         </div>
       </div>
     </div>
   `,
-    styles: [`
+  styles: [`
     .login-container {
       min-height: 100vh;
       display: flex;
@@ -136,33 +135,33 @@ import { AuthService } from '../../services/auth.service';
   `]
 })
 export class LoginComponent {
-    private destroyRef = inject(DestroyRef);
+  private destroyRef = inject(DestroyRef);
 
-    username = '';
-    password = '';
-    loading = signal(false);
-    error = signal('');
+  username = '';
+  password = '';
+  loading = signal(false);
+  error = signal('');
 
-    constructor(private authService: AuthService, private router: Router) {
-        if (this.authService.isAuthenticated()) {
-            this.router.navigate(['/dashboard']);
-        }
+  constructor(private authService: AuthService, private router: Router) {
+    if (this.authService.isAuthenticated()) {
+      this.router.navigate(['/dashboard']);
     }
+  }
 
-    login(): void {
-        if (!this.username || !this.password) return;
+  login(): void {
+    if (!this.username || !this.password) return;
 
-        this.loading.set(true);
-        this.error.set('');
+    this.loading.set(true);
+    this.error.set('');
 
-        this.authService.login(this.username, this.password).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
-            next: () => {
-                this.router.navigate(['/dashboard']);
-            },
-            error: (err) => {
-                this.loading.set(false);
-                this.error.set('Invalid username or password');
-            }
-        });
-    }
+    this.authService.login(this.username, this.password).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: () => {
+        this.router.navigate(['/dashboard']);
+      },
+      error: (err) => {
+        this.loading.set(false);
+        this.error.set('Invalid username or password');
+      }
+    });
+  }
 }

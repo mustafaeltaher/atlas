@@ -62,10 +62,10 @@ import { Project } from '../../models';
             <input type="text" placeholder="Search projects..." [(ngModel)]="searchTerm" (input)="onSearch()">
           </div>
           @if (isN1Manager()) {
-            <select class="filter-select" [(ngModel)]="towerFilter" (change)="onFilter()">
-              <option value="">All Towers</option>
-              @for (tower of towers(); track tower) {
-                <option [value]="tower">{{ tower }}</option>
+            <select class="filter-select" [(ngModel)]="regionFilter" (change)="onFilter()">
+              <option value="">All Regions</option>
+              @for (region of regions(); track region) {
+                <option [value]="region">{{ region }}</option>
               }
             </select>
           }
@@ -85,11 +85,11 @@ import { Project } from '../../models';
               @for (project of projects(); track project.id) {
                 <div class="card project-card" (click)="openEditModal(project)">
                   <div class="project-header">
-                    <h3>{{ project.name }}</h3>
+                    <h3>{{ project.description }}</h3>
                     <span class="status-pill" [class]="project.status.toLowerCase()">{{ project.status }}</span>
                   </div>
                   <p class="project-id">{{ project.projectId }}</p>
-                  <p class="project-tower">{{ project.tower }}</p>
+                  <p class="project-tower">{{ project.region }} &middot; {{ project.vertical }}</p>
 
                   <div class="project-stats">
                     <div class="stat">
@@ -119,9 +119,9 @@ import { Project } from '../../models';
               <table class="data-table">
                 <thead>
                   <tr>
-                    <th>Project Name</th>
+                    <th>Description</th>
                     <th>ID</th>
-                    <th>Tower</th>
+                    <th>Region</th>
                     <th>Status</th>
                     <th>Employees</th>
                     <th>Avg Alloc</th>
@@ -132,9 +132,9 @@ import { Project } from '../../models';
                 <tbody>
                   @for (project of projects(); track project.id) {
                     <tr>
-                      <td><span class="fw-500">{{ project.name }}</span></td>
+                      <td><span class="fw-500">{{ project.description }}</span></td>
                       <td class="text-muted">{{ project.projectId }}</td>
-                      <td>{{ project.tower }}</td>
+                      <td>{{ project.region }}</td>
                       <td><span class="status-pill sm" [class]="project.status.toLowerCase()">{{ project.status }}</span></td>
                       <td>{{ project.allocatedEmployees }}</td>
                       <td>{{ project.averageAllocation | number:'1.0-0' }}%</td>
@@ -200,16 +200,23 @@ import { Project } from '../../models';
                   <input type="text" class="form-input" [(ngModel)]="newProject.projectId" name="projectId" required>
                 </div>
                 <div class="form-group">
-                  <label class="form-label">Name</label>
-                  <input type="text" class="form-input" [(ngModel)]="newProject.name" name="name" required>
-                </div>
-                <div class="form-group">
-                  <label class="form-label">Tower</label>
-                  <input type="text" class="form-input" [(ngModel)]="newProject.tower" name="tower">
-                </div>
-                <div class="form-group">
                   <label class="form-label">Description</label>
-                  <textarea class="form-input" [(ngModel)]="newProject.description" name="description" rows="3"></textarea>
+                  <input type="text" class="form-input" [(ngModel)]="newProject.description" name="description" required>
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Project Type</label>
+                  <select class="form-input" [(ngModel)]="newProject.projectType" name="projectType">
+                    <option value="PROJECT">Project</option>
+                    <option value="OPPORTUNITY">Opportunity</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Region</label>
+                  <input type="text" class="form-input" [(ngModel)]="newProject.region" name="region">
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Vertical</label>
+                  <input type="text" class="form-input" [(ngModel)]="newProject.vertical" name="vertical">
                 </div>
                 <div class="modal-actions">
                   <button type="button" class="btn btn-secondary" (click)="showModal = false">Cancel</button>
@@ -225,7 +232,7 @@ import { Project } from '../../models';
           <div class="modal-overlay" (click)="showEditModal = false">
             <div class="modal" (click)="$event.stopPropagation()">
               <h2>Edit Project</h2>
-              <p class="edit-project-name">{{ editProject.name }} ({{ editProject.projectId }})</p>
+              <p class="edit-project-name">{{ editProject.description }} ({{ editProject.projectId }})</p>
               <form (ngSubmit)="updateProject()">
                 <div class="form-group">
                   <label class="form-label">Status</label>
@@ -594,7 +601,7 @@ export class ProjectsComponent implements OnInit {
   private destroyRef = inject(DestroyRef);
 
   projects = signal<Project[]>([]);
-  towers = signal<string[]>([]);
+  regions = signal<string[]>([]);
   statuses = signal<string[]>([]);
   loading = signal(true);
   viewMode = signal<'grid' | 'list'>('list');
@@ -606,7 +613,7 @@ export class ProjectsComponent implements OnInit {
 
   // Search and filter state
   searchTerm = '';
-  towerFilter = '';
+  regionFilter = '';
   statusFilter = '';
 
   // Pagination state
@@ -619,27 +626,27 @@ export class ProjectsComponent implements OnInit {
   constructor(private apiService: ApiService, private authService: AuthService, private elementRef: ElementRef) { }
 
   ngOnInit(): void {
-    this.loadTowers();
+    this.loadRegions();
     this.loadStatuses();
     this.loadProjects();
   }
 
   isN1Manager(): boolean {
     const user = this.authService.currentUser();
-    return user?.role === 'EXECUTIVE';
+    return user?.isTopLevel === true;
   }
 
-  loadTowers(): void {
+  loadRegions(): void {
     const status = this.statusFilter || undefined;
-    this.apiService.getProjectTowers(status).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
-      next: (towers) => this.towers.set(towers),
-      error: (err) => console.error('Failed to load towers', err)
+    this.apiService.getProjectRegions(status).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: (regions) => this.regions.set(regions),
+      error: (err) => console.error('Failed to load regions', err)
     });
   }
 
   loadStatuses(): void {
-    const tower = this.towerFilter || undefined;
-    this.apiService.getProjectStatuses(tower).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+    const region = this.regionFilter || undefined;
+    this.apiService.getProjectStatuses(region).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: (statuses) => this.statuses.set(statuses),
       error: (err) => console.error('Failed to load statuses', err)
     });
@@ -648,10 +655,10 @@ export class ProjectsComponent implements OnInit {
   loadProjects(scrollToBottom: boolean = false): void {
     this.loading.set(true);
     const search = this.searchTerm || undefined;
-    const tower = this.towerFilter || undefined;
+    const region = this.regionFilter || undefined;
     const status = this.statusFilter || undefined;
 
-    this.apiService.getProjects(this.currentPage(), this.pageSize(), search, tower, status).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+    this.apiService.getProjects(this.currentPage(), this.pageSize(), search, region, status).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: (page) => {
         this.projects.set(page.content);
         this.totalElements.set(page.totalElements);
@@ -721,7 +728,7 @@ export class ProjectsComponent implements OnInit {
   onFilter(): void {
     this.currentPage.set(0);
     this.loadProjects();
-    this.loadTowers();
+    this.loadRegions();
     this.loadStatuses();
   }
 
@@ -741,7 +748,7 @@ export class ProjectsComponent implements OnInit {
   openEditModal(project: Project): void {
     this.editProjectId = project.id;
     this.editProject = {
-      name: project.name,
+      description: project.description,
       projectId: project.projectId,
       status: project.status,
       startDate: project.startDate ? project.startDate.substring(0, 10) : '',

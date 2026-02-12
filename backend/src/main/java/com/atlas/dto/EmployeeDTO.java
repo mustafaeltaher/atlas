@@ -6,6 +6,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDate;
+import java.util.List;
 
 @Data
 @Builder
@@ -13,14 +14,12 @@ import java.time.LocalDate;
 @AllArgsConstructor
 public class EmployeeDTO {
     private Long id;
-    private String oracleId;
+    private Integer oracleId;
     private String name;
     private String gender;
     private String grade;
     private String jobLevel;
     private String title;
-    private String primarySkill;
-    private String secondarySkill;
     private String hiringType;
     private String location;
     private String legalEntity;
@@ -28,16 +27,30 @@ public class EmployeeDTO {
     private String nationality;
     private LocalDate hireDate;
     private LocalDate resignationDate;
+    private String reasonOfLeave;
     private String email;
-    private String parentTower;
-    private String tower;
-    private String futureManager;
+    private Integer towerId;
+    private String towerName;
+    private String parentTowerName;
     private Long managerId;
     private String managerName;
-    private Boolean isActive;
-    private String status; // Employee status: ACTIVE, MATERNITY, LONG_LEAVE, RESIGNED
 
+    // Skills
+    private List<EmployeeSkillDTO> skills;
+
+    // Derived from allocation types
+    private String status; // ACTIVE, MATERNITY, VACATION, RESIGNED
     // Total allocation for current month (sum across all projects)
     private Double totalAllocation;
-    private String allocationStatus; // Derived allocation status: ACTIVE, BENCH, PROSPECT
+    private String allocationStatus; // Derived: ACTIVE, BENCH, PROSPECT
+
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class EmployeeSkillDTO {
+        private String skillName;
+        private String skillLevel; // PRIMARY, SECONDARY
+        private String skillGrade; // ADVANCED, INTERMEDIATE, BEGINNER
+    }
 }

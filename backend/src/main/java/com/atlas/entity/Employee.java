@@ -7,6 +7,8 @@ import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
 import lombok.ToString;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import java.time.LocalDate;
 
@@ -22,39 +24,24 @@ public class Employee {
     private Long id;
 
     @Column(name = "oracle_id", unique = true)
-    private String oracleId;
+    private Integer oracleId;
 
     @Column(nullable = false)
     private String name;
 
-    private String gender;
+    @JdbcTypeCode(SqlTypes.NAMED_ENUM)
+    @Column(columnDefinition = "gender_type")
+    private Gender gender;
 
-    @Column(nullable = false)
-    private String grade;
-
-    @Column(name = "job_level")
-    private String jobLevel;
-
-    private String title;
-
-    @Column(name = "primary_skill")
-    private String primarySkill;
-
-    @Column(name = "secondary_skill")
-    private String secondarySkill;
-
-    @Column(name = "hiring_type")
-    private String hiringType;
+    private String email;
 
     private String location;
 
-    @Column(name = "legal_entity")
-    private String legalEntity;
-
-    @Column(name = "cost_center")
-    private String costCenter;
-
     private String nationality;
+
+    @JdbcTypeCode(SqlTypes.NAMED_ENUM)
+    @Column(name = "hiring_type", columnDefinition = "hiring_type")
+    private HiringType hiringType;
 
     @Column(name = "hire_date")
     private LocalDate hireDate;
@@ -65,16 +52,25 @@ public class Employee {
     @Column(name = "reason_of_leave")
     private String reasonOfLeave;
 
-    @Column(unique = true)
-    private String email;
+    private String grade;
 
-    @Column(name = "parent_tower")
-    private String parentTower;
+    @JdbcTypeCode(SqlTypes.NAMED_ENUM)
+    @Column(name = "job_level", columnDefinition = "job_level_type")
+    private JobLevel jobLevel;
 
-    private String tower;
+    private String title;
 
-    @Column(name = "future_manager")
-    private String futureManager;
+    @Column(name = "legal_entity")
+    private String legalEntity;
+
+    @Column(name = "cost_center")
+    private String costCenter;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "tower")
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
+    private TechTower tower;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "manager_id")
@@ -82,15 +78,15 @@ public class Employee {
     @EqualsAndHashCode.Exclude
     private Employee manager;
 
-    @Column(name = "is_active")
-    @Builder.Default
-    private Boolean isActive = true;
+    public enum Gender {
+        MALE, FEMALE
+    }
 
-    @Enumerated(EnumType.STRING)
-    @Builder.Default
-    private EmployeeStatus status = EmployeeStatus.ACTIVE;
+    public enum HiringType {
+        FULL_TIME, PART_TIME
+    }
 
-    public enum EmployeeStatus {
-        ACTIVE, MATERNITY, LONG_LEAVE, RESIGNED
+    public enum JobLevel {
+        ENTRY_LEVEL, MID_LEVEL, ADVANCED_MANAGER_LEVEL, EXECUTIVE_LEVEL
     }
 }

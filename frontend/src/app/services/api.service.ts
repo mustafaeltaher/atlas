@@ -33,11 +33,11 @@ export class ApiService {
         return this.http.get<Page<Employee>>(url);
     }
 
-    getEmployeeTowers(managerId?: number, status?: string): Observable<{ parentTowers: string[], towers: string[] }> {
+    getEmployeeTowers(managerId?: number, status?: string): Observable<{ towers: string[] }> {
         let url = `${this.API_URL}/employees/towers?`;
         if (managerId) url += `managerId=${managerId}&`;
         if (status) url += `status=${encodeURIComponent(status)}&`;
-        return this.http.get<{ parentTowers: string[], towers: string[] }>(url);
+        return this.http.get<{ towers: string[] }>(url);
     }
 
     getEmployeeStatuses(managerId?: number, tower?: string): Observable<string[]> {
@@ -47,16 +47,22 @@ export class ApiService {
         return this.http.get<string[]>(`${this.API_URL}/employees/statuses`, { params });
     }
 
-    getProjectStatuses(tower?: string): Observable<string[]> {
+    getProjectStatuses(region?: string): Observable<string[]> {
         let params = new HttpParams();
-        if (tower) params = params.set('tower', tower);
+        if (region) params = params.set('region', region);
         return this.http.get<string[]>(`${this.API_URL}/projects/statuses`, { params });
     }
 
-    getAllocationStatuses(managerId?: number): Observable<string[]> {
+    getAllocationTypes(managerId?: number): Observable<string[]> {
         let params = new HttpParams();
         if (managerId) params = params.set('managerId', managerId.toString());
-        return this.http.get<string[]>(`${this.API_URL}/allocations/statuses`, { params });
+        return this.http.get<string[]>(`${this.API_URL}/allocations/allocation-types`, { params });
+    }
+
+    getAllocationManagers(allocationType?: string): Observable<Manager[]> {
+        let params = new HttpParams();
+        if (allocationType) params = params.set('allocationType', allocationType);
+        return this.http.get<Manager[]>(`${this.API_URL}/allocations/managers`, { params });
     }
 
     getEmployee(id: number): Observable<Employee> {
@@ -77,16 +83,16 @@ export class ApiService {
     }
 
     // Projects
-    getProjects(page: number = 0, size: number = 10, search?: string, tower?: string, status?: string): Observable<Page<Project>> {
+    getProjects(page: number = 0, size: number = 10, search?: string, region?: string, status?: string): Observable<Page<Project>> {
         let url = `${this.API_URL}/projects?page=${page}&size=${size}`;
         if (search) url += `&search=${encodeURIComponent(search)}`;
-        if (tower) url += `&tower=${encodeURIComponent(tower)}`;
+        if (region) url += `&region=${encodeURIComponent(region)}`;
         if (status) url += `&status=${encodeURIComponent(status)}`;
         return this.http.get<Page<Project>>(url);
     }
 
-    getProjectTowers(status?: string): Observable<string[]> {
-        let url = `${this.API_URL}/projects/towers?`;
+    getProjectRegions(status?: string): Observable<string[]> {
+        let url = `${this.API_URL}/projects/regions?`;
         if (status) url += `status=${encodeURIComponent(status)}&`;
         return this.http.get<string[]>(url);
     }
@@ -104,18 +110,18 @@ export class ApiService {
     }
 
     // Allocations
-    getGroupedAllocations(page: number = 0, size: number = 10, search?: string, status?: string, managerId?: number): Observable<Page<EmployeeAllocationSummary>> {
+    getGroupedAllocations(page: number = 0, size: number = 10, search?: string, allocationType?: string, managerId?: number): Observable<Page<EmployeeAllocationSummary>> {
         let url = `${this.API_URL}/allocations/grouped?page=${page}&size=${size}`;
         if (search) url += `&search=${encodeURIComponent(search)}`;
-        if (status) url += `&status=${encodeURIComponent(status)}`;
+        if (allocationType) url += `&allocationType=${encodeURIComponent(allocationType)}`;
         if (managerId) url += `&managerId=${managerId}`;
         return this.http.get<Page<EmployeeAllocationSummary>>(url);
     }
 
-    getAllocations(page: number = 0, size: number = 10, search?: string, status?: string, managerId?: number): Observable<Page<Allocation>> {
+    getAllocations(page: number = 0, size: number = 10, search?: string, allocationType?: string, managerId?: number): Observable<Page<Allocation>> {
         let url = `${this.API_URL}/allocations?page=${page}&size=${size}`;
         if (search) url += `&search=${encodeURIComponent(search)}`;
-        if (status) url += `&status=${encodeURIComponent(status)}`;
+        if (allocationType) url += `&allocationType=${encodeURIComponent(allocationType)}`;
         if (managerId) url += `&managerId=${managerId}`;
         return this.http.get<Page<Allocation>>(url);
     }

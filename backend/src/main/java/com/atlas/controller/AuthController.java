@@ -46,9 +46,9 @@ public class AuthController {
                 .token(token)
                 .username(user.getUsername())
                 .email(user.getEmail())
-                .role(user.getRole())
-                .managerLevel(user.getManagerLevel())
-                .employeeId(user.getEmployee() != null ? user.getEmployee().getId() : null)
+                .isTopLevel(user.isTopLevel())
+                .employeeName(user.getEmployee().getName())
+                .employeeId(user.getEmployee().getId())
                 .build();
 
         return ResponseEntity.ok(response);
@@ -64,9 +64,9 @@ public class AuthController {
         LoginResponse response = LoginResponse.builder()
                 .username(user.getUsername())
                 .email(user.getEmail())
-                .role(user.getRole())
-                .managerLevel(user.getManagerLevel())
-                .employeeId(user.getEmployee() != null ? user.getEmployee().getId() : null)
+                .isTopLevel(user.isTopLevel())
+                .employeeName(user.getEmployee().getName())
+                .employeeId(user.getEmployee().getId())
                 .build();
 
         return ResponseEntity.ok(response);

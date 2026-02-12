@@ -5,6 +5,8 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import java.time.LocalDate;
 
@@ -19,18 +21,28 @@ public class Project {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "project_id", unique = true, nullable = false)
-    private String projectId;
-
-    @Column(nullable = false)
-    private String name;
-
     private String description;
 
-    @Column(name = "parent_tower")
-    private String parentTower;
+    @JdbcTypeCode(SqlTypes.NAMED_ENUM)
+    @Column(name = "project_type", columnDefinition = "project_type")
+    @Builder.Default
+    private ProjectType projectType = ProjectType.PROJECT;
 
-    private String tower;
+    @Column(name = "project_id", unique = true)
+    private String projectId;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "manager_id")
+    private Employee manager;
+
+    private String region;
+
+    private String vertical;
+
+    @JdbcTypeCode(SqlTypes.NAMED_ENUM)
+    @Column(columnDefinition = "project_status_type")
+    @Builder.Default
+    private ProjectStatus status = ProjectStatus.ACTIVE;
 
     @Column(name = "start_date")
     private LocalDate startDate;
@@ -38,13 +50,9 @@ public class Project {
     @Column(name = "end_date")
     private LocalDate endDate;
 
-    @Enumerated(EnumType.STRING)
-    @Builder.Default
-    private ProjectStatus status = ProjectStatus.ACTIVE;
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "manager_id")
-    private Employee manager;
+    public enum ProjectType {
+        PROJECT, OPPORTUNITY
+    }
 
     public enum ProjectStatus {
         ACTIVE, COMPLETED, ON_HOLD

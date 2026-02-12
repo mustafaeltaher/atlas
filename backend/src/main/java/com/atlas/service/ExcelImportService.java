@@ -53,9 +53,17 @@ public class ExcelImportService {
                 if (row == null)
                     continue;
 
-                String oracleId = getStringValue(row, columnIndex.get("Oracle ID"));
-                if (oracleId == null || oracleId.isEmpty())
+                String oracleIdStr = getStringValue(row, columnIndex.get("Oracle ID"));
+                if (oracleIdStr == null || oracleIdStr.isEmpty())
                     continue;
+
+                Integer oracleId;
+                try {
+                    oracleId = Integer.parseInt(oracleIdStr);
+                } catch (NumberFormatException e) {
+                    log.warn("Invalid Oracle ID: {}, skipping row", oracleIdStr);
+                    continue;
+                }
 
                 // Skip if employee already exists
                 if (employeeRepository.existsByOracleId(oracleId)) {
@@ -63,16 +71,19 @@ public class ExcelImportService {
                     continue;
                 }
 
+                // Parse enums safely
+                Employee.Gender gender = parseGender(getStringValue(row, columnIndex.get("Gender")));
+                Employee.JobLevel jobLevel = parseJobLevel(getStringValue(row, columnIndex.get("Job Level")));
+                Employee.HiringType hiringType = parseHiringType(getStringValue(row, columnIndex.get("Hiring Type")));
+
                 Employee employee = Employee.builder()
                         .oracleId(oracleId)
                         .name(getStringValue(row, columnIndex.get("Name")))
-                        .gender(getStringValue(row, columnIndex.get("Gender")))
+                        .gender(gender)
                         .grade(getStringValue(row, columnIndex.get("Grade")))
-                        .jobLevel(getStringValue(row, columnIndex.get("Job Level")))
+                        .jobLevel(jobLevel)
                         .title(getStringValue(row, columnIndex.get("Title")))
-                        .primarySkill(getStringValue(row, columnIndex.get("Primary Skill")))
-                        .secondarySkill(getStringValue(row, columnIndex.get("Secondary Skill")))
-                        .hiringType(getStringValue(row, columnIndex.get("Hiring Type")))
+                        .hiringType(hiringType)
                         .location(getStringValue(row, columnIndex.get("Location")))
                         .legalEntity(getStringValue(row, columnIndex.get("Legal Entity")))
                         .costCenter(getStringValue(row, columnIndex.get("Cost Center")))
@@ -81,10 +92,6 @@ public class ExcelImportService {
                         .resignationDate(getDateValue(row, columnIndex.get("Resignation date")))
                         .reasonOfLeave(getStringValue(row, columnIndex.get("Reason of Leave")))
                         .email(getStringValue(row, columnIndex.get("Emails")))
-                        .parentTower(getStringValue(row, columnIndex.get("Parent Tower")))
-                        .tower(getStringValue(row, columnIndex.get("Tower")))
-                        .futureManager(getStringValue(row, columnIndex.get("Future Manager")))
-                        .isActive(true)
                         .build();
 
                 final Employee savedEmployee = employeeRepository.save(employee);
@@ -96,9 +103,10 @@ public class ExcelImportService {
                             .orElseGet(() -> {
                                 Project newProject = Project.builder()
                                         .projectId(projectId)
-                                        .name(getStringValue(row, columnIndex.get("Confirmed Assignment")))
-                                        .parentTower(savedEmployee.getParentTower())
-                                        .tower(savedEmployee.getTower())
+                                        .description(getStringValue(row, columnIndex.get("Confirmed Assignment")))
+                                        .projectType(Project.ProjectType.PROJECT)
+                                        .region(getStringValue(row, columnIndex.get("Region")))
+                                        .vertical(getStringValue(row, columnIndex.get("Vertical")))
                                         .status(Project.ProjectStatus.ACTIVE)
                                         .build();
                                 return projectRepository.save(newProject);
@@ -108,7 +116,7 @@ public class ExcelImportService {
                             .employee(savedEmployee)
                             .project(project)
                             .endDate(getDateValue(row, columnIndex.get("Current Assignment End Date")))
-                            .status(Allocation.AllocationStatus.ACTIVE)
+                            .allocationType(Allocation.AllocationType.PROJECT)
                             .build();
 
                     allocation = allocationRepository.save(allocation);
@@ -122,7 +130,7 @@ public class ExcelImportService {
                         String allocValue = getStringValue(row, columnIndex.get(columnName));
                         if (allocValue != null && !allocValue.isEmpty()) {
                             try {
-                                double percentage = Double.parseDouble(allocValue);
+                                int percentage = (int) Double.parseDouble(allocValue);
                                 if (percentage > 0) {
                                     allocation.setAllocationForYearMonth(year, m + 1, percentage);
                                 }
@@ -168,5 +176,43 @@ public class ExcelImportService {
             return date.toInstant().atZone(ZoneId.systemDefault()).toLocalDate();
         }
         return null;
+    }
+
+    private Employee.Gender parseGender(String value) {
+        if (value == null || value.isEmpty()) return null;
+        return switch (value.trim().toUpperCase()) {
+            case "MALE", "M" -> Employee.Gender.MALE;
+            case "FEMALE", "F" -> Employee.Gender.FEMALE;
+            default -> {
+                log.warn("Unknown gender value: {}", value);
+                yield null;
+            }
+        };
+    }
+
+    private Employee.JobLevel parseJobLevel(String value) {
+        if (value == null || value.isEmpty()) return null;
+        return switch (value.trim().toUpperCase().replace(" ", "_").replace("/", "_")) {
+            case "ENTRY_LEVEL", "ENTRY-LEVEL", "ENTRY LEVEL" -> Employee.JobLevel.ENTRY_LEVEL;
+            case "MID_LEVEL", "MID-LEVEL", "MID LEVEL" -> Employee.JobLevel.MID_LEVEL;
+            case "ADVANCED_MANAGER_LEVEL", "ADVANCED/MANAGER-LEVEL", "ADVANCED/MANAGER LEVEL" -> Employee.JobLevel.ADVANCED_MANAGER_LEVEL;
+            case "EXECUTIVE_LEVEL", "EXECUTIVE-LEVEL", "EXECUTIVE LEVEL" -> Employee.JobLevel.EXECUTIVE_LEVEL;
+            default -> {
+                log.warn("Unknown job level value: {}", value);
+                yield null;
+            }
+        };
+    }
+
+    private Employee.HiringType parseHiringType(String value) {
+        if (value == null || value.isEmpty()) return null;
+        return switch (value.trim().toUpperCase().replace("-", "_").replace(" ", "_")) {
+            case "FULL_TIME", "FULLTIME", "FULL TIME" -> Employee.HiringType.FULL_TIME;
+            case "PART_TIME", "PARTTIME", "PART TIME" -> Employee.HiringType.PART_TIME;
+            default -> {
+                log.warn("Unknown hiring type value: {}", value);
+                yield null;
+            }
+        };
     }
 }

@@ -33,5 +33,5 @@ public class MonthlyAllocation {
     private Integer month; // 1-12
 
     @Column(nullable = false)
-    private Double percentage; // 0.25, 0.5, 0.75, 1.0
+    private Integer percentage;
 }

@@ -63,7 +63,6 @@ public class EmployeeController {
             @RequestParam(required = false) String status) {
         User currentUser = userDetailsService.getUserByUsername(authentication.getName());
         return ResponseEntity.ok(Map.of(
-                "parentTowers", employeeService.getDistinctParentTowers(),
                 "towers", employeeService.getDistinctTowers(currentUser, managerId, status)));
     }
 

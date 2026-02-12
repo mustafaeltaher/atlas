@@ -26,7 +26,7 @@ import { Employee } from '../../models';
         <div class="profile-info">
           <h1 class="profile-name">{{ profile()?.name || authService.currentUser()?.username }}</h1>
           <p class="profile-title">{{ profile()?.title || 'N/A' }}</p>
-          <span class="profile-badge">{{ authService.currentUser()?.role }}</span>
+          <span class="profile-badge">{{ authService.currentUser()?.isTopLevel ? 'Top Level' : 'Manager' }}</span>
         </div>
       </div>
 
@@ -60,11 +60,11 @@ import { Employee } from '../../models';
           <div class="info-grid">
             <div class="info-item">
               <span class="info-label">Parent Tower</span>
-              <span class="info-value">{{ profile()?.parentTower || 'N/A' }}</span>
+              <span class="info-value">{{ profile()?.parentTowerName || 'N/A' }}</span>
             </div>
             <div class="info-item">
               <span class="info-label">Tower</span>
-              <span class="info-value">{{ profile()?.tower || 'N/A' }}</span>
+              <span class="info-value">{{ profile()?.towerName || 'N/A' }}</span>
             </div>
             <div class="info-item">
               <span class="info-label">Manager</span>
@@ -73,21 +73,6 @@ import { Employee } from '../../models';
             <div class="info-item">
               <span class="info-label">Allocation</span>
               <span class="info-value allocation">{{ profile()?.totalAllocation || 0 }}%</span>
-            </div>
-          </div>
-        </div>
-
-        <!-- Skills -->
-        <div class="card fade-in">
-          <h3 class="section-title">Skills</h3>
-          <div class="info-grid">
-            <div class="info-item">
-              <span class="info-label">Primary Skill</span>
-              <span class="info-value">{{ profile()?.primarySkill || 'N/A' }}</span>
-            </div>
-            <div class="info-item">
-              <span class="info-label">Secondary Skill</span>
-              <span class="info-value">{{ profile()?.secondarySkill || 'N/A' }}</span>
             </div>
           </div>
         </div>

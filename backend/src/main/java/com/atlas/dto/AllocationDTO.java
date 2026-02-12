@@ -23,16 +23,14 @@ public class AllocationDTO {
     private String employeeName;
     private String employeeOracleId;
 
-    @NotNull(message = "Project ID is required")
-    private Long projectId;
-
+    private Long projectId; // nullable for Vacation/Maternity
     private String projectName;
     private LocalDate startDate;
     private LocalDate endDate;
-    private Allocation.AllocationStatus status;
+    private Allocation.AllocationType allocationType;
 
     // Current month allocation (for display)
-    private Double currentMonthAllocation;
+    private Integer currentMonthAllocation;
     private Double allocationPercentage;
 
     // Year for creating/editing allocations

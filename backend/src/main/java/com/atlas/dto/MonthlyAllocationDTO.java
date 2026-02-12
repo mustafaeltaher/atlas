@@ -14,5 +14,5 @@ public class MonthlyAllocationDTO {
     private Long allocationId;
     private Integer year;
     private Integer month;
-    private Double percentage;
+    private Integer percentage;
 }

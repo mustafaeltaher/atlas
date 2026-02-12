@@ -28,17 +28,17 @@ public class ProjectController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size,
             @RequestParam(required = false) String search,
-            @RequestParam(required = false) String tower,
+            @RequestParam(required = false) String region,
             @RequestParam(required = false) String status) {
         page = Math.max(0, page);
         size = Math.max(1, Math.min(size, MAX_PAGE_SIZE));
         User currentUser = userDetailsService.getUserByUsername(authentication.getName());
         return ResponseEntity.ok(projectService.getAllProjects(currentUser,
-                org.springframework.data.domain.PageRequest.of(page, size), search, tower, status));
+                org.springframework.data.domain.PageRequest.of(page, size), search, region, status));
     }
 
-    @GetMapping("/towers")
-    public ResponseEntity<java.util.List<String>> getTowers(@RequestParam(required = false) String status) {
+    @GetMapping("/regions")
+    public ResponseEntity<java.util.List<String>> getRegions(@RequestParam(required = false) String status) {
         com.atlas.entity.Project.ProjectStatus projectStatus = null;
         if (status != null && !status.isEmpty()) {
             try {
@@ -47,12 +47,12 @@ public class ProjectController {
                 // ignore invalid status
             }
         }
-        return ResponseEntity.ok(projectService.getDistinctTowers(projectStatus));
+        return ResponseEntity.ok(projectService.getDistinctRegions(projectStatus));
     }
 
     @GetMapping("/statuses")
-    public ResponseEntity<java.util.List<String>> getStatuses(@RequestParam(required = false) String tower) {
-        return ResponseEntity.ok(projectService.getDistinctStatuses(tower));
+    public ResponseEntity<java.util.List<String>> getStatuses(@RequestParam(required = false) String region) {
+        return ResponseEntity.ok(projectService.getDistinctStatuses(region));
     }
 
     @GetMapping("/{id}")

@@ -28,17 +28,17 @@ public class DashboardService {
         Set<Long> activeEmployeesIds = new HashSet<>();
 
         long activeProjects;
-        if (currentUser.getRole() == User.Role.SYSTEM_ADMIN || currentUser.getRole() == User.Role.EXECUTIVE) {
+        if (currentUser.isTopLevel()) {
             activeProjects = projectRepository.countActiveProjects();
         } else {
             activeProjects = projectRepository.countActiveProjectsByEmployees(employees);
         }
 
         List<Allocation> allocations;
-        if (currentUser.getRole() == User.Role.SYSTEM_ADMIN || currentUser.getRole() == User.Role.EXECUTIVE) {
+        if (currentUser.isTopLevel()) {
             allocations = allocationRepository.findAllWithEmployeeAndProject();
         } else {
-            allocations = allocationRepository.findActiveByEmployees(employees);
+            allocations = allocationRepository.findProjectAllocationsByEmployees(employees);
         }
 
         int currentYear = LocalDate.now().getYear();
@@ -46,26 +46,24 @@ public class DashboardService {
 
         long benchCount = 0;
         long prospectCount = 0;
-        double totalAllocation = 0;
+        int totalAllocation = 0;
         int allocationCount = 0;
 
         for (Allocation allocation : allocations) {
-            if (allocation.getStatus() == Allocation.AllocationStatus.PROSPECT) {
+            if (allocation.getAllocationType() == Allocation.AllocationType.PROSPECT) {
                 prospectCount++;
-            } else {
-                Double alloc = allocation.getAllocationForYearMonth(currentYear, currentMonth);
+            } else if (allocation.getAllocationType() == Allocation.AllocationType.PROJECT) {
+                Integer alloc = allocation.getAllocationForYearMonth(currentYear, currentMonth);
                 if (alloc != null && alloc > 0) {
                     totalAllocation += alloc;
                     allocationCount++;
                     activeEmployeesIds.add(allocation.getEmployee().getId());
-                } else {
-                    // No allocation for this month = effectively bench for this employee
                 }
             }
         }
 
         long activeEmployees = activeEmployeesIds.size();
-        double avgAllocation = allocationCount > 0 ? (totalAllocation / allocationCount) * 100 : 0.0;
+        double avgAllocation = allocationCount > 0 ? (double) totalAllocation / allocationCount : 0.0;
 
         return DashboardStatsDTO.builder()
                 .totalEmployees(totalEmployees)

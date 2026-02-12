@@ -21,118 +21,157 @@ public interface AllocationRepository extends JpaRepository<Allocation, Long> {
 
         List<Allocation> findByProjectId(Long projectId);
 
-        List<Allocation> findByStatus(Allocation.AllocationStatus status);
+        List<Allocation> findByAllocationType(Allocation.AllocationType allocationType);
 
-        @Query("SELECT a FROM Allocation a WHERE a.employee.id = :employeeId AND a.status = 'ACTIVE'")
-        List<Allocation> findActiveByEmployeeId(@Param("employeeId") Long employeeId);
+        @Query("SELECT a FROM Allocation a WHERE a.employee.id = :employeeId AND a.allocationType = :allocationType")
+        List<Allocation> findAllocationsByEmployeeIdAndType(
+                        @Param("employeeId") Long employeeId,
+                        @Param("allocationType") Allocation.AllocationType allocationType);
 
-        @Query("SELECT a FROM Allocation a JOIN FETCH a.employee JOIN FETCH a.project WHERE a.project.id = :projectId AND a.status = 'ACTIVE'")
-        List<Allocation> findActiveByProjectId(@Param("projectId") Long projectId);
+        default List<Allocation> findProjectAllocationsByEmployeeId(Long employeeId) {
+                return findAllocationsByEmployeeIdAndType(employeeId, Allocation.AllocationType.PROJECT);
+        }
 
-        @Query("SELECT a FROM Allocation a JOIN FETCH a.employee JOIN FETCH a.project WHERE a.project.parentTower = :parentTower")
-        List<Allocation> findByParentTower(@Param("parentTower") String parentTower);
+        @Query("SELECT a FROM Allocation a JOIN FETCH a.employee LEFT JOIN FETCH a.project WHERE a.project.id = :projectId AND a.allocationType = :allocationType")
+        List<Allocation> findAllocationsByProjectIdAndType(
+                        @Param("projectId") Long projectId,
+                        @Param("allocationType") Allocation.AllocationType allocationType);
 
-        @Query("SELECT a FROM Allocation a JOIN FETCH a.employee JOIN FETCH a.project WHERE a.project.tower = :tower")
-        List<Allocation> findByTower(@Param("tower") String tower);
+        default List<Allocation> findProjectAllocationsByProjectId(Long projectId) {
+                return findAllocationsByProjectIdAndType(projectId, Allocation.AllocationType.PROJECT);
+        }
 
-        @Query("SELECT a FROM Allocation a JOIN FETCH a.employee JOIN FETCH a.project WHERE a.project.id IN :projectIds")
-        List<Allocation> findByProjectIdIn(@Param("projectIds") List<Long> projectIds);
+        @Query("SELECT a FROM Allocation a JOIN FETCH a.employee LEFT JOIN FETCH a.project WHERE a.employee IN :employees AND a.allocationType = :allocationType")
+        List<Allocation> findAllocationsByEmployeesAndType(
+                        @Param("employees") List<Employee> employees,
+                        @Param("allocationType") Allocation.AllocationType allocationType);
 
-        @Query("SELECT a FROM Allocation a JOIN FETCH a.employee JOIN FETCH a.project WHERE a.employee.parentTower = :parentTower AND a.status = 'ACTIVE'")
-        List<Allocation> findActiveByParentTower(@Param("parentTower") String parentTower);
+        default List<Allocation> findProjectAllocationsByEmployees(List<Employee> employees) {
+                return findAllocationsByEmployeesAndType(employees, Allocation.AllocationType.PROJECT);
+        }
 
-        @Query("SELECT a FROM Allocation a JOIN FETCH a.employee JOIN FETCH a.project WHERE a.employee.tower = :tower AND a.status = 'ACTIVE'")
-        List<Allocation> findActiveByTower(@Param("tower") String tower);
+        @Query("SELECT a FROM Allocation a WHERE a.employee.id IN :employeeIds AND a.allocationType = :allocationType")
+        List<Allocation> findAllocationsByEmployeeIdsAndType(
+                        @Param("employeeIds") List<Long> employeeIds,
+                        @Param("allocationType") Allocation.AllocationType allocationType);
 
-        @Query("SELECT a FROM Allocation a JOIN FETCH a.employee JOIN FETCH a.project WHERE a.employee IN :employees AND a.status = 'ACTIVE'")
-        List<Allocation> findActiveByEmployees(@Param("employees") List<Employee> employees);
+        default List<Allocation> findProjectAllocationsByEmployeeIds(List<Long> employeeIds) {
+                return findAllocationsByEmployeeIdsAndType(employeeIds, Allocation.AllocationType.PROJECT);
+        }
 
-        @Query("SELECT a FROM Allocation a WHERE a.employee.id IN :employeeIds AND a.status = 'ACTIVE'")
-        List<Allocation> findActiveByEmployeeIds(@Param("employeeIds") List<Long> employeeIds);
+        @Query("SELECT a FROM Allocation a WHERE a.project.id IN :projectIds AND a.allocationType = :allocationType")
+        List<Allocation> findAllocationsByProjectIdsAndType(
+                        @Param("projectIds") List<Long> projectIds,
+                        @Param("allocationType") Allocation.AllocationType allocationType);
 
-        @Query("SELECT a FROM Allocation a WHERE a.project.id IN :projectIds AND a.status = 'ACTIVE'")
-        List<Allocation> findActiveByProjectIds(@Param("projectIds") List<Long> projectIds);
+        default List<Allocation> findProjectAllocationsByProjectIds(List<Long> projectIds) {
+                return findAllocationsByProjectIdsAndType(projectIds, Allocation.AllocationType.PROJECT);
+        }
 
-        @Query("SELECT a FROM Allocation a JOIN FETCH a.employee JOIN FETCH a.project")
+        @Query("SELECT a FROM Allocation a JOIN FETCH a.employee LEFT JOIN FETCH a.project")
         List<Allocation> findAllWithEmployeeAndProject();
 
-        @Query("SELECT a FROM Allocation a JOIN FETCH a.employee JOIN FETCH a.project WHERE a.employee.id = :employeeId")
+        @Query("SELECT a FROM Allocation a JOIN FETCH a.employee LEFT JOIN FETCH a.project WHERE a.employee.id = :employeeId")
         List<Allocation> findByEmployeeIdWithDetails(@Param("employeeId") Long employeeId);
 
-        @Query("SELECT a FROM Allocation a JOIN FETCH a.employee JOIN FETCH a.project WHERE a.project.id = :projectId")
+        @Query("SELECT a FROM Allocation a JOIN FETCH a.employee LEFT JOIN FETCH a.project WHERE a.project.id = :projectId")
         List<Allocation> findByProjectIdWithDetails(@Param("projectId") Long projectId);
 
-        @Query("SELECT a FROM Allocation a JOIN FETCH a.employee JOIN FETCH a.project WHERE a.id = :id")
+        @Query("SELECT a FROM Allocation a JOIN FETCH a.employee LEFT JOIN FETCH a.project WHERE a.id = :id")
         java.util.Optional<Allocation> findByIdWithDetails(@Param("id") Long id);
 
-        @Query("SELECT a FROM Allocation a JOIN FETCH a.employee JOIN FETCH a.project WHERE a.employee.id IN :employeeIds")
+        @Query("SELECT a FROM Allocation a JOIN FETCH a.employee LEFT JOIN FETCH a.project WHERE a.employee.id IN :employeeIds")
         List<Allocation> findByEmployeeIdsWithDetails(@Param("employeeIds") List<Long> employeeIds);
 
         boolean existsByEmployeeAndProject(Employee employee, Project project);
 
-        // Database-level paginated query with all filters for admin/executive
-        @Query(value = "SELECT a FROM Allocation a JOIN FETCH a.employee e JOIN FETCH a.project p " +
-                        "WHERE (:status IS NULL OR a.status = :status) " +
+        // With allocationType filter
+        @Query(value = "SELECT a FROM Allocation a JOIN FETCH a.employee e LEFT JOIN FETCH a.project p " +
+                        "WHERE a.allocationType = :allocationType " +
                         "AND (:managerId IS NULL OR e.manager.id = :managerId) " +
-                        "AND (:search IS NULL OR LOWER(CAST(e.name AS string)) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%')) "
-                        +
-                        "OR LOWER(CAST(p.name AS string)) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%')))", countQuery = "SELECT COUNT(a) FROM Allocation a JOIN a.employee e JOIN a.project p "
-                                        +
-                                        "WHERE (:status IS NULL OR a.status = :status) " +
+                        "AND (:search IS NULL OR LOWER(e.name) LIKE :search " +
+                        "OR (p IS NOT NULL AND LOWER(p.description) LIKE :search))",
+                        countQuery = "SELECT COUNT(a) FROM Allocation a JOIN a.employee e LEFT JOIN a.project p " +
+                                        "WHERE a.allocationType = :allocationType " +
                                         "AND (:managerId IS NULL OR e.manager.id = :managerId) " +
-                                        "AND (:search IS NULL OR LOWER(CAST(e.name AS string)) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%')) "
-                                        +
-                                        "OR LOWER(CAST(p.name AS string)) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%')))")
-        org.springframework.data.domain.Page<Allocation> findAllocationsWithFilters(
+                                        "AND (:search IS NULL OR LOWER(e.name) LIKE :search " +
+                                        "OR (p IS NOT NULL AND LOWER(p.description) LIKE :search))")
+        org.springframework.data.domain.Page<Allocation> findAllocationsWithTypeFilter(
                         @Param("search") String search,
-                        @Param("status") Allocation.AllocationStatus status,
+                        @Param("allocationType") Allocation.AllocationType allocationType,
                         @Param("managerId") Long managerId,
                         org.springframework.data.domain.Pageable pageable);
 
-        // Database-level paginated query with all filters for non-admin (employee ID
-        // restriction)
-        @Query(value = "SELECT a FROM Allocation a JOIN FETCH a.employee e JOIN FETCH a.project p " +
+        // Without allocationType filter
+        @Query(value = "SELECT a FROM Allocation a JOIN FETCH a.employee e LEFT JOIN FETCH a.project p " +
+                        "WHERE (:managerId IS NULL OR e.manager.id = :managerId) " +
+                        "AND (:search IS NULL OR LOWER(e.name) LIKE :search " +
+                        "OR (p IS NOT NULL AND LOWER(p.description) LIKE :search))",
+                        countQuery = "SELECT COUNT(a) FROM Allocation a JOIN a.employee e LEFT JOIN a.project p " +
+                                        "WHERE (:managerId IS NULL OR e.manager.id = :managerId) " +
+                                        "AND (:search IS NULL OR LOWER(e.name) LIKE :search " +
+                                        "OR (p IS NOT NULL AND LOWER(p.description) LIKE :search))")
+        org.springframework.data.domain.Page<Allocation> findAllocationsNoTypeFilter(
+                        @Param("search") String search,
+                        @Param("managerId") Long managerId,
+                        org.springframework.data.domain.Pageable pageable);
+
+        default org.springframework.data.domain.Page<Allocation> findAllocationsWithFilters(
+                        String search, Allocation.AllocationType allocationType, Long managerId,
+                        org.springframework.data.domain.Pageable pageable) {
+                if (allocationType != null) {
+                        return findAllocationsWithTypeFilter(search, allocationType, managerId, pageable);
+                }
+                return findAllocationsNoTypeFilter(search, managerId, pageable);
+        }
+
+        // With allocationType filter by employee IDs
+        @Query(value = "SELECT a FROM Allocation a JOIN FETCH a.employee e LEFT JOIN FETCH a.project p " +
                         "WHERE e.id IN :employeeIds " +
-                        "AND (:status IS NULL OR a.status = :status) " +
+                        "AND a.allocationType = :allocationType " +
                         "AND (:managerId IS NULL OR e.manager.id = :managerId) " +
-                        "AND (:search IS NULL OR LOWER(CAST(e.name AS string)) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%')) "
-                        +
-                        "OR LOWER(CAST(p.name AS string)) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%')))", countQuery = "SELECT COUNT(a) FROM Allocation a JOIN a.employee e JOIN a.project p "
-                                        +
+                        "AND (:search IS NULL OR LOWER(e.name) LIKE :search " +
+                        "OR (p IS NOT NULL AND LOWER(p.description) LIKE :search))",
+                        countQuery = "SELECT COUNT(a) FROM Allocation a JOIN a.employee e LEFT JOIN a.project p " +
                                         "WHERE e.id IN :employeeIds " +
-                                        "AND (:status IS NULL OR a.status = :status) " +
+                                        "AND a.allocationType = :allocationType " +
                                         "AND (:managerId IS NULL OR e.manager.id = :managerId) " +
-                                        "AND (:search IS NULL OR LOWER(CAST(e.name AS string)) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%')) "
-                                        +
-                                        "OR LOWER(CAST(p.name AS string)) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%')))")
-        org.springframework.data.domain.Page<Allocation> findAllocationsWithFiltersByEmployeeIds(
+                                        "AND (:search IS NULL OR LOWER(e.name) LIKE :search " +
+                                        "OR (p IS NOT NULL AND LOWER(p.description) LIKE :search))")
+        org.springframework.data.domain.Page<Allocation> findAllocationsByIdsWithTypeFilter(
                         @Param("employeeIds") List<Long> employeeIds,
                         @Param("search") String search,
-                        @Param("status") Allocation.AllocationStatus status,
+                        @Param("allocationType") Allocation.AllocationType allocationType,
                         @Param("managerId") Long managerId,
                         org.springframework.data.domain.Pageable pageable);
 
-        // Pagination methods
-        @Query("SELECT a FROM Allocation a WHERE a.status = 'ACTIVE'")
-        org.springframework.data.domain.Page<Allocation> findByStatusActive(
+        // Without allocationType filter by employee IDs
+        @Query(value = "SELECT a FROM Allocation a JOIN FETCH a.employee e LEFT JOIN FETCH a.project p " +
+                        "WHERE e.id IN :employeeIds " +
+                        "AND (:managerId IS NULL OR e.manager.id = :managerId) " +
+                        "AND (:search IS NULL OR LOWER(e.name) LIKE :search " +
+                        "OR (p IS NOT NULL AND LOWER(p.description) LIKE :search))",
+                        countQuery = "SELECT COUNT(a) FROM Allocation a JOIN a.employee e LEFT JOIN a.project p " +
+                                        "WHERE e.id IN :employeeIds " +
+                                        "AND (:managerId IS NULL OR e.manager.id = :managerId) " +
+                                        "AND (:search IS NULL OR LOWER(e.name) LIKE :search " +
+                                        "OR (p IS NOT NULL AND LOWER(p.description) LIKE :search))")
+        org.springframework.data.domain.Page<Allocation> findAllocationsByIdsNoTypeFilter(
+                        @Param("employeeIds") List<Long> employeeIds,
+                        @Param("search") String search,
+                        @Param("managerId") Long managerId,
                         org.springframework.data.domain.Pageable pageable);
 
-        // Search with pagination and filters
-        @Query(value = "SELECT a FROM Allocation a JOIN FETCH a.employee JOIN FETCH a.project WHERE " +
-                        "(:status IS NULL OR a.status = :status) AND " +
-                        "(:search IS NULL OR LOWER(CAST(a.employee.name AS string)) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%')) OR "
-                        +
-                        "LOWER(CAST(a.project.name AS string)) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%')))", countQuery = "SELECT COUNT(a) FROM Allocation a WHERE "
-                                        +
-                                        "(:status IS NULL OR a.status = :status) AND " +
-                                        "(:search IS NULL OR LOWER(CAST(a.employee.name AS string)) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%')) OR "
-                                        +
-                                        "LOWER(CAST(a.project.name AS string)) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%')))")
-        org.springframework.data.domain.Page<Allocation> searchAllocations(
-                        @Param("status") Allocation.AllocationStatus status,
-                        org.springframework.data.domain.Pageable pageable);
+        default org.springframework.data.domain.Page<Allocation> findAllocationsWithFiltersByEmployeeIds(
+                        List<Long> employeeIds, String search, Allocation.AllocationType allocationType,
+                        Long managerId, org.springframework.data.domain.Pageable pageable) {
+                if (allocationType != null) {
+                        return findAllocationsByIdsWithTypeFilter(employeeIds, search, allocationType, managerId, pageable);
+                }
+                return findAllocationsByIdsNoTypeFilter(employeeIds, search, managerId, pageable);
+        }
 
-        @Query("SELECT DISTINCT a.status FROM Allocation a JOIN a.employee e WHERE " +
+        @Query("SELECT DISTINCT a.allocationType FROM Allocation a JOIN a.employee e WHERE " +
                         "(:managerId IS NULL OR e.manager.id = :managerId)")
-        List<Allocation.AllocationStatus> findDistinctStatusesByManager(@Param("managerId") Long managerId);
+        List<Allocation.AllocationType> findDistinctAllocationTypesByManager(@Param("managerId") Long managerId);
 }

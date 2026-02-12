@@ -1,8 +1,8 @@
 export interface User {
     username: string;
     email: string;
-    role: 'SYSTEM_ADMIN' | 'EXECUTIVE' | 'HEAD' | 'DEPARTMENT_MANAGER' | 'TEAM_LEAD';
-    managerLevel: number;
+    isTopLevel: boolean;
+    employeeName: string;
     employeeId?: number;
 }
 
@@ -10,34 +10,41 @@ export interface LoginResponse {
     token: string;
     username: string;
     email: string;
-    role: string;
-    managerLevel: number;
+    isTopLevel: boolean;
+    employeeName: string;
     employeeId?: number;
+}
+
+export interface EmployeeSkill {
+    skillName: string;
+    skillLevel: 'PRIMARY' | 'SECONDARY';
+    skillGrade: 'ADVANCED' | 'INTERMEDIATE' | 'BEGINNER';
 }
 
 export interface Employee {
     id: number;
-    oracleId: string;
+    oracleId: number;
     name: string;
     gender: string;
     grade: string;
     jobLevel: string;
     title: string;
-    primarySkill: string;
-    secondarySkill: string;
     hiringType: string;
     location: string;
     legalEntity: string;
     costCenter: string;
     nationality: string;
     hireDate: string;
+    resignationDate?: string;
+    reasonOfLeave?: string;
     email: string;
-    parentTower: string;
-    tower: string;
+    towerId?: number;
+    towerName: string;
+    parentTowerName: string;
     managerId?: number;
     managerName?: string;
-    isActive: boolean;
-    status: 'ACTIVE' | 'MATERNITY' | 'LONG_LEAVE' | 'RESIGNED';
+    skills: EmployeeSkill[];
+    status: 'ACTIVE' | 'MATERNITY' | 'VACATION' | 'RESIGNED';
     totalAllocation: number;
     allocationStatus: 'ACTIVE' | 'BENCH' | 'PROSPECT' | null;
 }
@@ -45,13 +52,14 @@ export interface Employee {
 export interface Project {
     id: number;
     projectId: string;
-    name: string;
     description: string;
-    parentTower: string;
-    tower: string;
+    projectType: 'PROJECT' | 'OPPORTUNITY';
+    region: string;
+    vertical: string;
     startDate: string;
     endDate: string;
     status: 'ACTIVE' | 'COMPLETED' | 'ON_HOLD';
+    managerId?: number;
     managerName?: string;
     allocatedEmployees: number;
     averageAllocation: number;
@@ -70,11 +78,11 @@ export interface Allocation {
     employeeId: number;
     employeeName: string;
     employeeOracleId: string;
-    projectId: number;
-    projectName: string;
+    projectId: number | null;
+    projectName: string | null;
     startDate: string;
     endDate: string;
-    status: 'ACTIVE' | 'PROSPECT';
+    allocationType: 'PROJECT' | 'PROSPECT' | 'VACATION' | 'MATERNITY';
     currentMonthAllocation: number | null;
     allocationPercentage: number;
     year?: number;

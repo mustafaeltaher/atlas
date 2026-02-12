@@ -84,7 +84,6 @@ import { Employee, Manager } from '../../models';
                   <th>Title</th>
                   <th>Manager</th>
                   <th>Tower</th>
-                  <th>Primary Skill</th>
                   <th>Total Allocation</th>
                   <th>Status</th>
                   <th>Actions</th>
@@ -104,8 +103,7 @@ import { Employee, Manager } from '../../models';
                     <td>{{ emp.grade }}</td>
                     <td>{{ emp.title }}</td>
                     <td>{{ emp.managerName || '-' }}</td>
-                    <td>{{ emp.tower }}</td>
-                    <td>{{ emp.primarySkill }}</td>
+                    <td>{{ emp.towerName || '-' }}</td>
                     <td>
                       <div class="allocation-cell">
                         <div class="progress-bar">
@@ -124,7 +122,7 @@ import { Employee, Manager } from '../../models';
                         @if (emp.status && emp.status !== 'ACTIVE') {
                           <span class="status-pill employee-status"
                                 [class.maternity]="emp.status === 'MATERNITY'"
-                                [class.long_leave]="emp.status === 'LONG_LEAVE'"
+                                [class.vacation]="emp.status === 'VACATION'"
                                 [class.resigned]="emp.status === 'RESIGNED'">
                             {{ formatEmployeeStatus(emp.status) }}
                           </span>
@@ -149,7 +147,7 @@ import { Employee, Manager } from '../../models';
                   </tr>
                 } @empty {
                   <tr>
-                    <td colspan="11" class="empty-state">No employees found</td>
+                    <td colspan="10" class="empty-state">No employees found</td>
                   </tr>
                 }
               </tbody>
@@ -252,11 +250,11 @@ import { Employee, Manager } from '../../models';
                   <div class="detail-grid">
                     <div class="detail-item">
                       <label>Tower</label>
-                      <span>{{ selectedEmployee()?.tower }}</span>
+                      <span>{{ selectedEmployee()?.towerName || 'N/A' }}</span>
                     </div>
                     <div class="detail-item">
                       <label>Parent Tower</label>
-                      <span>{{ selectedEmployee()?.parentTower || 'N/A' }}</span>
+                      <span>{{ selectedEmployee()?.parentTowerName || 'N/A' }}</span>
                     </div>
                     <div class="detail-item">
                       <label>Manager</label>
@@ -277,19 +275,21 @@ import { Employee, Manager } from '../../models';
                   </div>
                 </div>
 
-                <div class="detail-section">
-                  <h3>Skills</h3>
-                  <div class="detail-grid">
-                    <div class="detail-item">
-                      <label>Primary Skill</label>
-                      <span>{{ selectedEmployee()?.primarySkill || 'N/A' }}</span>
-                    </div>
-                    <div class="detail-item">
-                      <label>Secondary Skill</label>
-                      <span>{{ selectedEmployee()?.secondarySkill || 'N/A' }}</span>
+                <!-- Skills Section -->
+                @if (selectedEmployee()?.skills?.length) {
+                  <div class="detail-section">
+                    <h4>Skills</h4>
+                    <div class="skills-list">
+                      @for (skill of selectedEmployee()!.skills; track skill.skillName) {
+                        <div class="skill-tag" [class.primary]="skill.skillLevel === 'PRIMARY'" [class.secondary]="skill.skillLevel === 'SECONDARY'">
+                          <span class="skill-name">{{ skill.skillName }}</span>
+                          <span class="skill-grade">{{ skill.skillGrade }}</span>
+                        </div>
+                      }
                     </div>
                   </div>
-                </div>
+                }
+
               </div>
               <div class="modal-actions">
                 <button class="btn btn-primary" (click)="closeDetails()">Close</button>
@@ -563,6 +563,41 @@ import { Employee, Manager } from '../../models';
       color: var(--text);
     }
 
+    .skills-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .skill-tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 12px;
+      border-radius: 20px;
+      font-size: 13px;
+      background: rgba(100, 116, 139, 0.1);
+      color: var(--text);
+    }
+
+    .skill-tag.primary {
+      background: rgba(59, 130, 246, 0.12);
+      border: 1px solid rgba(59, 130, 246, 0.3);
+    }
+
+    .skill-tag.secondary {
+      background: rgba(100, 116, 139, 0.08);
+      border: 1px solid rgba(100, 116, 139, 0.2);
+    }
+
+    .skill-name { font-weight: 500; }
+
+    .skill-grade {
+      font-size: 11px;
+      color: var(--text-muted);
+      text-transform: lowercase;
+    }
+
     @keyframes slideUp {
       from { transform: translateY(20px); opacity: 0; }
       to { transform: translateY(0); opacity: 1; }
@@ -579,7 +614,7 @@ import { Employee, Manager } from '../../models';
       color: #db2777;
     }
 
-    .status-pill.employee-status.long_leave {
+    .status-pill.employee-status.vacation {
       background: rgba(251, 191, 36, 0.15);
       color: #d97706;
     }
@@ -641,7 +676,7 @@ export class EmployeesComponent implements OnInit {
 
   isN1Manager(): boolean {
     const user = this.authService.currentUser();
-    return user?.role === 'EXECUTIVE';
+    return user?.isTopLevel === true;
   }
 
   loadManagers(): void {
@@ -769,7 +804,7 @@ export class EmployeesComponent implements OnInit {
 
   formatEmployeeStatus(status: string): string {
     switch (status) {
-      case 'LONG_LEAVE': return 'Long Leave';
+      case 'VACATION': return 'Vacation';
       case 'MATERNITY': return 'Maternity';
       case 'RESIGNED': return 'Resigned';
       default: return status;

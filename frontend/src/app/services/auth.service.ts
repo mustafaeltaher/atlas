@@ -22,8 +22,8 @@ export class AuthService {
                 const user: User = {
                     username: response.username,
                     email: response.email,
-                    role: response.role as User['role'],
-                    managerLevel: response.managerLevel,
+                    isTopLevel: response.isTopLevel,
+                    employeeName: response.employeeName,
                     employeeId: response.employeeId
                 };
                 localStorage.setItem(this.USER_KEY, JSON.stringify(user));

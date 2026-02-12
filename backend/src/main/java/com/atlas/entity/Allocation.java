@@ -7,6 +7,8 @@ import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
 import lombok.ToString;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -30,10 +32,15 @@ public class Allocation {
     private Employee employee;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "project_id", nullable = false)
+    @JoinColumn(name = "project_id")
     @ToString.Exclude
     @EqualsAndHashCode.Exclude
     private Project project;
+
+    @JdbcTypeCode(SqlTypes.NAMED_ENUM)
+    @Column(name = "allocation_type", columnDefinition = "allocation_type")
+    @Builder.Default
+    private AllocationType allocationType = AllocationType.PROJECT;
 
     @Column(name = "start_date")
     private LocalDate startDate;
@@ -47,12 +54,8 @@ public class Allocation {
     @EqualsAndHashCode.Exclude
     private List<MonthlyAllocation> monthlyAllocations = new ArrayList<>();
 
-    @Enumerated(EnumType.STRING)
-    @Builder.Default
-    private AllocationStatus status = AllocationStatus.ACTIVE;
-
-    public enum AllocationStatus {
-        ACTIVE, PROSPECT
+    public enum AllocationType {
+        PROJECT, PROSPECT, VACATION, MATERNITY
     }
 
     // Helper method to add a monthly allocation
@@ -68,7 +71,7 @@ public class Allocation {
     }
 
     // Helper method to get allocation for a specific year and month
-    public Double getAllocationForYearMonth(int year, int month) {
+    public Integer getAllocationForYearMonth(int year, int month) {
         return monthlyAllocations.stream()
                 .filter(ma -> ma.getYear() == year && ma.getMonth() == month)
                 .map(MonthlyAllocation::getPercentage)
@@ -77,7 +80,7 @@ public class Allocation {
     }
 
     // Helper method to set allocation for a specific year and month
-    public void setAllocationForYearMonth(int year, int month, Double percentage) {
+    public void setAllocationForYearMonth(int year, int month, Integer percentage) {
         MonthlyAllocation existing = monthlyAllocations.stream()
                 .filter(ma -> ma.getYear() == year && ma.getMonth() == month)
                 .findFirst()

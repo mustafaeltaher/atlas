@@ -26,37 +26,15 @@ public class User {
     @Column(unique = true, nullable = false)
     private String email;
 
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
-    private Role role;
-
-    // Manager level derived from role (N1=highest to N4=lowest)
-    @Column(name = "manager_level")
-    private Integer managerLevel;
-
     @OneToOne(fetch = FetchType.EAGER)
-    @JoinColumn(name = "employee_id")
+    @JoinColumn(name = "employee_id", nullable = false)
     private Employee employee;
 
-    @Column(name = "is_active")
-    @Builder.Default
-    private Boolean isActive = true;
-
-    public enum Role {
-        SYSTEM_ADMIN(0), // Full system access
-        EXECUTIVE(1), // N1 - Company-wide visibility
-        HEAD(2), // N2 - Parent Tower visibility
-        DEPARTMENT_MANAGER(3), // N3 - Tower visibility
-        TEAM_LEAD(4); // N4 - Project visibility
-
-        private final int level;
-
-        Role(int level) {
-            this.level = level;
-        }
-
-        public int getLevel() {
-            return level;
-        }
+    /**
+     * Returns true if this user is at the top of the managerial hierarchy
+     * (their linked employee has no manager), granting full system access.
+     */
+    public boolean isTopLevel() {
+        return employee != null && employee.getManager() == null;
     }
 }

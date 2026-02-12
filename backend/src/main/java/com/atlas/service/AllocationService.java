@@ -44,26 +44,26 @@ public class AllocationService {
 
     // Paginated version with search and filters - uses database-level pagination
     public Page<AllocationDTO> getAllAllocations(User currentUser,
-            Pageable pageable, String search, String status, Long managerId) {
+            Pageable pageable, String search, String allocationType, Long managerId) {
 
-        Allocation.AllocationStatus statusEnum = null;
-        if (status != null && !status.trim().isEmpty()) {
+        Allocation.AllocationType allocationTypeEnum = null;
+        if (allocationType != null && !allocationType.trim().isEmpty()) {
             try {
-                statusEnum = Allocation.AllocationStatus.valueOf(status.toUpperCase());
+                allocationTypeEnum = Allocation.AllocationType.valueOf(allocationType.toUpperCase());
             } catch (IllegalArgumentException e) {
-                // Invalid status, ignore filter
+                // Invalid allocation type, ignore filter
             }
         }
 
-        String searchParam = (search != null && !search.trim().isEmpty()) ? search.trim() : null;
+        String searchParam = (search != null && !search.trim().isEmpty()) ? "%" + search.trim().toLowerCase() + "%" : null;
 
-        if (currentUser.getRole() == User.Role.SYSTEM_ADMIN || currentUser.getRole() == User.Role.EXECUTIVE) {
+        if (currentUser.isTopLevel()) {
             Page<Allocation> allocationPage = allocationRepository
-                    .findAllocationsWithFilters(searchParam, statusEnum, managerId, pageable);
+                    .findAllocationsWithFilters(searchParam, allocationTypeEnum, managerId, pageable);
             return allocationPage.map(this::toDTO);
         }
 
-        // For non-admin managers: get accessible employee IDs first
+        // For non-top-level users: get accessible employee IDs first
         List<Employee> accessibleEmployees = employeeService.getAccessibleEmployees(currentUser);
         if (accessibleEmployees.isEmpty()) {
             return new PageImpl<>(List.of(), pageable, 0);
@@ -74,32 +74,46 @@ public class AllocationService {
                 .collect(Collectors.toList());
 
         Page<Allocation> allocationPage = allocationRepository
-                .findAllocationsWithFiltersByEmployeeIds(accessibleIds, searchParam, statusEnum, managerId, pageable);
+                .findAllocationsWithFiltersByEmployeeIds(accessibleIds, searchParam, allocationTypeEnum, managerId,
+                        pageable);
         return allocationPage.map(this::toDTO);
     }
 
     public Page<EmployeeAllocationSummaryDTO> getGroupedAllocations(User currentUser,
-            Pageable pageable, String search, String status, Long managerId) {
+            Pageable pageable, String search, String allocationType, Long managerId) {
 
-        boolean isBenchFilter = "BENCH".equalsIgnoreCase(status);
-        boolean isActiveFilter = "ACTIVE".equalsIgnoreCase(status);
+        boolean isBenchFilter = "BENCH".equalsIgnoreCase(allocationType);
+        boolean isActiveFilter = "ACTIVE".equalsIgnoreCase(allocationType);
+        // Check if it's a standard allocation type (PROJECT, PROSPECT, VACATION, MATERNITY)
+        boolean isStandardTypeFilter = false;
+        if (!isBenchFilter && !isActiveFilter && allocationType != null && !allocationType.trim().isEmpty()) {
+            try {
+                Allocation.AllocationType.valueOf(allocationType.toUpperCase());
+                isStandardTypeFilter = true;
+            } catch (IllegalArgumentException e) {
+                // Not a valid type, ignore
+            }
+        }
 
-        String searchParam = (search != null && !search.trim().isEmpty()) ? search.trim() : null;
+        String searchParam = (search != null && !search.trim().isEmpty()) ? "%" + search.trim().toLowerCase() + "%" : null;
         int currentYear = LocalDate.now().getYear();
         int currentMonth = LocalDate.now().getMonthValue();
 
         Page<Employee> employeePage;
 
-        if (currentUser.getRole() == User.Role.SYSTEM_ADMIN || currentUser.getRole() == User.Role.EXECUTIVE) {
+        if (currentUser.isTopLevel()) {
             if (isBenchFilter) {
                 employeePage = employeeRepository.findBenchEmployees(searchParam, managerId, currentYear,
                         currentMonth, pageable);
             } else if (isActiveFilter) {
                 employeePage = employeeRepository.findActiveAllocatedEmployees(searchParam, managerId,
                         currentYear, currentMonth, pageable);
+            } else if (isStandardTypeFilter) {
+                employeePage = employeeRepository.findEmployeesByAllocationType(searchParam, managerId,
+                        allocationType.toUpperCase(), pageable);
             } else {
                 employeePage = employeeRepository.findEmployeesForAllocationView(
-                        searchParam, managerId, null, null, null, pageable);
+                        searchParam, managerId, pageable);
             }
         } else {
             List<Employee> accessible = employeeService.getAccessibleEmployees(currentUser);
@@ -115,9 +129,12 @@ public class AllocationService {
             } else if (isActiveFilter) {
                 employeePage = employeeRepository.findActiveAllocatedEmployeesByIds(accessibleIds,
                         searchParam, managerId, currentYear, currentMonth, pageable);
+            } else if (isStandardTypeFilter) {
+                employeePage = employeeRepository.findEmployeesByAllocationTypeByIds(accessibleIds,
+                        searchParam, managerId, allocationType.toUpperCase(), pageable);
             } else {
                 employeePage = employeeRepository.findEmployeesForAllocationViewByIds(
-                        accessibleIds, searchParam, managerId, null, pageable);
+                        accessibleIds, searchParam, managerId, pageable);
             }
         }
 
@@ -138,7 +155,7 @@ public class AllocationService {
                 .collect(Collectors.toList());
 
         // Batch-fetch monthly allocations for current year/month
-        Map<Long, Double> currentMonthAllocations = monthlyAllocationRepository
+        Map<Long, Integer> currentMonthAllocations = monthlyAllocationRepository
                 .findByAllocationIdsAndYearAndMonth(allocationIds, currentYear, currentMonth)
                 .stream()
                 .collect(Collectors.toMap(
@@ -156,16 +173,16 @@ public class AllocationService {
                     List<Allocation> empAllocations = allocationsByEmployee
                             .getOrDefault(emp.getId(), List.of());
 
-                    // For current month view: only ACTIVE allocations with valid percentage
-                    List<Allocation> activeAllocations = empAllocations.stream()
-                            .filter(a -> a.getStatus() == Allocation.AllocationStatus.ACTIVE)
+                    // For current month view: only PROJECT allocations with valid percentage
+                    List<Allocation> projectAllocations = empAllocations.stream()
+                            .filter(a -> a.getAllocationType() == Allocation.AllocationType.PROJECT)
                             .filter(a -> {
-                                Double percentage = currentMonthAllocations.get(a.getId());
+                                Integer percentage = currentMonthAllocations.get(a.getId());
                                 return percentage != null && percentage > 0;
                             })
                             .collect(Collectors.toList());
 
-                    List<AllocationDTO> allocationDTOs = activeAllocations.stream()
+                    List<AllocationDTO> allocationDTOs = projectAllocations.stream()
                             .map(a -> toDTOWithCurrentMonth(a, currentYear, currentMonth, currentMonthAllocations))
                             .collect(Collectors.toList());
 
@@ -178,9 +195,9 @@ public class AllocationService {
                     return EmployeeAllocationSummaryDTO.builder()
                             .employeeId(emp.getId())
                             .employeeName(emp.getName())
-                            .employeeOracleId(emp.getOracleId())
+                            .employeeOracleId(emp.getOracleId() != null ? String.valueOf(emp.getOracleId()) : null)
                             .totalAllocationPercentage(totalPercentage)
-                            .projectCount(activeAllocations.size())
+                            .projectCount(projectAllocations.size())
                             .allocations(allocationDTOs)
                             .build();
                 })
@@ -217,25 +234,38 @@ public class AllocationService {
         Employee employee = employeeRepository.findById(dto.getEmployeeId())
                 .orElseThrow(() -> new RuntimeException("Employee not found: " + dto.getEmployeeId()));
 
-        Project project = projectRepository.findById(dto.getProjectId())
-                .orElseThrow(() -> new RuntimeException("Project not found: " + dto.getProjectId()));
+        Allocation.AllocationType allocationType = dto.getAllocationType() != null
+                ? dto.getAllocationType()
+                : Allocation.AllocationType.PROJECT;
 
-        Allocation.AllocationStatus status = dto.getStatus() != null ? dto.getStatus()
-                : Allocation.AllocationStatus.ACTIVE;
+        // Project is required for PROJECT and PROSPECT types, nullable for VACATION/MATERNITY
+        Project project = null;
+        if (allocationType == Allocation.AllocationType.PROJECT
+                || allocationType == Allocation.AllocationType.PROSPECT) {
+            if (dto.getProjectId() == null) {
+                throw new RuntimeException(
+                        "Project is required for " + allocationType.name() + " allocations.");
+            }
+            project = projectRepository.findById(dto.getProjectId())
+                    .orElseThrow(() -> new RuntimeException("Project not found: " + dto.getProjectId()));
+        } else if (dto.getProjectId() != null) {
+            // Allow optional project for VACATION/MATERNITY but don't require it
+            project = projectRepository.findById(dto.getProjectId()).orElse(null);
+        }
 
         Allocation allocation = Allocation.builder()
                 .employee(employee)
                 .project(project)
                 .startDate(dto.getStartDate())
                 .endDate(dto.getEndDate())
-                .status(status)
+                .allocationType(allocationType)
                 .monthlyAllocations(new ArrayList<>())
                 .build();
 
         allocation = allocationRepository.save(allocation);
 
         // Create monthly allocation for current month if percentage provided
-        if (dto.getCurrentMonthAllocation() != null && status == Allocation.AllocationStatus.ACTIVE) {
+        if (dto.getCurrentMonthAllocation() != null && allocationType == Allocation.AllocationType.PROJECT) {
             int year = dto.getYear() != null ? dto.getYear() : LocalDate.now().getYear();
             int month = LocalDate.now().getMonthValue();
 
@@ -250,21 +280,21 @@ public class AllocationService {
             monthlyAllocationRepository.save(monthlyAlloc);
         }
 
-        // If monthly allocations list is provided, create them (only for ACTIVE
-        // allocations)
+        // If monthly allocations list is provided, create them (only for PROJECT allocations)
         if (dto.getMonthlyAllocations() != null && !dto.getMonthlyAllocations().isEmpty()) {
-            if (status == Allocation.AllocationStatus.PROSPECT) {
+            if (allocationType == Allocation.AllocationType.PROSPECT) {
                 throw new RuntimeException("PROSPECT allocations cannot have monthly allocation percentages. " +
-                        "Change status to ACTIVE to add monthly allocations.");
+                        "Change allocation type to PROJECT to add monthly allocations.");
             }
             for (MonthlyAllocationDTO maDTO : dto.getMonthlyAllocations()) {
-                validateAllocationPercentage(maDTO.getPercentage());
+                Integer pct = maDTO.getPercentage();
+                validateAllocationPercentage(pct);
 
                 MonthlyAllocation monthlyAlloc = MonthlyAllocation.builder()
                         .allocation(allocation)
                         .year(maDTO.getYear())
                         .month(maDTO.getMonth())
-                        .percentage(maDTO.getPercentage())
+                        .percentage(pct)
                         .build();
                 monthlyAllocationRepository.save(monthlyAlloc);
             }
@@ -273,13 +303,13 @@ public class AllocationService {
         return toDTO(allocation);
     }
 
-    private void validateAllocationPercentage(Double percentage) {
+    private void validateAllocationPercentage(Integer percentage) {
         if (percentage == null) {
             return;
         }
-        if (percentage != 0.25 && percentage != 0.5 && percentage != 0.75 && percentage != 1.0) {
+        if (percentage != 25 && percentage != 50 && percentage != 75 && percentage != 100) {
             throw new RuntimeException(
-                    "Invalid allocation percentage. Allowed values are: 0.25 (25%), 0.5 (50%), 0.75 (75%), 1 (100%).");
+                    "Invalid allocation percentage. Allowed values are: 25, 50, 75, 100.");
         }
     }
 
@@ -288,10 +318,11 @@ public class AllocationService {
         Allocation allocation = allocationRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Allocation not found: " + id));
 
-        // Status is immutable after creation
-        if (dto.getStatus() != null && dto.getStatus() != allocation.getStatus()) {
-            throw new RuntimeException("Cannot change allocation status. Status is immutable after creation. " +
-                    "Delete this allocation and create a new one with the desired status.");
+        // Allocation type is immutable after creation
+        if (dto.getAllocationType() != null && dto.getAllocationType() != allocation.getAllocationType()) {
+            throw new RuntimeException(
+                    "Cannot change allocation type. Allocation type is immutable after creation. " +
+                            "Delete this allocation and create a new one with the desired type.");
         }
 
         // Update current month's allocation value
@@ -299,7 +330,7 @@ public class AllocationService {
         int currentMonth = LocalDate.now().getMonthValue();
 
         if (dto.getCurrentMonthAllocation() != null) {
-            if (allocation.getStatus() == Allocation.AllocationStatus.PROSPECT) {
+            if (allocation.getAllocationType() == Allocation.AllocationType.PROSPECT) {
                 // Prospect allocations don't have percentage values
             } else {
                 validateAllocationPercentage(dto.getCurrentMonthAllocation());
@@ -338,7 +369,7 @@ public class AllocationService {
     }
 
     private List<Allocation> getFilteredAllocations(User user) {
-        if (user.getRole() == User.Role.SYSTEM_ADMIN || user.getRole() == User.Role.EXECUTIVE) {
+        if (user.isTopLevel()) {
             return allocationRepository.findAllWithEmployeeAndProject();
         }
 
@@ -352,7 +383,7 @@ public class AllocationService {
     }
 
     private boolean hasAccessToAllocation(User user, Allocation allocation) {
-        if (user.getRole() == User.Role.SYSTEM_ADMIN || user.getRole() == User.Role.EXECUTIVE) {
+        if (user.isTopLevel()) {
             return true;
         }
 
@@ -380,9 +411,9 @@ public class AllocationService {
         int currentYear = LocalDate.now().getYear();
         int currentMonth = LocalDate.now().getMonthValue();
 
-        // Get current month allocation
-        Double currentMonthAlloc = allocation.getAllocationForYearMonth(currentYear, currentMonth);
-        Double allocationPercentage = currentMonthAlloc != null ? currentMonthAlloc * 100 : 0.0;
+        // Get current month allocation (Integer from helper)
+        Integer currentMonthAlloc = allocation.getAllocationForYearMonth(currentYear, currentMonth);
+        Double allocationPercentage = currentMonthAlloc != null ? (double) currentMonthAlloc : 0.0;
 
         // Map monthly allocations
         List<MonthlyAllocationDTO> monthlyDTOs = allocation.getMonthlyAllocations().stream()
@@ -399,12 +430,15 @@ public class AllocationService {
                 .id(allocation.getId())
                 .employeeId(allocation.getEmployee().getId())
                 .employeeName(allocation.getEmployee().getName())
-                .employeeOracleId(allocation.getEmployee().getOracleId())
-                .projectId(allocation.getProject().getId())
-                .projectName(allocation.getProject().getName())
+                .employeeOracleId(
+                        allocation.getEmployee().getOracleId() != null
+                                ? String.valueOf(allocation.getEmployee().getOracleId())
+                                : null)
+                .projectId(allocation.getProject() != null ? allocation.getProject().getId() : null)
+                .projectName(allocation.getProject() != null ? allocation.getProject().getDescription() : null)
                 .startDate(allocation.getStartDate())
                 .endDate(allocation.getEndDate())
-                .status(allocation.getStatus())
+                .allocationType(allocation.getAllocationType())
                 .currentMonthAllocation(currentMonthAlloc)
                 .allocationPercentage(allocationPercentage)
                 .monthlyAllocations(monthlyDTOs)
@@ -412,26 +446,102 @@ public class AllocationService {
     }
 
     private AllocationDTO toDTOWithCurrentMonth(Allocation allocation, int year, int month,
-            Map<Long, Double> currentMonthAllocations) {
-        Double currentMonthAlloc = currentMonthAllocations.get(allocation.getId());
-        Double allocationPercentage = currentMonthAlloc != null ? currentMonthAlloc * 100 : 0.0;
+            Map<Long, Integer> currentMonthAllocations) {
+        Integer currentMonthAlloc = currentMonthAllocations.get(allocation.getId());
+        Double allocationPercentage = currentMonthAlloc != null ? (double) currentMonthAlloc : 0.0;
 
         return AllocationDTO.builder()
                 .id(allocation.getId())
                 .employeeId(allocation.getEmployee().getId())
                 .employeeName(allocation.getEmployee().getName())
-                .employeeOracleId(allocation.getEmployee().getOracleId())
-                .projectId(allocation.getProject().getId())
-                .projectName(allocation.getProject().getName())
+                .employeeOracleId(
+                        allocation.getEmployee().getOracleId() != null
+                                ? String.valueOf(allocation.getEmployee().getOracleId())
+                                : null)
+                .projectId(allocation.getProject() != null ? allocation.getProject().getId() : null)
+                .projectName(allocation.getProject() != null ? allocation.getProject().getDescription() : null)
                 .startDate(allocation.getStartDate())
                 .endDate(allocation.getEndDate())
-                .status(allocation.getStatus())
+                .allocationType(allocation.getAllocationType())
                 .currentMonthAllocation(currentMonthAlloc)
                 .allocationPercentage(allocationPercentage)
                 .build();
     }
 
-    public List<String> getDistinctStatuses(Long managerId) {
-        return List.of("ACTIVE", "BENCH");
+    public List<Map<String, Object>> getManagersForAllocations(User currentUser, String allocationType) {
+        List<Employee> accessible = employeeService.getAccessibleEmployees(currentUser);
+        if (accessible.isEmpty()) {
+            return List.of();
+        }
+
+        // Batch-fetch allocations
+        Map<Long, List<Allocation>> allocationsByEmployee = new java.util.HashMap<>();
+        List<Long> ids = accessible.stream().map(Employee::getId).collect(Collectors.toList());
+        allocationRepository.findByEmployeeIdsWithDetails(ids)
+                .forEach(a -> allocationsByEmployee
+                        .computeIfAbsent(a.getEmployee().getId(), k -> new ArrayList<>())
+                        .add(a));
+
+        int currentYear = LocalDate.now().getYear();
+        int currentMonth = LocalDate.now().getMonthValue();
+
+        // Filter employees by allocation type
+        List<Employee> filtered = accessible.stream()
+                .filter(e -> e.getResignationDate() == null)
+                .filter(e -> {
+                    if (allocationType == null || allocationType.trim().isEmpty()) {
+                        return true;
+                    }
+                    List<Allocation> empAllocs = allocationsByEmployee.getOrDefault(e.getId(), List.of());
+                    if ("BENCH".equalsIgnoreCase(allocationType)) {
+                        return empAllocs.stream()
+                                .filter(a -> a.getAllocationType() == Allocation.AllocationType.PROJECT)
+                                .noneMatch(a -> {
+                                    Integer pct = a.getAllocationForYearMonth(currentYear, currentMonth);
+                                    return pct != null && pct > 0;
+                                });
+                    }
+                    if ("ACTIVE".equalsIgnoreCase(allocationType)) {
+                        return empAllocs.stream()
+                                .filter(a -> a.getAllocationType() == Allocation.AllocationType.PROJECT)
+                                .anyMatch(a -> {
+                                    Integer pct = a.getAllocationForYearMonth(currentYear, currentMonth);
+                                    return pct != null && pct > 0;
+                                });
+                    }
+                    try {
+                        Allocation.AllocationType type = Allocation.AllocationType.valueOf(allocationType.toUpperCase());
+                        return empAllocs.stream().anyMatch(a -> a.getAllocationType() == type);
+                    } catch (IllegalArgumentException ex) {
+                        return true;
+                    }
+                })
+                .collect(Collectors.toList());
+
+        // Collect distinct managers from filtered employees
+        return filtered.stream()
+                .filter(e -> e.getManager() != null)
+                .map(Employee::getManager)
+                .filter(m -> m.getResignationDate() == null)
+                .distinct()
+                .sorted((a, b) -> a.getName().compareTo(b.getName()))
+                .map(m -> {
+                    Map<String, Object> map = new java.util.LinkedHashMap<>();
+                    map.put("id", m.getId());
+                    map.put("name", m.getName());
+                    return map;
+                })
+                .collect(Collectors.toList());
+    }
+
+    public List<String> getDistinctAllocationTypes(Long managerId) {
+        List<String> types = allocationRepository.findDistinctAllocationTypesByManager(managerId).stream()
+                .map(Allocation.AllocationType::name)
+                .collect(Collectors.toCollection(ArrayList::new));
+        // BENCH is a derived state (no active PROJECT allocation), always include it
+        if (!types.contains("BENCH")) {
+            types.add("BENCH");
+        }
+        return types;
     }
 }

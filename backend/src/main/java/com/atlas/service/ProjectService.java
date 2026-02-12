@@ -8,6 +8,9 @@ import com.atlas.entity.User;
 import com.atlas.repository.AllocationRepository;
 import com.atlas.repository.ProjectRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -34,8 +37,8 @@ public class ProjectService {
     }
 
     // Paginated version with search and filters - uses database-level pagination
-    public org.springframework.data.domain.Page<ProjectDTO> getAllProjects(User currentUser,
-            org.springframework.data.domain.Pageable pageable, String search, String tower, String status) {
+    public Page<ProjectDTO> getAllProjects(User currentUser,
+            Pageable pageable, String search, String region, String status) {
 
         Project.ProjectStatus statusEnum = null;
         if (status != null && !status.trim().isEmpty()) {
@@ -46,41 +49,41 @@ public class ProjectService {
             }
         }
 
-        String searchParam = (search != null && !search.trim().isEmpty()) ? search.trim() : null;
-        String towerParam = (tower != null && !tower.trim().isEmpty()) ? tower.trim() : null;
+        String searchParam = (search != null && !search.trim().isEmpty()) ? "%" + search.trim().toLowerCase() + "%" : null;
+        String regionParam = (region != null && !region.trim().isEmpty()) ? region.trim() : null;
 
-        if (currentUser.getRole() == User.Role.SYSTEM_ADMIN || currentUser.getRole() == User.Role.EXECUTIVE) {
-            // DATABASE-LEVEL pagination for admins with all filters
-            org.springframework.data.domain.Page<Project> projectPage = projectRepository.searchProjects(
-                    searchParam, towerParam, statusEnum, pageable);
+        if (currentUser.isTopLevel()) {
+            // DATABASE-LEVEL pagination for top-level users with all filters
+            Page<Project> projectPage = projectRepository.searchProjects(
+                    searchParam, regionParam, statusEnum, pageable);
             Map<Long, List<Allocation>> allocationsByProject = batchFetchAllocations(projectPage.getContent());
             return projectPage
                     .map(p -> toDTO(p, allocationsByProject.getOrDefault(p.getId(), Collections.emptyList())));
         }
 
-        // For non-admin managers: get accessible project IDs first
+        // For non-top-level users: get accessible project IDs first
         List<Project> accessibleProjects = getFilteredProjects(currentUser);
         if (accessibleProjects.isEmpty()) {
-            return new org.springframework.data.domain.PageImpl<>(List.of(), pageable, 0);
+            return new PageImpl<>(List.of(), pageable, 0);
         }
 
         List<Long> accessibleIds = accessibleProjects.stream()
                 .map(Project::getId)
                 .collect(Collectors.toList());
 
-        // DATABASE-LEVEL pagination for non-admin managers with all filters
-        org.springframework.data.domain.Page<Project> projectPage = projectRepository.searchProjectsByIds(
-                accessibleIds, searchParam, towerParam, statusEnum, pageable);
+        // DATABASE-LEVEL pagination for non-top-level users with all filters
+        Page<Project> projectPage = projectRepository.searchProjectsByIds(
+                accessibleIds, searchParam, regionParam, statusEnum, pageable);
         Map<Long, List<Allocation>> allocationsByProject = batchFetchAllocations(projectPage.getContent());
         return projectPage.map(p -> toDTO(p, allocationsByProject.getOrDefault(p.getId(), Collections.emptyList())));
     }
 
-    public List<String> getDistinctTowers(Project.ProjectStatus status) {
-        return projectRepository.findDistinctTowersByStatus(status);
+    public List<String> getDistinctRegions(Project.ProjectStatus status) {
+        return projectRepository.findDistinctRegionsByStatus(status);
     }
 
-    public List<String> getDistinctStatuses(String tower) {
-        return projectRepository.findDistinctStatusesByTower(tower).stream()
+    public List<String> getDistinctStatuses(String region) {
+        return projectRepository.findDistinctStatusesByRegion(region).stream()
                 .map(Enum::name)
                 .collect(Collectors.toList());
     }
@@ -104,10 +107,11 @@ public class ProjectService {
 
         Project project = Project.builder()
                 .projectId(projectDTO.getProjectId())
-                .name(projectDTO.getName())
                 .description(projectDTO.getDescription())
-                .parentTower(projectDTO.getParentTower())
-                .tower(projectDTO.getTower())
+                .projectType(projectDTO.getProjectType() != null ? projectDTO.getProjectType()
+                        : Project.ProjectType.PROJECT)
+                .region(projectDTO.getRegion())
+                .vertical(projectDTO.getVertical())
                 .startDate(projectDTO.getStartDate())
                 .endDate(projectDTO.getEndDate())
                 .status(projectDTO.getStatus() != null ? projectDTO.getStatus() : Project.ProjectStatus.ACTIVE)
@@ -122,10 +126,10 @@ public class ProjectService {
         Project project = projectRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Project not found: " + id));
 
-        project.setName(projectDTO.getName());
         project.setDescription(projectDTO.getDescription());
-        project.setParentTower(projectDTO.getParentTower());
-        project.setTower(projectDTO.getTower());
+        project.setProjectType(projectDTO.getProjectType());
+        project.setRegion(projectDTO.getRegion());
+        project.setVertical(projectDTO.getVertical());
         project.setStartDate(projectDTO.getStartDate());
         project.setEndDate(projectDTO.getEndDate());
         project.setStatus(projectDTO.getStatus());
@@ -135,7 +139,7 @@ public class ProjectService {
     }
 
     private List<Project> getFilteredProjects(User user) {
-        if (user.getRole() == User.Role.SYSTEM_ADMIN || user.getRole() == User.Role.EXECUTIVE) {
+        if (user.isTopLevel()) {
             return projectRepository.findActiveProjects();
         }
 
@@ -148,7 +152,7 @@ public class ProjectService {
     }
 
     private boolean hasAccessToProject(User user, Project project) {
-        if (user.getRole() == User.Role.SYSTEM_ADMIN || user.getRole() == User.Role.EXECUTIVE) {
+        if (user.isTopLevel()) {
             return true;
         }
 
@@ -161,38 +165,38 @@ public class ProjectService {
             return Collections.emptyMap();
         }
         List<Long> ids = projects.stream().map(Project::getId).collect(Collectors.toList());
-        return allocationRepository.findActiveByProjectIds(ids).stream()
+        return allocationRepository.findProjectAllocationsByProjectIds(ids).stream()
                 .collect(Collectors.groupingBy(a -> a.getProject().getId()));
     }
 
     private ProjectDTO toDTO(Project project) {
-        List<Allocation> allocations = allocationRepository.findActiveByProjectId(project.getId());
+        List<Allocation> allocations = allocationRepository.findProjectAllocationsByProjectId(project.getId());
         return toDTO(project, allocations);
     }
 
     private ProjectDTO toDTO(Project project, List<Allocation> allocations) {
         int currentYear = LocalDate.now().getYear();
         int currentMonth = LocalDate.now().getMonthValue();
-        double totalAllocation = 0.0;
+        int totalAllocation = 0;
         int count = 0;
 
         for (Allocation allocation : allocations) {
-            Double alloc = allocation.getAllocationForYearMonth(currentYear, currentMonth);
+            Integer alloc = allocation.getAllocationForYearMonth(currentYear, currentMonth);
             if (alloc != null && alloc > 0) {
                 totalAllocation += alloc;
                 count++;
             }
         }
 
-        double avgAllocation = count > 0 ? (totalAllocation / count) * 100 : 0.0;
+        double avgAllocation = count > 0 ? (double) totalAllocation / count : 0.0;
 
         return ProjectDTO.builder()
                 .id(project.getId())
                 .projectId(project.getProjectId())
-                .name(project.getName())
                 .description(project.getDescription())
-                .parentTower(project.getParentTower())
-                .tower(project.getTower())
+                .projectType(project.getProjectType())
+                .region(project.getRegion())
+                .vertical(project.getVertical())
                 .startDate(project.getStartDate())
                 .endDate(project.getEndDate())
                 .status(project.getStatus())
