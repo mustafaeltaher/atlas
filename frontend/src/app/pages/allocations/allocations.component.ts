@@ -5,7 +5,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { SidebarComponent } from '../../components/sidebar/sidebar.component';
 import { HeaderComponent } from '../../components/header/header.component';
 import { ApiService } from '../../services/api.service';
-import { AuthService } from '../../services/auth.service';
+
 import { Allocation, EmployeeAllocationSummary, Employee, Project, Manager } from '../../models';
 
 @Component({
@@ -891,7 +891,6 @@ export class AllocationsComponent implements OnInit {
 
   constructor(
     private apiService: ApiService,
-    private authService: AuthService,
     private elementRef: ElementRef
   ) { }
 

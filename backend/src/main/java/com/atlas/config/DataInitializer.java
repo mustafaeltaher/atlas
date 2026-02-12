@@ -26,7 +26,6 @@ public class DataInitializer implements CommandLineRunner {
         private final EmployeeRepository employeeRepository;
         private final ProjectRepository projectRepository;
         private final AllocationRepository allocationRepository;
-        private final MonthlyAllocationRepository monthlyAllocationRepository;
         private final TechTowerRepository techTowerRepository;
         private final SkillRepository skillRepository;
         private final EmployeeSkillRepository employeeSkillRepository;

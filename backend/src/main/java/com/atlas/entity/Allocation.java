@@ -58,18 +58,6 @@ public class Allocation {
         PROJECT, PROSPECT, VACATION, MATERNITY
     }
 
-    // Helper method to add a monthly allocation
-    public void addMonthlyAllocation(MonthlyAllocation monthlyAllocation) {
-        monthlyAllocations.add(monthlyAllocation);
-        monthlyAllocation.setAllocation(this);
-    }
-
-    // Helper method to remove a monthly allocation
-    public void removeMonthlyAllocation(MonthlyAllocation monthlyAllocation) {
-        monthlyAllocations.remove(monthlyAllocation);
-        monthlyAllocation.setAllocation(null);
-    }
-
     // Helper method to get allocation for a specific year and month
     public Integer getAllocationForYearMonth(int year, int month) {
         return monthlyAllocations.stream()

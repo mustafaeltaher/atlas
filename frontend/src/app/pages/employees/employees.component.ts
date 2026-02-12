@@ -2,7 +2,7 @@ import { Component, OnInit, signal, ElementRef, DestroyRef, inject } from '@angu
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { switchMap, Subject } from 'rxjs';
+
 import { SidebarComponent } from '../../components/sidebar/sidebar.component';
 import { HeaderComponent } from '../../components/header/header.component';
 import { ApiService } from '../../services/api.service';
@@ -635,8 +635,7 @@ export class EmployeesComponent implements OnInit {
   managers = signal<Manager[]>([]);
 
   // Search and Filter signals
-  currentSearch = signal<string>('');
-  private searchSubject = new Subject<string>();
+
   loading = signal(true);
   Math = Math; // Expose Math for template use
 
