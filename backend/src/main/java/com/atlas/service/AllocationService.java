@@ -173,10 +173,10 @@ public class AllocationService {
                             .projectCount(projectAllocations.size())
                             .allocations(allocationDTOs)
                             .build();
-                })
-                .collect(Collectors.toList());
+                }).collect(Collectors.toList());
 
         return new PageImpl<>(summaries, pageable, employeePage.getTotalElements());
+
     }
 
     public AllocationDTO getAllocationById(Long id, User currentUser) {
@@ -444,63 +444,29 @@ public class AllocationService {
     }
 
     public List<Map<String, Object>> getManagersForAllocations(User currentUser, String allocationType) {
-        List<Employee> accessible = employeeService.getAccessibleEmployees(currentUser);
-        if (accessible.isEmpty()) {
+        List<Long> accessibleIds = employeeService.getAccessibleEmployeeIds(currentUser);
+        if (accessibleIds != null && accessibleIds.isEmpty()) {
             return List.of();
         }
-
-        // Batch-fetch allocations
-        Map<Long, List<Allocation>> allocationsByEmployee = new java.util.HashMap<>();
-        List<Long> ids = accessible.stream().map(Employee::getId).collect(Collectors.toList());
-        allocationRepository.findByEmployeeIdsWithDetails(ids)
-                .forEach(a -> allocationsByEmployee
-                        .computeIfAbsent(a.getEmployee().getId(), k -> new ArrayList<>())
-                        .add(a));
 
         int currentYear = LocalDate.now().getYear();
         int currentMonth = LocalDate.now().getMonthValue();
 
-        // Filter employees by allocation type
-        List<Employee> filtered = accessible.stream()
-                .filter(e -> e.getResignationDate() == null)
-                .filter(e -> {
-                    if (allocationType == null || allocationType.trim().isEmpty()) {
-                        return true;
-                    }
-                    List<Allocation> empAllocs = allocationsByEmployee.getOrDefault(e.getId(), List.of());
-                    if ("BENCH".equalsIgnoreCase(allocationType)) {
-                        return empAllocs.stream()
-                                .filter(a -> a.getAllocationType() == Allocation.AllocationType.PROJECT)
-                                .noneMatch(a -> {
-                                    Integer pct = a.getAllocationForYearMonth(currentYear, currentMonth);
-                                    return pct != null && pct > 0;
-                                });
-                    }
-                    if ("ACTIVE".equalsIgnoreCase(allocationType)) {
-                        return empAllocs.stream()
-                                .filter(a -> a.getAllocationType() == Allocation.AllocationType.PROJECT)
-                                .anyMatch(a -> {
-                                    Integer pct = a.getAllocationForYearMonth(currentYear, currentMonth);
-                                    return pct != null && pct > 0;
-                                });
-                    }
-                    try {
-                        Allocation.AllocationType type = Allocation.AllocationType
-                                .valueOf(allocationType.toUpperCase());
-                        return empAllocs.stream().anyMatch(a -> a.getAllocationType() == type);
-                    } catch (IllegalArgumentException ex) {
-                        return true;
-                    }
-                })
-                .collect(Collectors.toList());
+        List<Employee> managers;
+        if (allocationType == null || allocationType.trim().isEmpty()) {
+            managers = employeeRepository.findDistinctManagersFiltered(accessibleIds);
+        } else if ("BENCH".equalsIgnoreCase(allocationType)) {
+            managers = employeeRepository.findDistinctManagersOfBenchFiltered(
+                    accessibleIds, currentYear, currentMonth);
+        } else if ("ACTIVE".equalsIgnoreCase(allocationType)) {
+            managers = employeeRepository.findDistinctManagersOfActiveFiltered(
+                    accessibleIds, currentYear, currentMonth);
+        } else {
+            managers = employeeRepository.findDistinctManagersByAllocationTypeFiltered(
+                    accessibleIds, allocationType.toUpperCase());
+        }
 
-        // Collect distinct managers from filtered employees
-        return filtered.stream()
-                .filter(e -> e.getManager() != null)
-                .map(Employee::getManager)
-                .filter(m -> m.getResignationDate() == null)
-                .distinct()
-                .sorted((a, b) -> a.getName().compareTo(b.getName()))
+        return managers.stream()
                 .map(m -> {
                     Map<String, Object> map = new java.util.LinkedHashMap<>();
                     map.put("id", m.getId());

@@ -302,4 +302,116 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long>, JpaSp
                         return findEmployeesByAllocationType(search, managerId, allocationType, pageable);
                 return findEmployeesByAllocationTypeByIds(employeeIds, search, managerId, allocationType, pageable);
         }
+
+        // --- Manager dropdown queries ---
+
+        // 1. No filter: all managers of active employees
+        @Query("SELECT DISTINCT m FROM Employee m " +
+                        "WHERE m.resignationDate IS NULL " +
+                        "AND EXISTS (SELECT 1 FROM Employee e WHERE e.manager = m AND e.resignationDate IS NULL) " +
+                        "ORDER BY m.name")
+        List<Employee> findDistinctManagers();
+
+        @Query("SELECT DISTINCT m FROM Employee m " +
+                        "WHERE m.resignationDate IS NULL " +
+                        "AND EXISTS (SELECT 1 FROM Employee e WHERE e.manager = m AND e.resignationDate IS NULL AND e.id IN :ids) "
+                        +
+                        "ORDER BY m.name")
+        List<Employee> findDistinctManagersByIds(@Param("ids") List<Long> ids);
+
+        default List<Employee> findDistinctManagersFiltered(List<Long> ids) {
+                if (ids == null)
+                        return findDistinctManagers();
+                return findDistinctManagersByIds(ids);
+        }
+
+        // 2. Standard allocation type filter (e.g. PROJECT, PROSPECT)
+        @Query("SELECT DISTINCT m FROM Employee m " +
+                        "WHERE m.resignationDate IS NULL " +
+                        "AND EXISTS (SELECT 1 FROM Employee e JOIN e.allocations a " +
+                        "WHERE e.manager = m AND e.resignationDate IS NULL " +
+                        "AND CAST(a.allocationType AS string) = :type) " +
+                        "ORDER BY m.name")
+        List<Employee> findDistinctManagersByAllocationType(@Param("type") String type);
+
+        @Query("SELECT DISTINCT m FROM Employee m " +
+                        "WHERE m.resignationDate IS NULL " +
+                        "AND EXISTS (SELECT 1 FROM Employee e JOIN e.allocations a " +
+                        "WHERE e.manager = m AND e.resignationDate IS NULL AND e.id IN :ids " +
+                        "AND CAST(a.allocationType AS string) = :type) " +
+                        "ORDER BY m.name")
+        List<Employee> findDistinctManagersByAllocationTypeByIds(
+                        @Param("ids") List<Long> ids, @Param("type") String type);
+
+        default List<Employee> findDistinctManagersByAllocationTypeFiltered(List<Long> ids, String type) {
+                if (ids == null)
+                        return findDistinctManagersByAllocationType(type);
+                return findDistinctManagersByAllocationTypeByIds(ids, type);
+        }
+
+        // 3. BENCH: managers with employees who have no active PROJECT allocation this
+        // month
+        @Query(value = "SELECT DISTINCT m.* FROM employees m " +
+                        "WHERE m.resignation_date IS NULL AND EXISTS (" +
+                        "  SELECT 1 FROM employees e WHERE e.manager_id = m.id AND e.resignation_date IS NULL " +
+                        "  AND NOT EXISTS (" +
+                        "    SELECT 1 FROM allocations a JOIN monthly_allocations ma ON ma.allocation_id = a.id " +
+                        "    WHERE a.employee_id = e.id AND a.allocation_type = 'PROJECT' " +
+                        "    AND ma.year = :year AND ma.month = :month AND ma.percentage > 0" +
+                        "  )" +
+                        ") ORDER BY m.name", nativeQuery = true)
+        List<Employee> findDistinctManagersOfBenchEmployees(
+                        @Param("year") int year, @Param("month") int month);
+
+        @Query(value = "SELECT DISTINCT m.* FROM employees m " +
+                        "WHERE m.resignation_date IS NULL AND EXISTS (" +
+                        "  SELECT 1 FROM employees e WHERE e.manager_id = m.id AND e.resignation_date IS NULL " +
+                        "  AND e.id IN :ids AND NOT EXISTS (" +
+                        "    SELECT 1 FROM allocations a JOIN monthly_allocations ma ON ma.allocation_id = a.id " +
+                        "    WHERE a.employee_id = e.id AND a.allocation_type = 'PROJECT' " +
+                        "    AND ma.year = :year AND ma.month = :month AND ma.percentage > 0" +
+                        "  )" +
+                        ") ORDER BY m.name", nativeQuery = true)
+        List<Employee> findDistinctManagersOfBenchEmployeesByIds(
+                        @Param("ids") List<Long> ids,
+                        @Param("year") int year, @Param("month") int month);
+
+        default List<Employee> findDistinctManagersOfBenchFiltered(List<Long> ids, int year, int month) {
+                if (ids == null)
+                        return findDistinctManagersOfBenchEmployees(year, month);
+                return findDistinctManagersOfBenchEmployeesByIds(ids, year, month);
+        }
+
+        // 4. ACTIVE: managers with employees who have an active PROJECT allocation this
+        // month
+        @Query(value = "SELECT DISTINCT m.* FROM employees m " +
+                        "WHERE m.resignation_date IS NULL AND EXISTS (" +
+                        "  SELECT 1 FROM employees e WHERE e.manager_id = m.id AND e.resignation_date IS NULL " +
+                        "  AND EXISTS (" +
+                        "    SELECT 1 FROM allocations a JOIN monthly_allocations ma ON ma.allocation_id = a.id " +
+                        "    WHERE a.employee_id = e.id AND a.allocation_type = 'PROJECT' " +
+                        "    AND ma.year = :year AND ma.month = :month AND ma.percentage > 0" +
+                        "  )" +
+                        ") ORDER BY m.name", nativeQuery = true)
+        List<Employee> findDistinctManagersOfActiveEmployees(
+                        @Param("year") int year, @Param("month") int month);
+
+        @Query(value = "SELECT DISTINCT m.* FROM employees m " +
+                        "WHERE m.resignation_date IS NULL AND EXISTS (" +
+                        "  SELECT 1 FROM employees e WHERE e.manager_id = m.id AND e.resignation_date IS NULL " +
+                        "  AND e.id IN :ids AND EXISTS (" +
+                        "    SELECT 1 FROM allocations a JOIN monthly_allocations ma ON ma.allocation_id = a.id " +
+                        "    WHERE a.employee_id = e.id AND a.allocation_type = 'PROJECT' " +
+                        "    AND ma.year = :year AND ma.month = :month AND ma.percentage > 0" +
+                        "  )" +
+                        ") ORDER BY m.name", nativeQuery = true)
+        List<Employee> findDistinctManagersOfActiveEmployeesByIds(
+                        @Param("ids") List<Long> ids,
+                        @Param("year") int year, @Param("month") int month);
+
+        default List<Employee> findDistinctManagersOfActiveFiltered(List<Long> ids, int year, int month) {
+                if (ids == null)
+                        return findDistinctManagersOfActiveEmployees(year, month);
+                return findDistinctManagersOfActiveEmployeesByIds(ids, year, month);
+        }
 }
