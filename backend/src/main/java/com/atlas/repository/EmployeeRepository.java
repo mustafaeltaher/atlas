@@ -268,4 +268,38 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long>, JpaSp
                         @Param("managerId") Long managerId,
                         @Param("allocationType") String allocationType,
                         Pageable pageable);
+
+        // Unified routing methods: accept nullable employeeIds (null = no filter)
+
+        default Page<Employee> findEmployeesForAllocationViewFiltered(
+                        List<Long> employeeIds, String search, Long managerId, Pageable pageable) {
+                if (employeeIds == null)
+                        return findEmployeesForAllocationView(search, managerId, pageable);
+                return findEmployeesForAllocationViewByIds(employeeIds, search, managerId, pageable);
+        }
+
+        default Page<Employee> findBenchEmployeesFiltered(
+                        List<Long> employeeIds, String search, Long managerId,
+                        int currentYear, int currentMonth, Pageable pageable) {
+                if (employeeIds == null)
+                        return findBenchEmployees(search, managerId, currentYear, currentMonth, pageable);
+                return findBenchEmployeesByIds(employeeIds, search, managerId, currentYear, currentMonth, pageable);
+        }
+
+        default Page<Employee> findActiveAllocatedEmployeesFiltered(
+                        List<Long> employeeIds, String search, Long managerId,
+                        int currentYear, int currentMonth, Pageable pageable) {
+                if (employeeIds == null)
+                        return findActiveAllocatedEmployees(search, managerId, currentYear, currentMonth, pageable);
+                return findActiveAllocatedEmployeesByIds(employeeIds, search, managerId, currentYear, currentMonth,
+                                pageable);
+        }
+
+        default Page<Employee> findEmployeesByAllocationTypeFiltered(
+                        List<Long> employeeIds, String search, Long managerId,
+                        String allocationType, Pageable pageable) {
+                if (employeeIds == null)
+                        return findEmployeesByAllocationType(search, managerId, allocationType, pageable);
+                return findEmployeesByAllocationTypeByIds(employeeIds, search, managerId, allocationType, pageable);
+        }
 }

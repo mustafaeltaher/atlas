@@ -49,31 +49,17 @@ public class ProjectService {
             }
         }
 
-        String searchParam = (search != null && !search.trim().isEmpty()) ? "%" + search.trim().toLowerCase() + "%" : null;
+        String searchParam = (search != null && !search.trim().isEmpty()) ? "%" + search.trim().toLowerCase() + "%"
+                : null;
         String regionParam = (region != null && !region.trim().isEmpty()) ? region.trim() : null;
 
-        if (currentUser.isTopLevel()) {
-            // DATABASE-LEVEL pagination for top-level users with all filters
-            Page<Project> projectPage = projectRepository.searchProjects(
-                    searchParam, regionParam, statusEnum, pageable);
-            Map<Long, List<Allocation>> allocationsByProject = batchFetchAllocations(projectPage.getContent());
-            return projectPage
-                    .map(p -> toDTO(p, allocationsByProject.getOrDefault(p.getId(), Collections.emptyList())));
-        }
-
-        // For non-top-level users: get accessible project IDs first
-        List<Project> accessibleProjects = getFilteredProjects(currentUser);
-        if (accessibleProjects.isEmpty()) {
+        List<Long> projectIds = getFilteredProjectIds(currentUser);
+        if (projectIds != null && projectIds.isEmpty()) {
             return new PageImpl<>(List.of(), pageable, 0);
         }
 
-        List<Long> accessibleIds = accessibleProjects.stream()
-                .map(Project::getId)
-                .collect(Collectors.toList());
-
-        // DATABASE-LEVEL pagination for non-top-level users with all filters
-        Page<Project> projectPage = projectRepository.searchProjectsByIds(
-                accessibleIds, searchParam, regionParam, statusEnum, pageable);
+        Page<Project> projectPage = projectRepository.searchProjectsFiltered(
+                projectIds, searchParam, regionParam, statusEnum, pageable);
         Map<Long, List<Allocation>> allocationsByProject = batchFetchAllocations(projectPage.getContent());
         return projectPage.map(p -> toDTO(p, allocationsByProject.getOrDefault(p.getId(), Collections.emptyList())));
     }
@@ -138,16 +124,31 @@ public class ProjectService {
         return toDTO(project);
     }
 
-    private List<Project> getFilteredProjects(User user) {
+    /**
+     * Returns accessible project IDs for access control filtering.
+     * Returns null for top-level users (no filter), or List of IDs for
+     * non-top-level.
+     */
+    private List<Long> getFilteredProjectIds(User user) {
         if (user.isTopLevel()) {
-            return projectRepository.findActiveProjects();
+            return null;
         }
-
         List<Employee> employees = employeeService.getAccessibleEmployees(user);
         if (employees.isEmpty()) {
             return List.of();
         }
+        return projectRepository.findActiveProjectsByEmployees(employees).stream()
+                .map(Project::getId).collect(Collectors.toList());
+    }
 
+    private List<Project> getFilteredProjects(User user) {
+        if (user.isTopLevel()) {
+            return projectRepository.findActiveProjects();
+        }
+        List<Employee> employees = employeeService.getAccessibleEmployees(user);
+        if (employees.isEmpty()) {
+            return List.of();
+        }
         return projectRepository.findActiveProjectsByEmployees(employees);
     }
 

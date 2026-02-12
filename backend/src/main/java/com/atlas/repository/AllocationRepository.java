@@ -135,6 +135,17 @@ public interface AllocationRepository extends JpaRepository<Allocation, Long> {
                 return findAllocationsByIdsNoTypeFilter(employeeIds, search, managerId, pageable);
         }
 
+        // Unified routing: accept nullable employeeIds (null = no filter)
+        default org.springframework.data.domain.Page<Allocation> findAllocationsFiltered(
+                        List<Long> employeeIds, String search, Allocation.AllocationType allocationType,
+                        Long managerId, org.springframework.data.domain.Pageable pageable) {
+                if (employeeIds == null) {
+                        return findAllocationsWithFilters(search, allocationType, managerId, pageable);
+                }
+                return findAllocationsWithFiltersByEmployeeIds(employeeIds, search, allocationType, managerId,
+                                pageable);
+        }
+
         @Query("SELECT DISTINCT a.allocationType FROM Allocation a JOIN a.employee e WHERE " +
                         "(:managerId IS NULL OR e.manager.id = :managerId)")
         List<Allocation.AllocationType> findDistinctAllocationTypesByManager(@Param("managerId") Long managerId);

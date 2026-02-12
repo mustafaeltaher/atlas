@@ -43,7 +43,8 @@ public class EmployeeService {
                 .collect(Collectors.toList());
     }
 
-    // Paginated version with search and dynamic status filtering - uses DB-level pagination
+    // Paginated version with search and dynamic status filtering - uses DB-level
+    // pagination
     public Page<EmployeeDTO> getAllEmployees(User currentUser,
             Pageable pageable, String search, Long managerId, String tower,
             String status) {
@@ -111,6 +112,19 @@ public class EmployeeService {
         result.add(userEmployee);
         collectReports(userEmployee.getId(), reportsByManager, result);
         return result;
+    }
+
+    /**
+     * Returns accessible employee IDs for access control filtering.
+     * Returns null for top-level users (meaning "no filter needed"),
+     * or a List of IDs for non-top-level users.
+     */
+    public List<Long> getAccessibleEmployeeIds(User user) {
+        if (user.isTopLevel()) {
+            return null;
+        }
+        List<Employee> accessible = getAccessibleEmployees(user);
+        return accessible.stream().map(Employee::getId).collect(Collectors.toList());
     }
 
     private void collectReports(Long managerId, Map<Long, List<Employee>> reportsByManager, List<Employee> result) {
@@ -349,7 +363,8 @@ public class EmployeeService {
         return structurallyFiltered.stream()
                 .map(e -> toDTO(e, allocationsByEmployee.getOrDefault(e.getId(), Collections.emptyList())))
                 .filter(dto -> {
-                    if (status == null) return true;
+                    if (status == null)
+                        return true;
                     // ACTIVE, BENCH, PROSPECT are allocation-level statuses
                     if ("ACTIVE".equalsIgnoreCase(status)
                             || "BENCH".equalsIgnoreCase(status)

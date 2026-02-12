@@ -26,21 +26,19 @@ public class DashboardService {
     public DashboardStatsDTO getStats(User currentUser) {
         List<Employee> employees = employeeService.getAccessibleEmployees(currentUser);
         long totalEmployees = employees.size();
+        List<Long> accessibleIds = employeeService.getAccessibleEmployeeIds(currentUser);
 
         long activeProjects;
-        if (currentUser.isTopLevel()) {
+        if (accessibleIds == null) {
             activeProjects = projectRepository.countActiveProjects();
         } else {
             activeProjects = projectRepository.countActiveProjectsByEmployees(employees);
         }
 
-        // Fetch ALL allocations for these employees to correctly determine status
         List<Allocation> allocations;
-        if (currentUser.isTopLevel()) {
+        if (accessibleIds == null) {
             allocations = allocationRepository.findAllWithEmployeeAndProject();
         } else {
-            // Use the new method that returns ALL allocations (including
-            // PROSPECT/BENCH/etc)
             allocations = allocationRepository.findAllocationsByEmployees(employees);
         }
 

@@ -138,4 +138,14 @@ public interface ProjectRepository extends JpaRepository<Project, Long> {
         @Query("SELECT DISTINCT p.status FROM Project p WHERE " +
                         "(:region IS NULL OR p.region = :region)")
         List<Project.ProjectStatus> findDistinctStatusesByRegion(@Param("region") String region);
+
+        // Unified routing: accept nullable projectIds (null = no filter)
+        default org.springframework.data.domain.Page<Project> searchProjectsFiltered(
+                        List<Long> projectIds, String search, String region,
+                        Project.ProjectStatus status, org.springframework.data.domain.Pageable pageable) {
+                if (projectIds == null) {
+                        return searchProjects(search, region, status, pageable);
+                }
+                return searchProjectsByIds(projectIds, search, region, status, pageable);
+        }
 }
