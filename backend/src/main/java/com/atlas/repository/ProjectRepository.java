@@ -52,7 +52,8 @@ public interface ProjectRepository extends JpaRepository<Project, Long> {
 
         boolean existsByProjectId(String projectId);
 
-        // Search with status filter (search param must be pre-formatted: lowercase with % wildcards)
+        // Search with status filter (search param must be pre-formatted: lowercase with
+        // % wildcards)
         @Query("SELECT p FROM Project p WHERE " +
                         "p.status = :status AND " +
                         "(:region IS NULL OR p.region = :region) AND " +
@@ -85,8 +86,8 @@ public interface ProjectRepository extends JpaRepository<Project, Long> {
         @Query(value = "SELECT p FROM Project p WHERE p.id IN :projectIds " +
                         "AND p.status = :status " +
                         "AND (:region IS NULL OR p.region = :region) " +
-                        "AND (:search IS NULL OR LOWER(p.description) LIKE :search)",
-                        countQuery = "SELECT COUNT(p) FROM Project p WHERE p.id IN :projectIds " +
+                        "AND (:search IS NULL OR LOWER(p.description) LIKE :search)", countQuery = "SELECT COUNT(p) FROM Project p WHERE p.id IN :projectIds "
+                                        +
                                         "AND p.status = :status " +
                                         "AND (:region IS NULL OR p.region = :region) " +
                                         "AND (:search IS NULL OR LOWER(p.description) LIKE :search)")
@@ -100,8 +101,8 @@ public interface ProjectRepository extends JpaRepository<Project, Long> {
         // Search by IDs without status filter
         @Query(value = "SELECT p FROM Project p WHERE p.id IN :projectIds " +
                         "AND (:region IS NULL OR p.region = :region) " +
-                        "AND (:search IS NULL OR LOWER(p.description) LIKE :search)",
-                        countQuery = "SELECT COUNT(p) FROM Project p WHERE p.id IN :projectIds " +
+                        "AND (:search IS NULL OR LOWER(p.description) LIKE :search)", countQuery = "SELECT COUNT(p) FROM Project p WHERE p.id IN :projectIds "
+                                        +
                                         "AND (:region IS NULL OR p.region = :region) " +
                                         "AND (:search IS NULL OR LOWER(p.description) LIKE :search)")
         org.springframework.data.domain.Page<Project> searchProjectsByIdsNoStatus(
@@ -118,12 +119,6 @@ public interface ProjectRepository extends JpaRepository<Project, Long> {
                 }
                 return searchProjectsByIdsNoStatus(projectIds, search, region, pageable);
         }
-
-        @Query("SELECT DISTINCT p.region FROM Project p WHERE p.region IS NOT NULL")
-        List<String> findDistinctRegions();
-
-        @Query("SELECT DISTINCT p.vertical FROM Project p WHERE p.vertical IS NOT NULL")
-        List<String> findDistinctVerticals();
 
         // Faceted Search
         @Query("SELECT DISTINCT p.region FROM Project p WHERE p.region IS NOT NULL " +

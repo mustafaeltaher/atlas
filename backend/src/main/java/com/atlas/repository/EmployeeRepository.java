@@ -9,23 +9,15 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
-import java.util.Optional;
 
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 
 @Repository
 public interface EmployeeRepository extends JpaRepository<Employee, Long>, JpaSpecificationExecutor<Employee> {
 
-        Optional<Employee> findByOracleId(Integer oracleId);
-
-        Optional<Employee> findByEmail(String email);
-
         List<Employee> findByManager(Employee manager);
 
         long countByManager(Employee manager);
-
-        @Query("SELECT e FROM Employee e WHERE e.manager.id = :managerId AND e.resignationDate IS NULL")
-        List<Employee> findActiveByManagerId(@Param("managerId") Long managerId);
 
         @Query("SELECT COUNT(e) FROM Employee e WHERE e.resignationDate IS NULL")
         long countActiveEmployees();
@@ -36,9 +28,6 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long>, JpaSp
 
         @Query("SELECT e FROM Employee e LEFT JOIN FETCH e.manager WHERE e.resignationDate IS NULL")
         List<Employee> findAllWithManager();
-
-        @Query("SELECT DISTINCT m FROM Employee m WHERE m.resignationDate IS NULL AND EXISTS (SELECT e FROM Employee e WHERE e.manager = m AND e.resignationDate IS NULL)")
-        List<Employee> findActiveManagers();
 
         @Query("SELECT e FROM Employee e LEFT JOIN FETCH e.tower")
         List<Employee> findAllWithTower();

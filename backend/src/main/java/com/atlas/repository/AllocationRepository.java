@@ -2,7 +2,6 @@ package com.atlas.repository;
 
 import com.atlas.entity.Allocation;
 import com.atlas.entity.Employee;
-import com.atlas.entity.Project;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -13,25 +12,6 @@ import java.util.List;
 @Repository
 public interface AllocationRepository extends JpaRepository<Allocation, Long> {
 
-        List<Allocation> findByEmployee(Employee employee);
-
-        List<Allocation> findByProject(Project project);
-
-        List<Allocation> findByEmployeeId(Long employeeId);
-
-        List<Allocation> findByProjectId(Long projectId);
-
-        List<Allocation> findByAllocationType(Allocation.AllocationType allocationType);
-
-        @Query("SELECT a FROM Allocation a WHERE a.employee.id = :employeeId AND a.allocationType = :allocationType")
-        List<Allocation> findAllocationsByEmployeeIdAndType(
-                        @Param("employeeId") Long employeeId,
-                        @Param("allocationType") Allocation.AllocationType allocationType);
-
-        default List<Allocation> findProjectAllocationsByEmployeeId(Long employeeId) {
-                return findAllocationsByEmployeeIdAndType(employeeId, Allocation.AllocationType.PROJECT);
-        }
-
         @Query("SELECT a FROM Allocation a JOIN FETCH a.employee LEFT JOIN FETCH a.project WHERE a.project.id = :projectId AND a.allocationType = :allocationType")
         List<Allocation> findAllocationsByProjectIdAndType(
                         @Param("projectId") Long projectId,
@@ -41,26 +21,8 @@ public interface AllocationRepository extends JpaRepository<Allocation, Long> {
                 return findAllocationsByProjectIdAndType(projectId, Allocation.AllocationType.PROJECT);
         }
 
-        @Query("SELECT a FROM Allocation a JOIN FETCH a.employee LEFT JOIN FETCH a.project WHERE a.employee IN :employees AND a.allocationType = :allocationType")
-        List<Allocation> findAllocationsByEmployeesAndType(
-                        @Param("employees") List<Employee> employees,
-                        @Param("allocationType") Allocation.AllocationType allocationType);
-
         @Query("SELECT a FROM Allocation a JOIN FETCH a.employee LEFT JOIN FETCH a.project WHERE a.employee IN :employees")
         List<Allocation> findAllocationsByEmployees(@Param("employees") List<Employee> employees);
-
-        default List<Allocation> findProjectAllocationsByEmployees(List<Employee> employees) {
-                return findAllocationsByEmployeesAndType(employees, Allocation.AllocationType.PROJECT);
-        }
-
-        @Query("SELECT a FROM Allocation a WHERE a.employee.id IN :employeeIds AND a.allocationType = :allocationType")
-        List<Allocation> findAllocationsByEmployeeIdsAndType(
-                        @Param("employeeIds") List<Long> employeeIds,
-                        @Param("allocationType") Allocation.AllocationType allocationType);
-
-        default List<Allocation> findProjectAllocationsByEmployeeIds(List<Long> employeeIds) {
-                return findAllocationsByEmployeeIdsAndType(employeeIds, Allocation.AllocationType.PROJECT);
-        }
 
         @Query("SELECT a FROM Allocation a WHERE a.project.id IN :projectIds AND a.allocationType = :allocationType")
         List<Allocation> findAllocationsByProjectIdsAndType(
@@ -85,8 +47,6 @@ public interface AllocationRepository extends JpaRepository<Allocation, Long> {
 
         @Query("SELECT a FROM Allocation a JOIN FETCH a.employee LEFT JOIN FETCH a.project WHERE a.employee.id IN :employeeIds")
         List<Allocation> findByEmployeeIdsWithDetails(@Param("employeeIds") List<Long> employeeIds);
-
-        boolean existsByEmployeeAndProject(Employee employee, Project project);
 
         // With allocationType filter
         @Query(value = "SELECT a FROM Allocation a JOIN FETCH a.employee e LEFT JOIN FETCH a.project p " +

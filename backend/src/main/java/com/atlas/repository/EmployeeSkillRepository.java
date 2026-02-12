@@ -10,6 +10,4 @@ import java.util.List;
 public interface EmployeeSkillRepository extends JpaRepository<EmployeeSkill, Integer> {
 
     List<EmployeeSkill> findByEmployeeId(Long employeeId);
-
-    List<EmployeeSkill> findBySkillId(Integer skillId);
 }
