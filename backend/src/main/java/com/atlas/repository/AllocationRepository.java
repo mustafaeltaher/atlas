@@ -46,6 +46,9 @@ public interface AllocationRepository extends JpaRepository<Allocation, Long> {
                         @Param("employees") List<Employee> employees,
                         @Param("allocationType") Allocation.AllocationType allocationType);
 
+        @Query("SELECT a FROM Allocation a JOIN FETCH a.employee LEFT JOIN FETCH a.project WHERE a.employee IN :employees")
+        List<Allocation> findAllocationsByEmployees(@Param("employees") List<Employee> employees);
+
         default List<Allocation> findProjectAllocationsByEmployees(List<Employee> employees) {
                 return findAllocationsByEmployeesAndType(employees, Allocation.AllocationType.PROJECT);
         }
@@ -90,8 +93,8 @@ public interface AllocationRepository extends JpaRepository<Allocation, Long> {
                         "WHERE a.allocationType = :allocationType " +
                         "AND (:managerId IS NULL OR e.manager.id = :managerId) " +
                         "AND (:search IS NULL OR LOWER(e.name) LIKE :search " +
-                        "OR (p IS NOT NULL AND LOWER(p.description) LIKE :search))",
-                        countQuery = "SELECT COUNT(a) FROM Allocation a JOIN a.employee e LEFT JOIN a.project p " +
+                        "OR (p IS NOT NULL AND LOWER(p.description) LIKE :search))", countQuery = "SELECT COUNT(a) FROM Allocation a JOIN a.employee e LEFT JOIN a.project p "
+                                        +
                                         "WHERE a.allocationType = :allocationType " +
                                         "AND (:managerId IS NULL OR e.manager.id = :managerId) " +
                                         "AND (:search IS NULL OR LOWER(e.name) LIKE :search " +
@@ -106,8 +109,8 @@ public interface AllocationRepository extends JpaRepository<Allocation, Long> {
         @Query(value = "SELECT a FROM Allocation a JOIN FETCH a.employee e LEFT JOIN FETCH a.project p " +
                         "WHERE (:managerId IS NULL OR e.manager.id = :managerId) " +
                         "AND (:search IS NULL OR LOWER(e.name) LIKE :search " +
-                        "OR (p IS NOT NULL AND LOWER(p.description) LIKE :search))",
-                        countQuery = "SELECT COUNT(a) FROM Allocation a JOIN a.employee e LEFT JOIN a.project p " +
+                        "OR (p IS NOT NULL AND LOWER(p.description) LIKE :search))", countQuery = "SELECT COUNT(a) FROM Allocation a JOIN a.employee e LEFT JOIN a.project p "
+                                        +
                                         "WHERE (:managerId IS NULL OR e.manager.id = :managerId) " +
                                         "AND (:search IS NULL OR LOWER(e.name) LIKE :search " +
                                         "OR (p IS NOT NULL AND LOWER(p.description) LIKE :search))")
@@ -131,8 +134,8 @@ public interface AllocationRepository extends JpaRepository<Allocation, Long> {
                         "AND a.allocationType = :allocationType " +
                         "AND (:managerId IS NULL OR e.manager.id = :managerId) " +
                         "AND (:search IS NULL OR LOWER(e.name) LIKE :search " +
-                        "OR (p IS NOT NULL AND LOWER(p.description) LIKE :search))",
-                        countQuery = "SELECT COUNT(a) FROM Allocation a JOIN a.employee e LEFT JOIN a.project p " +
+                        "OR (p IS NOT NULL AND LOWER(p.description) LIKE :search))", countQuery = "SELECT COUNT(a) FROM Allocation a JOIN a.employee e LEFT JOIN a.project p "
+                                        +
                                         "WHERE e.id IN :employeeIds " +
                                         "AND a.allocationType = :allocationType " +
                                         "AND (:managerId IS NULL OR e.manager.id = :managerId) " +
@@ -150,8 +153,8 @@ public interface AllocationRepository extends JpaRepository<Allocation, Long> {
                         "WHERE e.id IN :employeeIds " +
                         "AND (:managerId IS NULL OR e.manager.id = :managerId) " +
                         "AND (:search IS NULL OR LOWER(e.name) LIKE :search " +
-                        "OR (p IS NOT NULL AND LOWER(p.description) LIKE :search))",
-                        countQuery = "SELECT COUNT(a) FROM Allocation a JOIN a.employee e LEFT JOIN a.project p " +
+                        "OR (p IS NOT NULL AND LOWER(p.description) LIKE :search))", countQuery = "SELECT COUNT(a) FROM Allocation a JOIN a.employee e LEFT JOIN a.project p "
+                                        +
                                         "WHERE e.id IN :employeeIds " +
                                         "AND (:managerId IS NULL OR e.manager.id = :managerId) " +
                                         "AND (:search IS NULL OR LOWER(e.name) LIKE :search " +
@@ -166,7 +169,8 @@ public interface AllocationRepository extends JpaRepository<Allocation, Long> {
                         List<Long> employeeIds, String search, Allocation.AllocationType allocationType,
                         Long managerId, org.springframework.data.domain.Pageable pageable) {
                 if (allocationType != null) {
-                        return findAllocationsByIdsWithTypeFilter(employeeIds, search, allocationType, managerId, pageable);
+                        return findAllocationsByIdsWithTypeFilter(employeeIds, search, allocationType, managerId,
+                                        pageable);
                 }
                 return findAllocationsByIdsNoTypeFilter(employeeIds, search, managerId, pageable);
         }

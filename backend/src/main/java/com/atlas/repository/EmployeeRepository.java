@@ -1,6 +1,5 @@
 package com.atlas.repository;
 
-import com.atlas.entity.Allocation;
 import com.atlas.entity.Employee;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -23,6 +22,8 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long>, JpaSp
 
         List<Employee> findByManager(Employee manager);
 
+        long countByManager(Employee manager);
+
         @Query("SELECT e FROM Employee e WHERE e.manager.id = :managerId AND e.resignationDate IS NULL")
         List<Employee> findActiveByManagerId(@Param("managerId") Long managerId);
 
@@ -39,6 +40,9 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long>, JpaSp
         @Query("SELECT DISTINCT m FROM Employee m WHERE m.resignationDate IS NULL AND EXISTS (SELECT e FROM Employee e WHERE e.manager = m AND e.resignationDate IS NULL)")
         List<Employee> findActiveManagers();
 
+        @Query("SELECT e FROM Employee e LEFT JOIN FETCH e.tower")
+        List<Employee> findAllWithTower();
+
         // Paginated query for allocation view: LEFT JOINs with allocations
         @Query(value = "SELECT DISTINCT e FROM Employee e " +
                         "LEFT JOIN Allocation a ON a.employee = e " +
@@ -47,14 +51,13 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long>, JpaSp
                         "AND (:search IS NULL OR LOWER(e.name) LIKE :search " +
                         "OR (p IS NOT NULL AND LOWER(p.description) LIKE :search)) " +
                         "AND (:managerId IS NULL OR e.manager.id = :managerId) " +
-                        "ORDER BY e.name",
-                        countQuery = "SELECT COUNT(DISTINCT e.id) FROM Employee e " +
-                        "LEFT JOIN Allocation a ON a.employee = e " +
-                        "LEFT JOIN a.project p " +
-                        "WHERE e.resignationDate IS NULL " +
-                        "AND (:search IS NULL OR LOWER(e.name) LIKE :search " +
-                        "OR (p IS NOT NULL AND LOWER(p.description) LIKE :search)) " +
-                        "AND (:managerId IS NULL OR e.manager.id = :managerId)")
+                        "ORDER BY e.name", countQuery = "SELECT COUNT(DISTINCT e.id) FROM Employee e " +
+                                        "LEFT JOIN Allocation a ON a.employee = e " +
+                                        "LEFT JOIN a.project p " +
+                                        "WHERE e.resignationDate IS NULL " +
+                                        "AND (:search IS NULL OR LOWER(e.name) LIKE :search " +
+                                        "OR (p IS NOT NULL AND LOWER(p.description) LIKE :search)) " +
+                                        "AND (:managerId IS NULL OR e.manager.id = :managerId)")
         Page<Employee> findEmployeesForAllocationView(
                         @Param("search") String search,
                         @Param("managerId") Long managerId,
@@ -68,14 +71,13 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long>, JpaSp
                         "AND (:search IS NULL OR LOWER(e.name) LIKE :search " +
                         "OR (p IS NOT NULL AND LOWER(p.description) LIKE :search)) " +
                         "AND (:managerId IS NULL OR e.manager.id = :managerId) " +
-                        "ORDER BY e.name",
-                        countQuery = "SELECT COUNT(DISTINCT e.id) FROM Employee e " +
-                        "LEFT JOIN Allocation a ON a.employee = e " +
-                        "LEFT JOIN a.project p " +
-                        "WHERE e.resignationDate IS NULL AND e.id IN :employeeIds " +
-                        "AND (:search IS NULL OR LOWER(e.name) LIKE :search " +
-                        "OR (p IS NOT NULL AND LOWER(p.description) LIKE :search)) " +
-                        "AND (:managerId IS NULL OR e.manager.id = :managerId)")
+                        "ORDER BY e.name", countQuery = "SELECT COUNT(DISTINCT e.id) FROM Employee e " +
+                                        "LEFT JOIN Allocation a ON a.employee = e " +
+                                        "LEFT JOIN a.project p " +
+                                        "WHERE e.resignationDate IS NULL AND e.id IN :employeeIds " +
+                                        "AND (:search IS NULL OR LOWER(e.name) LIKE :search " +
+                                        "OR (p IS NOT NULL AND LOWER(p.description) LIKE :search)) " +
+                                        "AND (:managerId IS NULL OR e.manager.id = :managerId)")
         Page<Employee> findEmployeesForAllocationViewByIds(
                         @Param("employeeIds") List<Long> employeeIds,
                         @Param("search") String search,
@@ -96,20 +98,19 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long>, JpaSp
                         "  AND ma.month = :currentMonth " +
                         "  AND ma.percentage > 0" +
                         ") " +
-                        "ORDER BY e.name",
-                        countQuery = "SELECT COUNT(DISTINCT e.id) FROM employees e " +
-                        "WHERE e.resignation_date IS NULL " +
-                        "AND (:search IS NULL OR LOWER(e.name) LIKE :search) " +
-                        "AND (CAST(:managerId AS bigint) IS NULL OR e.manager_id = :managerId) " +
-                        "AND NOT EXISTS (" +
-                        "  SELECT 1 FROM allocations a " +
-                        "  JOIN monthly_allocations ma ON ma.allocation_id = a.id " +
-                        "  WHERE a.employee_id = e.id " +
-                        "  AND a.allocation_type = 'PROJECT' " +
-                        "  AND ma.year = :currentYear " +
-                        "  AND ma.month = :currentMonth " +
-                        "  AND ma.percentage > 0" +
-                        ")", nativeQuery = true)
+                        "ORDER BY e.name", countQuery = "SELECT COUNT(DISTINCT e.id) FROM employees e " +
+                                        "WHERE e.resignation_date IS NULL " +
+                                        "AND (:search IS NULL OR LOWER(e.name) LIKE :search) " +
+                                        "AND (CAST(:managerId AS bigint) IS NULL OR e.manager_id = :managerId) " +
+                                        "AND NOT EXISTS (" +
+                                        "  SELECT 1 FROM allocations a " +
+                                        "  JOIN monthly_allocations ma ON ma.allocation_id = a.id " +
+                                        "  WHERE a.employee_id = e.id " +
+                                        "  AND a.allocation_type = 'PROJECT' " +
+                                        "  AND ma.year = :currentYear " +
+                                        "  AND ma.month = :currentMonth " +
+                                        "  AND ma.percentage > 0" +
+                                        ")", nativeQuery = true)
         Page<Employee> findBenchEmployees(
                         @Param("search") String search,
                         @Param("managerId") Long managerId,
@@ -132,21 +133,20 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long>, JpaSp
                         "  AND ma.month = :currentMonth " +
                         "  AND ma.percentage > 0" +
                         ") " +
-                        "ORDER BY e.name",
-                        countQuery = "SELECT COUNT(DISTINCT e.id) FROM employees e " +
-                        "WHERE e.resignation_date IS NULL " +
-                        "AND e.id IN :employeeIds " +
-                        "AND (:search IS NULL OR LOWER(e.name) LIKE :search) " +
-                        "AND (CAST(:managerId AS bigint) IS NULL OR e.manager_id = :managerId) " +
-                        "AND NOT EXISTS (" +
-                        "  SELECT 1 FROM allocations a " +
-                        "  JOIN monthly_allocations ma ON ma.allocation_id = a.id " +
-                        "  WHERE a.employee_id = e.id " +
-                        "  AND a.allocation_type = 'PROJECT' " +
-                        "  AND ma.year = :currentYear " +
-                        "  AND ma.month = :currentMonth " +
-                        "  AND ma.percentage > 0" +
-                        ")", nativeQuery = true)
+                        "ORDER BY e.name", countQuery = "SELECT COUNT(DISTINCT e.id) FROM employees e " +
+                                        "WHERE e.resignation_date IS NULL " +
+                                        "AND e.id IN :employeeIds " +
+                                        "AND (:search IS NULL OR LOWER(e.name) LIKE :search) " +
+                                        "AND (CAST(:managerId AS bigint) IS NULL OR e.manager_id = :managerId) " +
+                                        "AND NOT EXISTS (" +
+                                        "  SELECT 1 FROM allocations a " +
+                                        "  JOIN monthly_allocations ma ON ma.allocation_id = a.id " +
+                                        "  WHERE a.employee_id = e.id " +
+                                        "  AND a.allocation_type = 'PROJECT' " +
+                                        "  AND ma.year = :currentYear " +
+                                        "  AND ma.month = :currentMonth " +
+                                        "  AND ma.percentage > 0" +
+                                        ")", nativeQuery = true)
         Page<Employee> findBenchEmployeesByIds(
                         @Param("employeeIds") List<Long> employeeIds,
                         @Param("search") String search,
@@ -155,7 +155,8 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long>, JpaSp
                         @Param("currentMonth") int currentMonth,
                         Pageable pageable);
 
-        // Find ACTIVE allocated employees: those with PROJECT allocation in current year/month
+        // Find ACTIVE allocated employees: those with PROJECT allocation in current
+        // year/month
         @Query(value = "SELECT DISTINCT e.* FROM employees e " +
                         "WHERE e.resignation_date IS NULL " +
                         "AND (:search IS NULL OR LOWER(e.name) LIKE :search) " +
@@ -169,20 +170,19 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long>, JpaSp
                         "  AND ma.month = :currentMonth " +
                         "  AND ma.percentage > 0" +
                         ") " +
-                        "ORDER BY e.name",
-                        countQuery = "SELECT COUNT(DISTINCT e.id) FROM employees e " +
-                        "WHERE e.resignation_date IS NULL " +
-                        "AND (:search IS NULL OR LOWER(e.name) LIKE :search) " +
-                        "AND (CAST(:managerId AS bigint) IS NULL OR e.manager_id = :managerId) " +
-                        "AND EXISTS (" +
-                        "  SELECT 1 FROM allocations a " +
-                        "  JOIN monthly_allocations ma ON ma.allocation_id = a.id " +
-                        "  WHERE a.employee_id = e.id " +
-                        "  AND a.allocation_type = 'PROJECT' " +
-                        "  AND ma.year = :currentYear " +
-                        "  AND ma.month = :currentMonth " +
-                        "  AND ma.percentage > 0" +
-                        ")", nativeQuery = true)
+                        "ORDER BY e.name", countQuery = "SELECT COUNT(DISTINCT e.id) FROM employees e " +
+                                        "WHERE e.resignation_date IS NULL " +
+                                        "AND (:search IS NULL OR LOWER(e.name) LIKE :search) " +
+                                        "AND (CAST(:managerId AS bigint) IS NULL OR e.manager_id = :managerId) " +
+                                        "AND EXISTS (" +
+                                        "  SELECT 1 FROM allocations a " +
+                                        "  JOIN monthly_allocations ma ON ma.allocation_id = a.id " +
+                                        "  WHERE a.employee_id = e.id " +
+                                        "  AND a.allocation_type = 'PROJECT' " +
+                                        "  AND ma.year = :currentYear " +
+                                        "  AND ma.month = :currentMonth " +
+                                        "  AND ma.percentage > 0" +
+                                        ")", nativeQuery = true)
         Page<Employee> findActiveAllocatedEmployees(
                         @Param("search") String search,
                         @Param("managerId") Long managerId,
@@ -205,21 +205,20 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long>, JpaSp
                         "  AND ma.month = :currentMonth " +
                         "  AND ma.percentage > 0" +
                         ") " +
-                        "ORDER BY e.name",
-                        countQuery = "SELECT COUNT(DISTINCT e.id) FROM employees e " +
-                        "WHERE e.resignation_date IS NULL " +
-                        "AND e.id IN :employeeIds " +
-                        "AND (:search IS NULL OR LOWER(e.name) LIKE :search) " +
-                        "AND (CAST(:managerId AS bigint) IS NULL OR e.manager_id = :managerId) " +
-                        "AND EXISTS (" +
-                        "  SELECT 1 FROM allocations a " +
-                        "  JOIN monthly_allocations ma ON ma.allocation_id = a.id " +
-                        "  WHERE a.employee_id = e.id " +
-                        "  AND a.allocation_type = 'PROJECT' " +
-                        "  AND ma.year = :currentYear " +
-                        "  AND ma.month = :currentMonth " +
-                        "  AND ma.percentage > 0" +
-                        ")", nativeQuery = true)
+                        "ORDER BY e.name", countQuery = "SELECT COUNT(DISTINCT e.id) FROM employees e " +
+                                        "WHERE e.resignation_date IS NULL " +
+                                        "AND e.id IN :employeeIds " +
+                                        "AND (:search IS NULL OR LOWER(e.name) LIKE :search) " +
+                                        "AND (CAST(:managerId AS bigint) IS NULL OR e.manager_id = :managerId) " +
+                                        "AND EXISTS (" +
+                                        "  SELECT 1 FROM allocations a " +
+                                        "  JOIN monthly_allocations ma ON ma.allocation_id = a.id " +
+                                        "  WHERE a.employee_id = e.id " +
+                                        "  AND a.allocation_type = 'PROJECT' " +
+                                        "  AND ma.year = :currentYear " +
+                                        "  AND ma.month = :currentMonth " +
+                                        "  AND ma.percentage > 0" +
+                                        ")", nativeQuery = true)
         Page<Employee> findActiveAllocatedEmployeesByIds(
                         @Param("employeeIds") List<Long> employeeIds,
                         @Param("search") String search,
@@ -238,16 +237,15 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long>, JpaSp
                         "  WHERE a.employee_id = e.id " +
                         "  AND CAST(a.allocation_type AS text) = :allocationType" +
                         ") " +
-                        "ORDER BY e.name",
-                        countQuery = "SELECT COUNT(DISTINCT e.id) FROM employees e " +
-                        "WHERE e.resignation_date IS NULL " +
-                        "AND (:search IS NULL OR LOWER(e.name) LIKE :search) " +
-                        "AND (CAST(:managerId AS bigint) IS NULL OR e.manager_id = :managerId) " +
-                        "AND EXISTS (" +
-                        "  SELECT 1 FROM allocations a " +
-                        "  WHERE a.employee_id = e.id " +
-                        "  AND CAST(a.allocation_type AS text) = :allocationType" +
-                        ")", nativeQuery = true)
+                        "ORDER BY e.name", countQuery = "SELECT COUNT(DISTINCT e.id) FROM employees e " +
+                                        "WHERE e.resignation_date IS NULL " +
+                                        "AND (:search IS NULL OR LOWER(e.name) LIKE :search) " +
+                                        "AND (CAST(:managerId AS bigint) IS NULL OR e.manager_id = :managerId) " +
+                                        "AND EXISTS (" +
+                                        "  SELECT 1 FROM allocations a " +
+                                        "  WHERE a.employee_id = e.id " +
+                                        "  AND CAST(a.allocation_type AS text) = :allocationType" +
+                                        ")", nativeQuery = true)
         Page<Employee> findEmployeesByAllocationType(
                         @Param("search") String search,
                         @Param("managerId") Long managerId,
@@ -265,17 +263,16 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long>, JpaSp
                         "  WHERE a.employee_id = e.id " +
                         "  AND CAST(a.allocation_type AS text) = :allocationType" +
                         ") " +
-                        "ORDER BY e.name",
-                        countQuery = "SELECT COUNT(DISTINCT e.id) FROM employees e " +
-                        "WHERE e.resignation_date IS NULL " +
-                        "AND e.id IN :employeeIds " +
-                        "AND (:search IS NULL OR LOWER(e.name) LIKE :search) " +
-                        "AND (CAST(:managerId AS bigint) IS NULL OR e.manager_id = :managerId) " +
-                        "AND EXISTS (" +
-                        "  SELECT 1 FROM allocations a " +
-                        "  WHERE a.employee_id = e.id " +
-                        "  AND CAST(a.allocation_type AS text) = :allocationType" +
-                        ")", nativeQuery = true)
+                        "ORDER BY e.name", countQuery = "SELECT COUNT(DISTINCT e.id) FROM employees e " +
+                                        "WHERE e.resignation_date IS NULL " +
+                                        "AND e.id IN :employeeIds " +
+                                        "AND (:search IS NULL OR LOWER(e.name) LIKE :search) " +
+                                        "AND (CAST(:managerId AS bigint) IS NULL OR e.manager_id = :managerId) " +
+                                        "AND EXISTS (" +
+                                        "  SELECT 1 FROM allocations a " +
+                                        "  WHERE a.employee_id = e.id " +
+                                        "  AND CAST(a.allocation_type AS text) = :allocationType" +
+                                        ")", nativeQuery = true)
         Page<Employee> findEmployeesByAllocationTypeByIds(
                         @Param("employeeIds") List<Long> employeeIds,
                         @Param("search") String search,

@@ -10,9 +10,10 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
-import java.util.HashSet;
+import java.util.Collections;
 import java.util.List;
-import java.util.Set;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -25,7 +26,6 @@ public class DashboardService {
     public DashboardStatsDTO getStats(User currentUser) {
         List<Employee> employees = employeeService.getAccessibleEmployees(currentUser);
         long totalEmployees = employees.size();
-        Set<Long> activeEmployeesIds = new HashSet<>();
 
         long activeProjects;
         if (currentUser.isTopLevel()) {
@@ -34,46 +34,85 @@ public class DashboardService {
             activeProjects = projectRepository.countActiveProjectsByEmployees(employees);
         }
 
+        // Fetch ALL allocations for these employees to correctly determine status
         List<Allocation> allocations;
         if (currentUser.isTopLevel()) {
             allocations = allocationRepository.findAllWithEmployeeAndProject();
         } else {
-            allocations = allocationRepository.findProjectAllocationsByEmployees(employees);
+            // Use the new method that returns ALL allocations (including
+            // PROSPECT/BENCH/etc)
+            allocations = allocationRepository.findAllocationsByEmployees(employees);
         }
+
+        // Group allocations by employee for easier processing
+        Map<Long, List<Allocation>> allocationsByEmployee = allocations.stream()
+                .collect(Collectors.groupingBy(a -> a.getEmployee().getId()));
 
         int currentYear = LocalDate.now().getYear();
         int currentMonth = LocalDate.now().getMonthValue();
 
         long benchCount = 0;
         long prospectCount = 0;
-        int totalAllocation = 0;
-        int allocationCount = 0;
+        long activeEmployeeCount = 0;
+        int totalAllocationPercentage = 0;
+        int allocatedEmployeeCount = 0;
 
-        for (Allocation allocation : allocations) {
-            if (allocation.getAllocationType() == Allocation.AllocationType.PROSPECT) {
+        for (Employee employee : employees) {
+            List<Allocation> employeeAllocations = allocationsByEmployee.getOrDefault(employee.getId(),
+                    Collections.emptyList());
+
+            // Determine status similar to EmployeeService.toDTO logic
+            boolean isResigned = employee.getResignationDate() != null;
+            boolean isMaternity = employeeAllocations.stream()
+                    .anyMatch(a -> a.getAllocationType() == Allocation.AllocationType.MATERNITY);
+            boolean isVacation = employeeAllocations.stream()
+                    .anyMatch(a -> a.getAllocationType() == Allocation.AllocationType.VACATION);
+
+            boolean hasActiveProject = false;
+            boolean hasProspect = false;
+            int employeeTotalAllocation = 0;
+
+            for (Allocation allocation : employeeAllocations) {
+                if (allocation.getAllocationType() == Allocation.AllocationType.PROJECT) {
+                    Integer alloc = allocation.getAllocationForYearMonth(currentYear, currentMonth);
+                    if (alloc != null && alloc > 0) {
+                        employeeTotalAllocation += alloc;
+                        hasActiveProject = true;
+                    }
+                } else if (allocation.getAllocationType() == Allocation.AllocationType.PROSPECT) {
+                    hasProspect = true;
+                }
+            }
+
+            // Stats calculation
+            if (hasActiveProject) {
+                activeEmployeeCount++;
+                totalAllocationPercentage += employeeTotalAllocation;
+                allocatedEmployeeCount++;
+            } else if (hasProspect) {
+                // Only count as prospect if NOT active
                 prospectCount++;
-            } else if (allocation.getAllocationType() == Allocation.AllocationType.PROJECT) {
-                Integer alloc = allocation.getAllocationForYearMonth(currentYear, currentMonth);
-                if (alloc != null && alloc > 0) {
-                    totalAllocation += alloc;
-                    allocationCount++;
-                    activeEmployeesIds.add(allocation.getEmployee().getId());
+            } else {
+                // Bench logic: Not active, not prospect, and not (Resigned OR Maternity OR
+                // Vacation)
+                if (!isResigned && !isMaternity && !isVacation) {
+                    benchCount++;
                 }
             }
         }
 
-        long activeEmployees = activeEmployeesIds.size();
-        double avgAllocation = allocationCount > 0 ? (double) totalAllocation / allocationCount : 0.0;
+        double avgAllocation = allocatedEmployeeCount > 0 ? (double) totalAllocationPercentage / allocatedEmployeeCount
+                : 0.0;
 
         return DashboardStatsDTO.builder()
                 .totalEmployees(totalEmployees)
-                .activeEmployees(activeEmployees)
+                .activeEmployees(activeEmployeeCount)
                 .averageAllocation(Math.round(avgAllocation * 10.0) / 10.0)
-                .benchCount(benchCount)
+                .benchCount(benchCount) // Now correctly calculated
                 .prospectCount(prospectCount)
                 .activeProjects(activeProjects)
-                .pendingProjects(0L)
-                .employeeTrend(5.0)
+                .pendingProjects(0L) // Placeholder or implement if needed
+                .employeeTrend(5.0) // Dummy trend data
                 .allocationTrend(2.5)
                 .benchTrend(-3.0)
                 .projectTrend(10.0)
