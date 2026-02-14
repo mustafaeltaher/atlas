@@ -59,9 +59,7 @@ npm run dev
 
 | Role | Username | Password |
 |------|----------|----------|
-| Admin | admin | admin123 |
-| Executive (N1) | ahmed.el-sayed | password123 |
-| Head (N2) | mohamed.hassan | password123 |
+| Executive (N1) | Ahmad.Elharany@gizasystems.com | password123 |
 
 ## API Endpoints
 

@@ -3,7 +3,6 @@ package com.atlas.service;
 import com.atlas.dto.EmployeeDTO;
 import com.atlas.entity.Allocation;
 import com.atlas.entity.Employee;
-import com.atlas.entity.EmployeeSkill;
 import com.atlas.entity.User;
 import com.atlas.repository.AllocationRepository;
 import com.atlas.repository.EmployeeRepository;
@@ -20,12 +19,9 @@ import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 @Service
 @RequiredArgsConstructor
@@ -90,49 +86,26 @@ public class EmployeeService {
     }
 
     public List<Employee> getAccessibleEmployees(User user) {
-        if (user.isTopLevel()) {
-            return employeeRepository.findAllWithManager();
+        Employee currentEmployee = user.getEmployee();
+        if (currentEmployee == null) {
+            return Collections.emptyList();
         }
-
-        Employee userEmployee = user.getEmployee();
-        if (userEmployee == null) {
-            return List.of();
-        }
-
-        // Load all employees in one query, then walk the tree in memory
-        List<Employee> all = employeeRepository.findAllWithManager();
-        Map<Long, List<Employee>> reportsByManager = new HashMap<>();
-        for (Employee e : all) {
-            if (e.getManager() != null) {
-                reportsByManager.computeIfAbsent(e.getManager().getId(), k -> new ArrayList<>()).add(e);
-            }
-        }
-
-        List<Employee> result = new ArrayList<>();
-        result.add(userEmployee);
-        collectReports(userEmployee.getId(), reportsByManager, result);
-        return result;
+        // Unified ABAC: Everyone sees their subtree (themselves + descendants)
+        // using efficient recursive DB query
+        List<Long> ids = employeeRepository.findAllSubordinateIds(currentEmployee.getId());
+        return employeeRepository.findAllById(ids);
     }
 
     /**
      * Returns accessible employee IDs for access control filtering.
-     * Returns null for top-level users (meaning "no filter needed"),
-     * or a List of IDs for non-top-level users.
+     * Unified ABAC: Returns ID list for ALL users (admins included).
      */
     public List<Long> getAccessibleEmployeeIds(User user) {
-        if (user.isTopLevel()) {
-            return null;
+        Employee currentEmployee = user.getEmployee();
+        if (currentEmployee == null) {
+            return Collections.emptyList();
         }
-        List<Employee> accessible = getAccessibleEmployees(user);
-        return accessible.stream().map(Employee::getId).collect(Collectors.toList());
-    }
-
-    private void collectReports(Long managerId, Map<Long, List<Employee>> reportsByManager, List<Employee> result) {
-        List<Employee> directs = reportsByManager.getOrDefault(managerId, Collections.emptyList());
-        for (Employee report : directs) {
-            result.add(report);
-            collectReports(report.getId(), reportsByManager, result);
-        }
+        return employeeRepository.findAllSubordinateIds(currentEmployee.getId());
     }
 
     private List<Employee> getFilteredEmployees(User user) {
@@ -140,10 +113,6 @@ public class EmployeeService {
     }
 
     private boolean hasAccessToEmployee(User user, Employee employee) {
-        if (user.isTopLevel()) {
-            return true;
-        }
-
         Employee userEmployee = user.getEmployee();
         if (userEmployee == null) {
             return false;
@@ -154,20 +123,10 @@ public class EmployeeService {
             return true;
         }
 
-        // Check if the employee is in the user's hierarchy
-        return isInHierarchy(userEmployee.getId(), employee);
-    }
-
-    private boolean isInHierarchy(Long managerId, Employee employee) {
-        // Check if employee reports to this manager (directly or indirectly)
-        Employee currentManager = employee.getManager();
-        while (currentManager != null) {
-            if (currentManager.getId().equals(managerId)) {
-                return true;
-            }
-            currentManager = currentManager.getManager();
-        }
-        return false;
+        // Hierarchy check using unified recursive query
+        // This implicitly handles admins (their ID list contains everyone)
+        List<Long> accessibleIds = getAccessibleEmployeeIds(user);
+        return accessibleIds.contains(employee.getId());
     }
 
     private Map<Long, List<Allocation>> batchFetchAllocations(List<Employee> employees) {
@@ -289,91 +248,55 @@ public class EmployeeService {
     }
 
     public List<String> getDistinctStatuses(User currentUser, Long managerId, String tower) {
-        List<EmployeeDTO> employees = getFilteredEmployeeStream(currentUser, managerId, tower, null)
-                .collect(Collectors.toList());
-
-        Set<String> statuses = new LinkedHashSet<>();
-
-        for (EmployeeDTO emp : employees) {
-            // Add employee status if not ACTIVE
-            if (emp.getStatus() != null && !"ACTIVE".equals(emp.getStatus())) {
-                statuses.add(emp.getStatus());
-            }
-            // Add allocation status if present (for ACTIVE employees)
-            if (emp.getAllocationStatus() != null && "ACTIVE".equals(emp.getStatus())) {
-                statuses.add(emp.getAllocationStatus());
+        List<Long> accessibleIds = getAccessibleEmployeeIds(currentUser);
+        String towerParam = (tower != null && !tower.trim().isEmpty()) ? tower.trim() : null;
+        List<String> allStatuses = List.of("ACTIVE", "BENCH", "PROSPECT", "MATERNITY", "VACATION", "RESIGNED");
+        List<String> result = new ArrayList<>();
+        for (String s : allStatuses) {
+            long count = employeeRepository.count(
+                    EmployeeSpecification.withFilters(null, towerParam, managerId, s, accessibleIds));
+            if (count > 0) {
+                result.add(s);
             }
         }
-
-        return new ArrayList<>(statuses);
+        return result;
     }
 
     public List<String> getDistinctTowers(User currentUser, Long managerId, String status) {
-        return getFilteredEmployeeStream(currentUser, managerId, null, status)
-                .map(EmployeeDTO::getTowerName)
-                .filter(t -> t != null && !t.isEmpty())
-                .distinct()
-                .sorted()
-                .collect(Collectors.toList());
+        List<Long> accessibleIds = getAccessibleEmployeeIds(currentUser);
+        return employeeRepository.findDistinctTowersFiltered(accessibleIds, managerId);
     }
 
     public List<EmployeeDTO> getAccessibleManagers(User currentUser, String tower, String status) {
-        List<Employee> accessible = getAccessibleEmployees(currentUser);
+        List<Long> accessibleIds = getAccessibleEmployeeIds(currentUser);
+        String towerParam = (tower != null && !tower.trim().isEmpty()) ? tower.trim() : null;
+        String statusParam = (status != null && !status.trim().isEmpty()) ? status.trim() : null;
 
-        // Identify which employees match the criteria
-        List<EmployeeDTO> matchingEmployees = getFilteredEmployeeStream(currentUser, null, tower, status)
-                .collect(Collectors.toList());
-
-        // Collect their managers
-        return matchingEmployees.stream()
-                .map(dto -> accessible.stream()
-                        .filter(e -> e.getId().equals(dto.getId()))
-                        .findFirst()
-                        .orElse(null))
-                .filter(e -> e != null && e.getManager() != null)
-                .map(Employee::getManager)
-                .distinct()
-                .filter(m -> m.getResignationDate() == null) // ensure manager is active (no resignation)
+        List<Employee> managers;
+        if (statusParam == null) {
+            // No status filter — use the optimized tower-only query
+            managers = employeeRepository.findDistinctManagersForEmployeeFiltersFiltered(accessibleIds, towerParam);
+        } else {
+            // Status filter active — find matching employees via spec, then extract their
+            // managers
+            var spec = EmployeeSpecification.withFilters(null, towerParam, null, statusParam, accessibleIds);
+            List<Employee> matchingEmployees = employeeRepository.findAll(spec);
+            Map<Long, Employee> uniqueManagers = new java.util.LinkedHashMap<>();
+            for (Employee e : matchingEmployees) {
+                if (e.getManager() != null && e.getManager().getResignationDate() == null) {
+                    uniqueManagers.putIfAbsent(e.getManager().getId(), e.getManager());
+                }
+            }
+            managers = new ArrayList<>(uniqueManagers.values());
+            managers.sort(java.util.Comparator.comparing(Employee::getName));
+        }
+        return managers.stream()
                 .map(m -> EmployeeDTO.builder()
                         .id(m.getId())
                         .name(m.getName())
                         .oracleId(m.getOracleId())
                         .build())
-                .sorted((m1, m2) -> m1.getName().compareTo(m2.getName()))
                 .collect(Collectors.toList());
-    }
-
-    private Stream<EmployeeDTO> getFilteredEmployeeStream(User currentUser, Long managerId,
-            String tower, String status) {
-        List<Employee> accessible = getAccessibleEmployees(currentUser);
-
-        // Filter by structural attributes first
-        List<Employee> structurallyFiltered = accessible.stream()
-                .filter(e -> managerId == null
-                        || (e.getManager() != null && e.getManager().getId().equals(managerId)))
-                .filter(e -> tower == null
-                        || (e.getTower() != null && e.getTower().getDescription() != null
-                                && e.getTower().getDescription().equals(tower)))
-                .collect(Collectors.toList());
-
-        // Batch fetch allocations for these employees
-        Map<Long, List<Allocation>> allocationsByEmployee = batchFetchAllocations(structurallyFiltered);
-
-        // Map to DTO (calculates status) and filter by status
-        return structurallyFiltered.stream()
-                .map(e -> toDTO(e, allocationsByEmployee.getOrDefault(e.getId(), Collections.emptyList())))
-                .filter(dto -> {
-                    if (status == null)
-                        return true;
-                    // ACTIVE, BENCH, PROSPECT are allocation-level statuses
-                    if ("ACTIVE".equalsIgnoreCase(status)
-                            || "BENCH".equalsIgnoreCase(status)
-                            || "PROSPECT".equalsIgnoreCase(status)) {
-                        return status.equalsIgnoreCase(dto.getAllocationStatus());
-                    }
-                    // MATERNITY, VACATION, RESIGNED are employee-level statuses
-                    return status.equalsIgnoreCase(dto.getStatus());
-                });
     }
 
     @Transactional

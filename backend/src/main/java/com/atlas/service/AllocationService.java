@@ -103,6 +103,9 @@ public class AllocationService {
         } else if (isActiveFilter) {
             employeePage = employeeRepository.findActiveAllocatedEmployeesFiltered(accessibleIds,
                     searchParam, managerId, currentYear, currentMonth, pageable);
+        } else if ("PROSPECT".equalsIgnoreCase(allocationType)) {
+            employeePage = employeeRepository.findProspectEmployeesFiltered(accessibleIds,
+                    searchParam, managerId, currentYear, currentMonth, pageable);
         } else if (isStandardTypeFilter) {
             employeePage = employeeRepository.findEmployeesByAllocationTypeFiltered(accessibleIds,
                     searchParam, managerId, allocationType.toUpperCase(), pageable);

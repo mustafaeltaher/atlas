@@ -58,7 +58,7 @@ public class EmployeeSpecification {
                 int currentMonth = LocalDate.now().getMonthValue();
 
                 if ("BENCH".equalsIgnoreCase(status)) {
-                    // BENCH = No PROJECT allocation with positive percentage in current month/year
+                    // BENCH = No active PROJECT allocation AND no PROSPECT/MATERNITY/VACATION
                     Subquery<Long> activeAllocationSubquery = query.subquery(Long.class);
                     Root<Allocation> allocRoot = activeAllocationSubquery.from(Allocation.class);
                     Join<Allocation, MonthlyAllocation> maJoin = allocRoot.join("monthlyAllocations");
@@ -72,6 +72,33 @@ public class EmployeeSpecification {
                             cb.gt(maJoin.get("percentage"), 0)));
 
                     predicates.add(cb.not(cb.exists(activeAllocationSubquery)));
+
+                    // Exclude PROSPECT
+                    Subquery<Long> prospectSub = query.subquery(Long.class);
+                    Root<Allocation> prRoot = prospectSub.from(Allocation.class);
+                    prospectSub.select(prRoot.get("employee").get("id"));
+                    prospectSub.where(cb.and(
+                            cb.equal(prRoot.get("employee"), root),
+                            cb.equal(prRoot.get("allocationType"), Allocation.AllocationType.PROSPECT)));
+                    predicates.add(cb.not(cb.exists(prospectSub)));
+
+                    // Exclude MATERNITY
+                    Subquery<Long> maternitySub = query.subquery(Long.class);
+                    Root<Allocation> matRoot = maternitySub.from(Allocation.class);
+                    maternitySub.select(matRoot.get("employee").get("id"));
+                    maternitySub.where(cb.and(
+                            cb.equal(matRoot.get("employee"), root),
+                            cb.equal(matRoot.get("allocationType"), Allocation.AllocationType.MATERNITY)));
+                    predicates.add(cb.not(cb.exists(maternitySub)));
+
+                    // Exclude VACATION
+                    Subquery<Long> vacationSub = query.subquery(Long.class);
+                    Root<Allocation> vacRoot = vacationSub.from(Allocation.class);
+                    vacationSub.select(vacRoot.get("employee").get("id"));
+                    vacationSub.where(cb.and(
+                            cb.equal(vacRoot.get("employee"), root),
+                            cb.equal(vacRoot.get("allocationType"), Allocation.AllocationType.VACATION)));
+                    predicates.add(cb.not(cb.exists(vacationSub)));
 
                 } else if ("PROSPECT".equalsIgnoreCase(status)) {
                     // PROSPECT = Has PROSPECT allocation but no PROJECT allocation with % > 0

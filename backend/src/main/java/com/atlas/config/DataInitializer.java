@@ -116,33 +116,42 @@ public class DataInitializer implements CommandLineRunner {
                 if (availableTowers.isEmpty())
                         return;
 
-                // 1. Identify Group CEO (Root) - approximation: manager is null
-                // In imported data, top level might not have manager set.
-                List<Employee> topLevelEmployees = allEmployees.stream()
+                // 1. Identify Group CEO (Root) - Level 0
+                List<Employee> roots = allEmployees.stream()
                                 .filter(e -> e.getManager() == null)
                                 .collect(Collectors.toList());
 
-                for (Employee top : topLevelEmployees) {
-                        // 2. Direct reports to CEO (Level 1)
-                        // CEO themselves might not need a tower, or can have one.
-                        // Request says: "only the group CEO can see multiple all the towers"
-                        // implication is CEO doesn't belong to one.
-                        // But for simplicity/data consistency, we might leave CEO tower null or assign
-                        // one.
-                        // Let's propagate to direct reports.
+                for (Employee root : roots) {
+                        // Root has NO tower (sees all)
+                        root.setTower(null);
+                        employeeRepository.save(root);
 
-                        List<Employee> directReports = employeeRepository.findByManager(top);
-                        for (Employee directReport : directReports) {
-                                // Assign Random Tower to Level 1 (Vertical Heads)
-                                TechTower assignedTower = availableTowers.get(random.nextInt(availableTowers.size()));
-                                directReport.setTower(assignedTower);
-                                employeeRepository.save(directReport);
+                        // 2. Direct reports to CEO (Level 1) - e.g. Rasha
+                        List<Employee> level1 = employeeRepository.findByManager(root);
+                        for (Employee l1 : level1) {
+                                // Level 1 has NO tower (sees all)
+                                l1.setTower(null);
+                                employeeRepository.save(l1);
 
-                                // 3. Propagate to their subordinates recursively
-                                propagateTower(directReport, assignedTower);
+                                // 3. Direct reports to Level 1 (Level 2) - Department/Vertical Managers
+                                List<Employee> level2 = employeeRepository.findByManager(l1);
+
+                                // Distribute towers round-robin among Level 2 managers
+                                int towerIndex = 0;
+                                for (Employee l2 : level2) {
+                                        TechTower assignedTower = availableTowers
+                                                        .get(towerIndex % availableTowers.size());
+                                        towerIndex++;
+
+                                        l2.setTower(assignedTower);
+                                        employeeRepository.save(l2);
+
+                                        // 4. Propagate to their subordinates recursively
+                                        propagateTower(l2, assignedTower);
+                                }
                         }
                 }
-                log.info("Assigned towers hierarchically");
+                log.info("Assigned towers hierarchically (skipped Root & Level 1, distributed at Level 2)");
         }
 
         private void propagateTower(Employee manager, TechTower tower) {
@@ -155,15 +164,17 @@ public class DataInitializer implements CommandLineRunner {
         }
 
         private void importEmployeesFromJson() throws Exception {
-                InputStream inputStream = getClass().getResourceAsStream("/company_structure_json.json");
+                // Try loading from file system first (root of project) or resource
+                InputStream inputStream = null;
+                java.io.File file = new java.io.File("GDC_org_structure.json");
+                if (file.exists()) {
+                        inputStream = new java.io.FileInputStream(file);
+                } else {
+                        inputStream = getClass().getResourceAsStream("/GDC_org_structure.json");
+                }
+
                 if (inputStream == null) {
-                        // Try loading from file system if resource not found (for dev environment)
-                        java.io.File file = new java.io.File("company_structure_json.json");
-                        if (file.exists()) {
-                                inputStream = new java.io.FileInputStream(file);
-                        } else {
-                                throw new RuntimeException("company_structure_json.json not found");
-                        }
+                        throw new RuntimeException("GDC_org_structure.json not found in filesystem or classpath");
                 }
 
                 EmployeeJsonDTO[] dtos = objectMapper.readValue(inputStream, EmployeeJsonDTO[].class);
@@ -181,9 +192,10 @@ public class DataInitializer implements CommandLineRunner {
                 int oracleIdCounter = 1000;
                 for (EmployeeJsonDTO dto : allEmployeesList) {
                         // Normalize email
-                        String email = dto.getEmail() != null ? dto.getEmail().trim() : "";
-                        if (email.isEmpty())
+                        String email = dto.getEmail();
+                        if (email == null || email.trim().isEmpty())
                                 continue;
+                        email = email.trim();
 
                         Employee employee = Employee.builder()
                                         .oracleId(oracleIdCounter++)
@@ -230,11 +242,12 @@ public class DataInitializer implements CommandLineRunner {
                 if (title == null)
                         return Employee.JobLevel.ENTRY_LEVEL;
                 String lower = title.toLowerCase();
-                if (lower.contains("chief") || lower.contains("head") || lower.contains("director"))
+                if (lower.contains("chief") || lower.contains("head") || lower.contains("director")
+                                || lower.contains("ceo"))
                         return Employee.JobLevel.EXECUTIVE_LEVEL;
                 if (lower.contains("manager") || lower.contains("lead"))
                         return Employee.JobLevel.ADVANCED_MANAGER_LEVEL;
-                if (lower.contains("senior"))
+                if (lower.contains("senior") || lower.contains("expert"))
                         return Employee.JobLevel.MID_LEVEL;
                 return Employee.JobLevel.ENTRY_LEVEL;
         }
@@ -242,7 +255,8 @@ public class DataInitializer implements CommandLineRunner {
         private Employee.Gender guessGender(String firstName) {
                 // Simple heuristic list, fallback to MALE
                 List<String> femaleNames = Arrays.asList("Sara", "Marwa", "Nour", "Fatma", "Aisha", "Layla", "Hana",
-                                "Dina", "Reem", "Mona", "Niveen", "Esraa", "Dalia", "Rasha", "Violet");
+                                "Dina", "Reem", "Mona", "Niveen", "Esraa", "Dalia", "Rasha", "Violet", "Heba", "Soha",
+                                "Yasmine", "Salma", "Maha");
                 if (firstName != null && femaleNames.contains(firstName))
                         return Employee.Gender.FEMALE;
                 return Employee.Gender.MALE;
@@ -440,19 +454,15 @@ public class DataInitializer implements CommandLineRunner {
                 public String jobTitle; // maps to title
                 public String department;
                 public String officeLocation;
-                public String managerEmail;
+                public String managerEmail; // Important: now using email for manager link
 
                 // Helper to get best email
                 public String getEmail() {
-                        if (mail != null && !mail.isEmpty())
-                                return mail;
-                        return userPrincipalName;
-                }
-
-                // Helper specifically for Jackson if it prefers direct field access or standard
-                // getters
-                public String getTitle() {
-                        return jobTitle;
+                        if (mail != null && !mail.trim().isEmpty())
+                                return mail.trim();
+                        if (userPrincipalName != null && !userPrincipalName.trim().isEmpty())
+                                return userPrincipalName.trim();
+                        return null;
                 }
         }
 }

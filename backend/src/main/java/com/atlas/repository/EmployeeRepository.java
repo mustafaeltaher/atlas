@@ -32,6 +32,16 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long>, JpaSp
         @Query("SELECT e FROM Employee e LEFT JOIN FETCH e.tower")
         List<Employee> findAllWithTower();
 
+        // Recursive query to find all subordinate IDs (direct and indirect reports)
+        // This replaces the in-memory recursive check and allows unified access control
+        @Query(value = "WITH RECURSIVE subordinates AS (" +
+                        "  SELECT id FROM employees WHERE id = :managerId " +
+                        "  UNION " +
+                        "  SELECT e.id FROM employees e " +
+                        "  INNER JOIN subordinates s ON s.id = e.manager_id " +
+                        ") SELECT id FROM subordinates", nativeQuery = true)
+        List<Long> findAllSubordinateIds(@Param("managerId") Long managerId);
+
         // Paginated query for allocation view: LEFT JOINs with allocations
         @Query(value = "SELECT DISTINCT e FROM Employee e " +
                         "LEFT JOIN Allocation a ON a.employee = e " +
@@ -73,7 +83,8 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long>, JpaSp
                         @Param("managerId") Long managerId,
                         Pageable pageable);
 
-        // Find BENCH employees: no active PROJECT allocation in current year/month
+        // Find BENCH employees: no active PROJECT, no PROSPECT, no MATERNITY, no
+        // VACATION
         @Query(value = "SELECT DISTINCT e.* FROM employees e " +
                         "WHERE e.resignation_date IS NULL " +
                         "AND (:search IS NULL OR LOWER(e.name) LIKE :search) " +
@@ -85,8 +96,13 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long>, JpaSp
                         "  AND a.allocation_type = 'PROJECT' " +
                         "  AND ma.year = :currentYear " +
                         "  AND ma.month = :currentMonth " +
-                        "  AND ma.percentage > 0" +
-                        ") " +
+                        "  AND ma.percentage > 0) " +
+                        "AND NOT EXISTS (SELECT 1 FROM allocations a WHERE a.employee_id = e.id AND a.allocation_type = 'PROSPECT') "
+                        +
+                        "AND NOT EXISTS (SELECT 1 FROM allocations a WHERE a.employee_id = e.id AND a.allocation_type = 'MATERNITY') "
+                        +
+                        "AND NOT EXISTS (SELECT 1 FROM allocations a WHERE a.employee_id = e.id AND a.allocation_type = 'VACATION') "
+                        +
                         "ORDER BY e.name", countQuery = "SELECT COUNT(DISTINCT e.id) FROM employees e " +
                                         "WHERE e.resignation_date IS NULL " +
                                         "AND (:search IS NULL OR LOWER(e.name) LIKE :search) " +
@@ -98,8 +114,12 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long>, JpaSp
                                         "  AND a.allocation_type = 'PROJECT' " +
                                         "  AND ma.year = :currentYear " +
                                         "  AND ma.month = :currentMonth " +
-                                        "  AND ma.percentage > 0" +
-                                        ")", nativeQuery = true)
+                                        "  AND ma.percentage > 0) " +
+                                        "AND NOT EXISTS (SELECT 1 FROM allocations a WHERE a.employee_id = e.id AND a.allocation_type = 'PROSPECT') "
+                                        +
+                                        "AND NOT EXISTS (SELECT 1 FROM allocations a WHERE a.employee_id = e.id AND a.allocation_type = 'MATERNITY') "
+                                        +
+                                        "AND NOT EXISTS (SELECT 1 FROM allocations a WHERE a.employee_id = e.id AND a.allocation_type = 'VACATION')", nativeQuery = true)
         Page<Employee> findBenchEmployees(
                         @Param("search") String search,
                         @Param("managerId") Long managerId,
@@ -120,8 +140,13 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long>, JpaSp
                         "  AND a.allocation_type = 'PROJECT' " +
                         "  AND ma.year = :currentYear " +
                         "  AND ma.month = :currentMonth " +
-                        "  AND ma.percentage > 0" +
-                        ") " +
+                        "  AND ma.percentage > 0) " +
+                        "AND NOT EXISTS (SELECT 1 FROM allocations a WHERE a.employee_id = e.id AND a.allocation_type = 'PROSPECT') "
+                        +
+                        "AND NOT EXISTS (SELECT 1 FROM allocations a WHERE a.employee_id = e.id AND a.allocation_type = 'MATERNITY') "
+                        +
+                        "AND NOT EXISTS (SELECT 1 FROM allocations a WHERE a.employee_id = e.id AND a.allocation_type = 'VACATION') "
+                        +
                         "ORDER BY e.name", countQuery = "SELECT COUNT(DISTINCT e.id) FROM employees e " +
                                         "WHERE e.resignation_date IS NULL " +
                                         "AND e.id IN :employeeIds " +
@@ -134,8 +159,12 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long>, JpaSp
                                         "  AND a.allocation_type = 'PROJECT' " +
                                         "  AND ma.year = :currentYear " +
                                         "  AND ma.month = :currentMonth " +
-                                        "  AND ma.percentage > 0" +
-                                        ")", nativeQuery = true)
+                                        "  AND ma.percentage > 0) " +
+                                        "AND NOT EXISTS (SELECT 1 FROM allocations a WHERE a.employee_id = e.id AND a.allocation_type = 'PROSPECT') "
+                                        +
+                                        "AND NOT EXISTS (SELECT 1 FROM allocations a WHERE a.employee_id = e.id AND a.allocation_type = 'MATERNITY') "
+                                        +
+                                        "AND NOT EXISTS (SELECT 1 FROM allocations a WHERE a.employee_id = e.id AND a.allocation_type = 'VACATION')", nativeQuery = true)
         Page<Employee> findBenchEmployeesByIds(
                         @Param("employeeIds") List<Long> employeeIds,
                         @Param("search") String search,
@@ -143,6 +172,74 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long>, JpaSp
                         @Param("currentYear") int currentYear,
                         @Param("currentMonth") int currentMonth,
                         Pageable pageable);
+
+        // Find PROSPECT employees: has PROSPECT allocation but no active PROJECT
+        @Query(value = "SELECT DISTINCT e.* FROM employees e " +
+                        "WHERE e.resignation_date IS NULL " +
+                        "AND (:search IS NULL OR LOWER(e.name) LIKE :search) " +
+                        "AND (CAST(:managerId AS bigint) IS NULL OR e.manager_id = :managerId) " +
+                        "AND EXISTS (SELECT 1 FROM allocations a WHERE a.employee_id = e.id AND a.allocation_type = 'PROSPECT') "
+                        +
+                        "AND NOT EXISTS (" +
+                        "  SELECT 1 FROM allocations a " +
+                        "  JOIN monthly_allocations ma ON ma.allocation_id = a.id " +
+                        "  WHERE a.employee_id = e.id AND a.allocation_type = 'PROJECT' " +
+                        "  AND ma.year = :currentYear AND ma.month = :currentMonth AND ma.percentage > 0) " +
+                        "ORDER BY e.name", countQuery = "SELECT COUNT(DISTINCT e.id) FROM employees e " +
+                                        "WHERE e.resignation_date IS NULL " +
+                                        "AND (:search IS NULL OR LOWER(e.name) LIKE :search) " +
+                                        "AND (CAST(:managerId AS bigint) IS NULL OR e.manager_id = :managerId) " +
+                                        "AND EXISTS (SELECT 1 FROM allocations a WHERE a.employee_id = e.id AND a.allocation_type = 'PROSPECT') "
+                                        +
+                                        "AND NOT EXISTS (" +
+                                        "  SELECT 1 FROM allocations a " +
+                                        "  JOIN monthly_allocations ma ON ma.allocation_id = a.id " +
+                                        "  WHERE a.employee_id = e.id AND a.allocation_type = 'PROJECT' " +
+                                        "  AND ma.year = :currentYear AND ma.month = :currentMonth AND ma.percentage > 0)", nativeQuery = true)
+        Page<Employee> findProspectEmployees(
+                        @Param("search") String search,
+                        @Param("managerId") Long managerId,
+                        @Param("currentYear") int currentYear,
+                        @Param("currentMonth") int currentMonth,
+                        Pageable pageable);
+
+        @Query(value = "SELECT DISTINCT e.* FROM employees e " +
+                        "WHERE e.resignation_date IS NULL AND e.id IN :employeeIds " +
+                        "AND (:search IS NULL OR LOWER(e.name) LIKE :search) " +
+                        "AND (CAST(:managerId AS bigint) IS NULL OR e.manager_id = :managerId) " +
+                        "AND EXISTS (SELECT 1 FROM allocations a WHERE a.employee_id = e.id AND a.allocation_type = 'PROSPECT') "
+                        +
+                        "AND NOT EXISTS (" +
+                        "  SELECT 1 FROM allocations a " +
+                        "  JOIN monthly_allocations ma ON ma.allocation_id = a.id " +
+                        "  WHERE a.employee_id = e.id AND a.allocation_type = 'PROJECT' " +
+                        "  AND ma.year = :currentYear AND ma.month = :currentMonth AND ma.percentage > 0) " +
+                        "ORDER BY e.name", countQuery = "SELECT COUNT(DISTINCT e.id) FROM employees e " +
+                                        "WHERE e.resignation_date IS NULL AND e.id IN :employeeIds " +
+                                        "AND (:search IS NULL OR LOWER(e.name) LIKE :search) " +
+                                        "AND (CAST(:managerId AS bigint) IS NULL OR e.manager_id = :managerId) " +
+                                        "AND EXISTS (SELECT 1 FROM allocations a WHERE a.employee_id = e.id AND a.allocation_type = 'PROSPECT') "
+                                        +
+                                        "AND NOT EXISTS (" +
+                                        "  SELECT 1 FROM allocations a " +
+                                        "  JOIN monthly_allocations ma ON ma.allocation_id = a.id " +
+                                        "  WHERE a.employee_id = e.id AND a.allocation_type = 'PROJECT' " +
+                                        "  AND ma.year = :currentYear AND ma.month = :currentMonth AND ma.percentage > 0)", nativeQuery = true)
+        Page<Employee> findProspectEmployeesByIds(
+                        @Param("employeeIds") List<Long> employeeIds,
+                        @Param("search") String search,
+                        @Param("managerId") Long managerId,
+                        @Param("currentYear") int currentYear,
+                        @Param("currentMonth") int currentMonth,
+                        Pageable pageable);
+
+        default Page<Employee> findProspectEmployeesFiltered(
+                        List<Long> employeeIds, String search, Long managerId,
+                        int currentYear, int currentMonth, Pageable pageable) {
+                if (employeeIds == null)
+                        return findProspectEmployees(search, managerId, currentYear, currentMonth, pageable);
+                return findProspectEmployeesByIds(employeeIds, search, managerId, currentYear, currentMonth, pageable);
+        }
 
         // Find ACTIVE allocated employees: those with PROJECT allocation in current
         // year/month
@@ -326,20 +423,22 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long>, JpaSp
         }
 
         // 2. Standard allocation type filter (e.g. PROJECT, PROSPECT)
-        @Query("SELECT DISTINCT m FROM Employee m " +
-                        "WHERE m.resignationDate IS NULL " +
-                        "AND EXISTS (SELECT 1 FROM Employee e JOIN e.allocations a " +
-                        "WHERE e.manager = m AND e.resignationDate IS NULL " +
-                        "AND CAST(a.allocationType AS string) = :type) " +
-                        "ORDER BY m.name")
+        @Query(value = "SELECT DISTINCT m.* FROM employees m " +
+                        "WHERE m.resignation_date IS NULL " +
+                        "AND EXISTS (SELECT 1 FROM employees e " +
+                        "  JOIN allocations a ON a.employee_id = e.id " +
+                        "  WHERE e.manager_id = m.id AND e.resignation_date IS NULL " +
+                        "  AND CAST(a.allocation_type AS text) = :type) " +
+                        "ORDER BY m.name", nativeQuery = true)
         List<Employee> findDistinctManagersByAllocationType(@Param("type") String type);
 
-        @Query("SELECT DISTINCT m FROM Employee m " +
-                        "WHERE m.resignationDate IS NULL " +
-                        "AND EXISTS (SELECT 1 FROM Employee e JOIN e.allocations a " +
-                        "WHERE e.manager = m AND e.resignationDate IS NULL AND e.id IN :ids " +
-                        "AND CAST(a.allocationType AS string) = :type) " +
-                        "ORDER BY m.name")
+        @Query(value = "SELECT DISTINCT m.* FROM employees m " +
+                        "WHERE m.resignation_date IS NULL " +
+                        "AND EXISTS (SELECT 1 FROM employees e " +
+                        "  JOIN allocations a ON a.employee_id = e.id " +
+                        "  WHERE e.manager_id = m.id AND e.resignation_date IS NULL AND e.id IN :ids " +
+                        "  AND CAST(a.allocation_type AS text) = :type) " +
+                        "ORDER BY m.name", nativeQuery = true)
         List<Employee> findDistinctManagersByAllocationTypeByIds(
                         @Param("ids") List<Long> ids, @Param("type") String type);
 
@@ -413,5 +512,185 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long>, JpaSp
                 if (ids == null)
                         return findDistinctManagersOfActiveEmployees(year, month);
                 return findDistinctManagersOfActiveEmployeesByIds(ids, year, month);
+        }
+
+        // ===== Employee page filter dropdown queries =====
+
+        // Distinct towers (for tower dropdown)
+        @Query(value = "SELECT DISTINCT t.description FROM employees e " +
+                        "JOIN tech_towers t ON e.tower = t.id " +
+                        "WHERE e.resignation_date IS NULL " +
+                        "AND (CAST(:managerId AS bigint) IS NULL OR e.manager_id = :managerId) " +
+                        "ORDER BY t.description", nativeQuery = true)
+        List<String> findDistinctTowers(@Param("managerId") Long managerId);
+
+        @Query(value = "SELECT DISTINCT t.description FROM employees e " +
+                        "JOIN tech_towers t ON e.tower = t.id " +
+                        "WHERE e.resignation_date IS NULL AND e.id IN :ids " +
+                        "AND (CAST(:managerId AS bigint) IS NULL OR e.manager_id = :managerId) " +
+                        "ORDER BY t.description", nativeQuery = true)
+        List<String> findDistinctTowersByIds(@Param("ids") List<Long> ids, @Param("managerId") Long managerId);
+
+        default List<String> findDistinctTowersFiltered(List<Long> ids, Long managerId) {
+                if (ids == null)
+                        return findDistinctTowers(managerId);
+                return findDistinctTowersByIds(ids, managerId);
+        }
+
+        // Distinct managers for employee page (managers whose reports match
+        // tower/status filters)
+        @Query(value = "SELECT DISTINCT m.* FROM employees m " +
+                        "WHERE m.resignation_date IS NULL " +
+                        "AND EXISTS (SELECT 1 FROM employees e " +
+                        "  LEFT JOIN tech_towers t ON e.tower = t.id " +
+                        "  WHERE e.manager_id = m.id AND e.resignation_date IS NULL " +
+                        "  AND (:tower IS NULL OR t.description = :tower)) " +
+                        "ORDER BY m.name", nativeQuery = true)
+        List<Employee> findDistinctManagersForEmployeeFilters(@Param("tower") String tower);
+
+        @Query(value = "SELECT DISTINCT m.* FROM employees m " +
+                        "WHERE m.resignation_date IS NULL " +
+                        "AND EXISTS (SELECT 1 FROM employees e " +
+                        "  LEFT JOIN tech_towers t ON e.tower = t.id " +
+                        "  WHERE e.manager_id = m.id AND e.resignation_date IS NULL " +
+                        "  AND e.id IN :ids " +
+                        "  AND (:tower IS NULL OR t.description = :tower)) " +
+                        "ORDER BY m.name", nativeQuery = true)
+        List<Employee> findDistinctManagersForEmployeeFiltersByIds(
+                        @Param("ids") List<Long> ids, @Param("tower") String tower);
+
+        default List<Employee> findDistinctManagersForEmployeeFiltersFiltered(List<Long> ids, String tower) {
+                if (ids == null)
+                        return findDistinctManagersForEmployeeFilters(tower);
+                return findDistinctManagersForEmployeeFiltersByIds(ids, tower);
+        }
+
+        // ===== Dashboard count queries =====
+
+        // Count BENCH employees: no active PROJECT allocation this month
+        @Query(value = "SELECT COUNT(*) FROM employees e " +
+                        "WHERE e.resignation_date IS NULL " +
+                        "AND NOT EXISTS (" +
+                        "  SELECT 1 FROM allocations a WHERE a.employee_id = e.id " +
+                        "  AND a.allocation_type = 'MATERNITY') " +
+                        "AND NOT EXISTS (" +
+                        "  SELECT 1 FROM allocations a WHERE a.employee_id = e.id " +
+                        "  AND a.allocation_type = 'VACATION') " +
+                        "AND NOT EXISTS (" +
+                        "  SELECT 1 FROM allocations a " +
+                        "  JOIN monthly_allocations ma ON ma.allocation_id = a.id " +
+                        "  WHERE a.employee_id = e.id AND a.allocation_type = 'PROJECT' " +
+                        "  AND ma.year = :year AND ma.month = :month AND ma.percentage > 0) " +
+                        "AND NOT EXISTS (" +
+                        "  SELECT 1 FROM allocations a WHERE a.employee_id = e.id " +
+                        "  AND a.allocation_type = 'PROSPECT')", nativeQuery = true)
+        long countBenchEmployees(@Param("year") int year, @Param("month") int month);
+
+        @Query(value = "SELECT COUNT(*) FROM employees e " +
+                        "WHERE e.resignation_date IS NULL AND e.id IN :ids " +
+                        "AND NOT EXISTS (" +
+                        "  SELECT 1 FROM allocations a WHERE a.employee_id = e.id " +
+                        "  AND a.allocation_type = 'MATERNITY') " +
+                        "AND NOT EXISTS (" +
+                        "  SELECT 1 FROM allocations a WHERE a.employee_id = e.id " +
+                        "  AND a.allocation_type = 'VACATION') " +
+                        "AND NOT EXISTS (" +
+                        "  SELECT 1 FROM allocations a " +
+                        "  JOIN monthly_allocations ma ON ma.allocation_id = a.id " +
+                        "  WHERE a.employee_id = e.id AND a.allocation_type = 'PROJECT' " +
+                        "  AND ma.year = :year AND ma.month = :month AND ma.percentage > 0) " +
+                        "AND NOT EXISTS (" +
+                        "  SELECT 1 FROM allocations a WHERE a.employee_id = e.id " +
+                        "  AND a.allocation_type = 'PROSPECT')", nativeQuery = true)
+        long countBenchEmployeesByIds(@Param("ids") List<Long> ids, @Param("year") int year, @Param("month") int month);
+
+        default long countBenchEmployeesFiltered(List<Long> ids, int year, int month) {
+                if (ids == null)
+                        return countBenchEmployees(year, month);
+                return countBenchEmployeesByIds(ids, year, month);
+        }
+
+        // Count ACTIVE employees: have PROJECT allocation with % > 0 this month
+        @Query(value = "SELECT COUNT(DISTINCT e.id) FROM employees e " +
+                        "JOIN allocations a ON a.employee_id = e.id " +
+                        "JOIN monthly_allocations ma ON ma.allocation_id = a.id " +
+                        "WHERE e.resignation_date IS NULL " +
+                        "AND a.allocation_type = 'PROJECT' " +
+                        "AND ma.year = :year AND ma.month = :month AND ma.percentage > 0", nativeQuery = true)
+        long countActiveAllocatedEmployees(@Param("year") int year, @Param("month") int month);
+
+        @Query(value = "SELECT COUNT(DISTINCT e.id) FROM employees e " +
+                        "JOIN allocations a ON a.employee_id = e.id " +
+                        "JOIN monthly_allocations ma ON ma.allocation_id = a.id " +
+                        "WHERE e.resignation_date IS NULL AND e.id IN :ids " +
+                        "AND a.allocation_type = 'PROJECT' " +
+                        "AND ma.year = :year AND ma.month = :month AND ma.percentage > 0", nativeQuery = true)
+        long countActiveAllocatedEmployeesByIds(@Param("ids") List<Long> ids,
+                        @Param("year") int year, @Param("month") int month);
+
+        default long countActiveAllocatedEmployeesFiltered(List<Long> ids, int year, int month) {
+                if (ids == null)
+                        return countActiveAllocatedEmployees(year, month);
+                return countActiveAllocatedEmployeesByIds(ids, year, month);
+        }
+
+        // Count PROSPECT employees: have PROSPECT allocation but NOT active
+        @Query(value = "SELECT COUNT(*) FROM employees e " +
+                        "WHERE e.resignation_date IS NULL " +
+                        "AND EXISTS (SELECT 1 FROM allocations a WHERE a.employee_id = e.id " +
+                        "  AND a.allocation_type = 'PROSPECT') " +
+                        "AND NOT EXISTS (" +
+                        "  SELECT 1 FROM allocations a " +
+                        "  JOIN monthly_allocations ma ON ma.allocation_id = a.id " +
+                        "  WHERE a.employee_id = e.id AND a.allocation_type = 'PROJECT' " +
+                        "  AND ma.year = :year AND ma.month = :month AND ma.percentage > 0)", nativeQuery = true)
+        long countProspectEmployees(@Param("year") int year, @Param("month") int month);
+
+        @Query(value = "SELECT COUNT(*) FROM employees e " +
+                        "WHERE e.resignation_date IS NULL AND e.id IN :ids " +
+                        "AND EXISTS (SELECT 1 FROM allocations a WHERE a.employee_id = e.id " +
+                        "  AND a.allocation_type = 'PROSPECT') " +
+                        "AND NOT EXISTS (" +
+                        "  SELECT 1 FROM allocations a " +
+                        "  JOIN monthly_allocations ma ON ma.allocation_id = a.id " +
+                        "  WHERE a.employee_id = e.id AND a.allocation_type = 'PROJECT' " +
+                        "  AND ma.year = :year AND ma.month = :month AND ma.percentage > 0)", nativeQuery = true)
+        long countProspectEmployeesByIds(@Param("ids") List<Long> ids,
+                        @Param("year") int year, @Param("month") int month);
+
+        default long countProspectEmployeesFiltered(List<Long> ids, int year, int month) {
+                if (ids == null)
+                        return countProspectEmployees(year, month);
+                return countProspectEmployeesByIds(ids, year, month);
+        }
+
+        // Average allocation % for active employees
+        @Query(value = "SELECT COALESCE(AVG(emp_total), 0) FROM (" +
+                        "  SELECT SUM(ma.percentage) AS emp_total FROM employees e " +
+                        "  JOIN allocations a ON a.employee_id = e.id " +
+                        "  JOIN monthly_allocations ma ON ma.allocation_id = a.id " +
+                        "  WHERE e.resignation_date IS NULL " +
+                        "  AND a.allocation_type = 'PROJECT' " +
+                        "  AND ma.year = :year AND ma.month = :month AND ma.percentage > 0 " +
+                        "  GROUP BY e.id" +
+                        ") sub", nativeQuery = true)
+        double averageAllocationPercentage(@Param("year") int year, @Param("month") int month);
+
+        @Query(value = "SELECT COALESCE(AVG(emp_total), 0) FROM (" +
+                        "  SELECT SUM(ma.percentage) AS emp_total FROM employees e " +
+                        "  JOIN allocations a ON a.employee_id = e.id " +
+                        "  JOIN monthly_allocations ma ON ma.allocation_id = a.id " +
+                        "  WHERE e.resignation_date IS NULL AND e.id IN :ids " +
+                        "  AND a.allocation_type = 'PROJECT' " +
+                        "  AND ma.year = :year AND ma.month = :month AND ma.percentage > 0 " +
+                        "  GROUP BY e.id" +
+                        ") sub", nativeQuery = true)
+        double averageAllocationPercentageByIds(@Param("ids") List<Long> ids,
+                        @Param("year") int year, @Param("month") int month);
+
+        default double averageAllocationPercentageFiltered(List<Long> ids, int year, int month) {
+                if (ids == null)
+                        return averageAllocationPercentage(year, month);
+                return averageAllocationPercentageByIds(ids, year, month);
         }
 }

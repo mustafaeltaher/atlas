@@ -50,6 +50,13 @@ public interface ProjectRepository extends JpaRepository<Project, Long> {
                                 Allocation.AllocationType.PROJECT, Project.ProjectStatus.ACTIVE);
         }
 
+        @Query(value = "SELECT COUNT(DISTINCT a.project_id) FROM allocations a " +
+                        "JOIN projects p ON p.id = a.project_id " +
+                        "WHERE a.employee_id IN :employeeIds " +
+                        "AND CAST(a.allocation_type AS text) = 'PROJECT' " +
+                        "AND CAST(p.status AS text) = 'ACTIVE'", nativeQuery = true)
+        long countActiveProjectsByEmployeeIds(@Param("employeeIds") List<Long> employeeIds);
+
         boolean existsByProjectId(String projectId);
 
         // Search with status filter (search param must be pre-formatted: lowercase with

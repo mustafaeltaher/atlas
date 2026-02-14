@@ -52,7 +52,7 @@ import { AuthService } from '../../services/auth.service';
         
         <div class="login-footer">
           <p>Demo Credentials:</p>
-          <p><strong>Top level Manager:</strong> ahmed.el-sayed / password123</p>
+          <p><strong>Top level Manager:</strong> Ahmad.Elharany&#64;gizasystems.com / password123</p>
         </div>
       </div>
     </div>
