@@ -27,33 +27,49 @@ public class JwtTokenProvider {
 
     public String generateToken(Authentication authentication) {
         UserDetails userDetails = (UserDetails) authentication.getPrincipal();
+        return generateToken(userDetails.getUsername(), null);
+    }
+
+    public String generateImpersonationToken(String targetUsername, String impersonatorUsername) {
+        return generateToken(targetUsername, impersonatorUsername);
+    }
+
+    private String generateToken(String subject, String impersonator) {
         Date now = new Date();
         Date expiryDate = new Date(now.getTime() + jwtExpiration);
 
-        return Jwts.builder()
-                .subject(userDetails.getUsername())
+        var builder = Jwts.builder()
+                .subject(subject)
                 .issuedAt(now)
                 .expiration(expiryDate)
-                .signWith(getSigningKey())
-                .compact();
+                .signWith(getSigningKey());
+
+        if (impersonator != null) {
+            builder.claim("impersonator", impersonator);
+        }
+
+        return builder.compact();
     }
 
     public String getUsernameFromToken(String token) {
-        Claims claims = Jwts.parser()
+        return getClaims(token).getSubject();
+    }
+
+    public String getImpersonatorFromToken(String token) {
+        return getClaims(token).get("impersonator", String.class);
+    }
+
+    private Claims getClaims(String token) {
+        return Jwts.parser()
                 .verifyWith(getSigningKey())
                 .build()
                 .parseSignedClaims(token)
                 .getPayload();
-
-        return claims.getSubject();
     }
 
     public boolean validateToken(String token) {
         try {
-            Jwts.parser()
-                    .verifyWith(getSigningKey())
-                    .build()
-                    .parseSignedClaims(token);
+            getClaims(token);
             return true;
         } catch (JwtException | IllegalArgumentException e) {
             return false;

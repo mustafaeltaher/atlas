@@ -4,6 +4,8 @@ export interface User {
     isTopLevel: boolean;
     employeeName: string;
     employeeId?: number;
+    isImpersonating?: boolean;
+    impersonatorUsername?: string;
 }
 
 export interface LoginResponse {
@@ -13,6 +15,25 @@ export interface LoginResponse {
     isTopLevel: boolean;
     employeeName: string;
     employeeId?: number;
+    isImpersonating?: boolean;
+    impersonatorUsername?: string;
+}
+
+export interface DelegateResponse {
+    id: number;
+    delegatorName: string;
+    delegatorUsername: string;
+    delegateName: string;
+    delegateUsername: string;
+    createdAt: string;
+}
+
+export interface DelegateRequest {
+    delegateUsername: string;
+}
+
+export interface ImpersonateRequest {
+    targetUsername: string;
 }
 
 export interface EmployeeSkill {

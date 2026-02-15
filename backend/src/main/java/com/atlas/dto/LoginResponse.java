@@ -16,4 +16,6 @@ public class LoginResponse {
     private Boolean isTopLevel;
     private String employeeName;
     private Long employeeId;
+    private Boolean isImpersonating;
+    private String impersonatorUsername;
 }

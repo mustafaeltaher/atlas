@@ -242,10 +242,10 @@ public class DataInitializer implements CommandLineRunner {
                 if (title == null)
                         return Employee.JobLevel.ENTRY_LEVEL;
                 String lower = title.toLowerCase();
-                if (lower.contains("chief") || lower.contains("head") || lower.contains("director")
+                if (lower.contains("chief") || lower.contains("head")
                                 || lower.contains("ceo"))
                         return Employee.JobLevel.EXECUTIVE_LEVEL;
-                if (lower.contains("manager") || lower.contains("lead"))
+                if (lower.contains("manager") || lower.contains("lead") || lower.contains("director"))
                         return Employee.JobLevel.ADVANCED_MANAGER_LEVEL;
                 if (lower.contains("senior") || lower.contains("expert"))
                         return Employee.JobLevel.MID_LEVEL;

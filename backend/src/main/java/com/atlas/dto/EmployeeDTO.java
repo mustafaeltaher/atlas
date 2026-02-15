@@ -15,6 +15,7 @@ import java.util.List;
 public class EmployeeDTO {
     private Long id;
     private Integer oracleId;
+    private String username;
     private String name;
     private String gender;
     private String grade;

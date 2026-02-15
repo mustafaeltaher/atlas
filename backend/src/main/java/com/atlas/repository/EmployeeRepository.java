@@ -693,4 +693,5 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long>, JpaSp
                         return averageAllocationPercentage(year, month);
                 return averageAllocationPercentageByIds(ids, year, month);
         }
+
 }
