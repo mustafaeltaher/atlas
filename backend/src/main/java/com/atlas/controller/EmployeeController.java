@@ -51,28 +51,31 @@ public class EmployeeController {
     public ResponseEntity<List<EmployeeDTO>> getManagers(
             Authentication authentication,
             @RequestParam(required = false) String tower,
-            @RequestParam(required = false) String status) {
+            @RequestParam(required = false) String status,
+            @RequestParam(required = false) String search) {
         User currentUser = userDetailsService.getUserByUsername(authentication.getName());
-        return ResponseEntity.ok(employeeService.getAccessibleManagers(currentUser, tower, status));
+        return ResponseEntity.ok(employeeService.getAccessibleManagers(currentUser, tower, status, search));
     }
 
     @GetMapping("/towers")
     public ResponseEntity<Map<String, List<String>>> getTowers(
             Authentication authentication,
             @RequestParam(required = false) Long managerId,
-            @RequestParam(required = false) String status) {
+            @RequestParam(required = false) String status,
+            @RequestParam(required = false) String search) {
         User currentUser = userDetailsService.getUserByUsername(authentication.getName());
         return ResponseEntity.ok(Map.of(
-                "towers", employeeService.getDistinctTowers(currentUser, managerId, status)));
+                "towers", employeeService.getDistinctTowers(currentUser, managerId, status, search)));
     }
 
     @GetMapping("/statuses")
     public ResponseEntity<List<String>> getStatuses(
             Authentication authentication,
             @RequestParam(required = false) Long managerId,
-            @RequestParam(required = false) String tower) {
+            @RequestParam(required = false) String tower,
+            @RequestParam(required = false) String search) {
         User currentUser = userDetailsService.getUserByUsername(authentication.getName());
-        return ResponseEntity.ok(employeeService.getDistinctStatuses(currentUser, managerId, tower));
+        return ResponseEntity.ok(employeeService.getDistinctStatuses(currentUser, managerId, tower, search));
     }
 
     @PostMapping("/import")

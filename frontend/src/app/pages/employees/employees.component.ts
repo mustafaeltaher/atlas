@@ -53,12 +53,30 @@ import { Employee, Manager } from '../../models';
             }
           </select>
 
-          <select class="form-input filter-select" [(ngModel)]="managerFilter" (ngModelChange)="filterEmployees()">
-            <option value="">All Managers</option>
-            @for (mgr of managers(); track mgr.id) {
-              <option [value]="mgr.id">{{ mgr.name }}</option>
+          <div class="searchable-select filter-select">
+            <input type="text"
+                   class="form-input"
+                   placeholder="All Managers"
+                   [(ngModel)]="managerSearchText"
+                   (input)="onManagerSearchInput()"
+                   (focus)="showManagerDropdown = true"
+                   (blur)="closeManagerDropdownDelayed()"
+                   autocomplete="off">
+            @if (managerFilter) {
+              <button type="button" class="clear-btn" (mousedown)="clearManagerSelection($event)">&times;</button>
             }
-          </select>
+            @if (showManagerDropdown) {
+              <div class="dropdown-list">
+                @for (mgr of managers(); track mgr.id) {
+                  <div class="dropdown-item" (mousedown)="selectManager(mgr)">
+                    {{ mgr.name }}
+                  </div>
+                } @empty {
+                  <div class="dropdown-item disabled">No managers found</div>
+                }
+              </div>
+            }
+          </div>
 
           @if (isN1Manager()) {
             <select class="form-input filter-select" [(ngModel)]="towerFilter" (ngModelChange)="filterEmployees()">
@@ -137,12 +155,14 @@ import { Employee, Manager } from '../../models';
                       </div>
                     </td>
                     <td>
-                      <button class="icon-btn" (click)="viewDetails(emp)" title="View Details">
-                        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
-                          <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
-                          <circle cx="12" cy="12" r="3"></circle>
-                        </svg>
-                      </button>
+                      <div class="action-group">
+                        <button class="btn-icon" (click)="viewDetails(emp)" title="View Details">
+                          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                            <circle cx="12" cy="12" r="3"></circle>
+                          </svg>
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 } @empty {
@@ -328,6 +348,70 @@ import { Employee, Manager } from '../../models';
       width: 180px;
     }
 
+    .searchable-select {
+      position: relative;
+    }
+
+    .searchable-select .form-input {
+      padding-right: 28px;
+      width: 100%;
+    }
+
+    .clear-btn {
+      position: absolute;
+      right: 8px;
+      top: 50%;
+      transform: translateY(-50%);
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      font-size: 18px;
+      cursor: pointer;
+      line-height: 1;
+      padding: 0 4px;
+    }
+
+    .clear-btn:hover {
+      color: var(--text-primary);
+    }
+
+    .dropdown-list {
+      position: absolute;
+      top: 100%;
+      left: 0;
+      right: 0;
+      max-height: 200px;
+      overflow-y: auto;
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-top: none;
+      border-radius: 0 0 8px 8px;
+      z-index: 1010;
+      box-shadow: var(--shadow-md);
+    }
+
+    .dropdown-item {
+      padding: 8px 12px;
+      font-size: 14px;
+      color: var(--text-primary);
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+
+    .dropdown-item:hover {
+      background: var(--bg-hover);
+    }
+
+    .dropdown-item.disabled {
+      color: var(--text-muted);
+      cursor: default;
+      font-style: italic;
+    }
+
+    .dropdown-item.disabled:hover {
+      background: transparent;
+    }
+
     .loading, .empty-state {
       text-align: center;
       padding: 40px;
@@ -449,19 +533,28 @@ import { Employee, Manager } from '../../models';
       cursor: not-allowed;
     }
 
-    .icon-btn {
+    .btn-icon {
       background: none;
       border: none;
-      color: var(--text-muted);
       cursor: pointer;
+      color: var(--text-muted);
       padding: 4px;
       border-radius: 4px;
-      transition: color 0.2s;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
     }
 
-    .icon-btn:hover {
+    .btn-icon:hover {
       color: var(--primary);
-      background: var(--surface-hover);
+      background: rgba(37, 99, 235, 0.1);
+    }
+
+    .action-group {
+      display: flex;
+      gap: 8px;
+      align-items: center;
     }
 
     /* Modal Styles */
@@ -643,6 +736,9 @@ export class EmployeesComponent implements OnInit {
   statusFilter = '';
   towerFilter = '';
   managerFilter = '';
+  managerSearchText = '';
+  showManagerDropdown = false;
+  private managerSearchTimeout: any;
   currentPage = signal(0);
   pageSize = signal(10);
   totalElements = signal(0);
@@ -678,20 +774,54 @@ export class EmployeesComponent implements OnInit {
     return user?.isTopLevel === true;
   }
 
-  loadManagers(): void {
+  loadManagers(search?: string): void {
     const tower = this.towerFilter || undefined;
     const status = this.statusFilter || undefined;
-    this.apiService.getManagers(tower, status).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+    // Prefer specific manager search text if available, otherwise use general search term
+    const searchParam = search || (this.searchTerm ? this.searchTerm : undefined);
+
+    this.apiService.getManagers(tower, status, searchParam).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: (managers) => this.managers.set(managers),
       error: () => { }
     });
+  }
+
+  onManagerSearchInput(): void {
+    clearTimeout(this.managerSearchTimeout);
+    this.managerSearchTimeout = setTimeout(() => {
+      // Explicitly pass the dropdown search text
+      this.loadManagers(this.managerSearchText);
+    }, 300);
+    this.showManagerDropdown = true;
+  }
+
+  selectManager(mgr: Manager): void {
+    this.managerFilter = String(mgr.id);
+    this.managerSearchText = mgr.name;
+    this.showManagerDropdown = false;
+    this.filterEmployees();
+  }
+
+  clearManagerSelection(event: Event): void {
+    event.preventDefault();
+    this.managerFilter = '';
+    this.managerSearchText = '';
+    this.showManagerDropdown = false;
+    this.filterEmployees();
+  }
+
+  closeManagerDropdownDelayed(): void {
+    setTimeout(() => {
+      this.showManagerDropdown = false;
+    }, 200);
   }
 
   loadTowers(): void {
     if (this.isN1Manager()) {
       const managerId = this.managerFilter ? Number(this.managerFilter) : undefined;
       const status = this.statusFilter || undefined;
-      this.apiService.getEmployeeTowers(managerId, status).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      const search = this.searchTerm || undefined;
+      this.apiService.getEmployeeTowers(managerId, status, search).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
         next: (data) => this.towers.set(data.towers),
         error: () => { }
       });
@@ -771,8 +901,9 @@ export class EmployeesComponent implements OnInit {
   loadStatuses(): void {
     const managerId = this.managerFilter ? parseInt(this.managerFilter) : undefined;
     const tower = this.towerFilter || undefined;
+    const search = this.searchTerm || undefined;
 
-    this.apiService.getEmployeeStatuses(managerId, tower)
+    this.apiService.getEmployeeStatuses(managerId, tower, search)
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (statuses) => this.statuses.set(statuses),

@@ -59,7 +59,7 @@ import { Project } from '../../models';
               <circle cx="11" cy="11" r="8"></circle>
               <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
             </svg>
-            <input type="text" placeholder="Search projects..." [(ngModel)]="searchTerm" (input)="onSearch()">
+            <input type="text" placeholder="Search by name or project ID..." [(ngModel)]="searchTerm" (input)="onSearch()">
           </div>
           @if (isN1Manager()) {
             <select class="filter-select" [(ngModel)]="regionFilter" (change)="onFilter()">
@@ -109,6 +109,15 @@ import { Project } from '../../models';
                       <span>{{ project.endDate | date:'mediumDate' }}</span>
                     </div>
                   }
+
+                  <div class="card-actions" (click)="$event.stopPropagation()">
+                     <button class="btn-icon" (click)="viewDetails(project); $event.stopPropagation()" title="View Details">
+                        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+                          <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                          <circle cx="12" cy="12" r="3"></circle>
+                        </svg>
+                      </button>
+                  </div>
                 </div>
               } @empty {
                 <div class="empty-state">No projects found</div>
@@ -144,12 +153,20 @@ import { Project } from '../../models';
                         }
                       </td>
                       <td>
-                        <button class="btn-icon" (click)="openEditModal(project)" title="Edit project">
-                          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
-                            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
-                          </svg>
-                        </button>
+                        <div class="action-group">
+                           <button class="btn-icon" (click)="viewDetails(project); $event.stopPropagation()" title="View Details">
+                             <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+                               <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                               <circle cx="12" cy="12" r="3"></circle>
+                             </svg>
+                           </button>
+                           <button class="btn-icon" (click)="openEditModal(project); $event.stopPropagation()" title="Edit project">
+                             <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+                               <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                               <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                             </svg>
+                           </button>
+                        </div>
                       </td>
                     </tr>
                   } @empty {
@@ -255,6 +272,68 @@ import { Project } from '../../models';
                   <button type="submit" class="btn btn-primary">Save</button>
                 </div>
               </form>
+            </div>
+          </div>
+        }
+
+        <!-- View Project Modal -->
+        @if (selectedProject()) {
+          <div class="modal-overlay" (click)="closeDetails()">
+            <div class="modal" (click)="$event.stopPropagation()">
+              <h2>Project Details</h2>
+              
+              <div class="detail-section">
+                <div class="detail-grid">
+                  <div class="detail-item">
+                    <label>Project ID</label>
+                    <span>{{ selectedProject()?.projectId }}</span>
+                  </div>
+                  <div class="detail-item">
+                    <label>Description</label>
+                    <span>{{ selectedProject()?.description }}</span>
+                  </div>
+                   <div class="detail-item">
+                    <label>Status</label>
+                    <span class="status-pill sm" [class]="selectedProject()?.status?.toLowerCase()">{{ selectedProject()?.status }}</span>
+                  </div>
+                  <div class="detail-item">
+                    <label>Type</label>
+                    <span>{{ selectedProject()?.projectType }}</span>
+                  </div>
+                  <div class="detail-item">
+                    <label>Region</label>
+                    <span>{{ selectedProject()?.region }}</span>
+                  </div>
+                  <div class="detail-item">
+                    <label>Vertical</label>
+                    <span>{{ selectedProject()?.vertical }}</span>
+                  </div>
+                  <div class="detail-item">
+                    <label>Manager</label>
+                    <span>{{ selectedProject()?.managerName || 'N/A' }}</span>
+                  </div>
+                   <div class="detail-item">
+                    <label>Start Date</label>
+                    <span>{{ selectedProject()?.startDate | date:'mediumDate' }}</span>
+                  </div>
+                   <div class="detail-item">
+                    <label>End Date</label>
+                    <span>{{ selectedProject()?.endDate | date:'mediumDate' }}</span>
+                  </div>
+                   <div class="detail-item">
+                    <label>Allocated Employees</label>
+                    <span>{{ selectedProject()?.allocatedEmployees }}</span>
+                  </div>
+                   <div class="detail-item">
+                    <label>Avg Allocation</label>
+                    <span>{{ selectedProject()?.averageAllocation | number:'1.0-0' }}%</span>
+                  </div>
+                </div>
+              </div>
+
+              <div class="modal-actions">
+                <button class="btn btn-primary" (click)="closeDetails()">Close</button>
+              </div>
             </div>
           </div>
         }
@@ -595,6 +674,46 @@ import { Project } from '../../models';
       outline: none;
       border-color: var(--primary);
     }
+
+    .detail-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      margin-top: 16px;
+    }
+
+    .detail-item {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .detail-item label {
+      font-size: 11px;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      font-weight: 600;
+    }
+
+    .detail-item span {
+      font-size: 14px;
+      color: var(--text-primary);
+    }
+    
+    .card-actions {
+        display: flex;
+        justify-content: flex-end;
+        padding-top: 8px;
+        margin-top: 8px;
+        border-top: 1px solid var(--border-color);
+        gap: 8px;
+    }
+    
+    .action-group {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+    }
   `]
 })
 export class ProjectsComponent implements OnInit {
@@ -638,7 +757,8 @@ export class ProjectsComponent implements OnInit {
 
   loadRegions(): void {
     const status = this.statusFilter || undefined;
-    this.apiService.getProjectRegions(status).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+    const search = this.searchTerm || undefined;
+    this.apiService.getProjectRegions(status, search).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: (regions) => this.regions.set(regions),
       error: (err) => console.error('Failed to load regions', err)
     });
@@ -646,7 +766,8 @@ export class ProjectsComponent implements OnInit {
 
   loadStatuses(): void {
     const region = this.regionFilter || undefined;
-    this.apiService.getProjectStatuses(region).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+    const search = this.searchTerm || undefined;
+    this.apiService.getProjectStatuses(region, search).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: (statuses) => this.statuses.set(statuses),
       error: (err) => console.error('Failed to load statuses', err)
     });
@@ -723,6 +844,8 @@ export class ProjectsComponent implements OnInit {
   onSearch(): void {
     this.currentPage.set(0);
     this.loadProjects();
+    this.loadRegions();
+    this.loadStatuses();
   }
 
   onFilter(): void {
@@ -757,6 +880,16 @@ export class ProjectsComponent implements OnInit {
     this.showEditModal = true;
   }
 
+  selectedProject = signal<Project | null>(null);
+
+  viewDetails(project: Project): void {
+    this.selectedProject.set(project);
+  }
+
+  closeDetails(): void {
+    this.selectedProject.set(null);
+  }
+
   updateProject(): void {
     if (this.editProjectId == null) return;
     this.apiService.updateProject(this.editProjectId, {
@@ -776,3 +909,4 @@ export class ProjectsComponent implements OnInit {
     });
   }
 }
+

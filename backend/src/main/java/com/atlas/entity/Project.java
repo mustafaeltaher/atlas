@@ -5,8 +5,6 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import org.hibernate.annotations.JdbcTypeCode;
-import org.hibernate.type.SqlTypes;
 
 import java.time.LocalDate;
 
@@ -23,8 +21,8 @@ public class Project {
 
     private String description;
 
-    @JdbcTypeCode(SqlTypes.NAMED_ENUM)
-    @Column(name = "project_type", columnDefinition = "project_type")
+    @Enumerated(EnumType.STRING)
+    @Column(name = "project_type")
     @Builder.Default
     private ProjectType projectType = ProjectType.PROJECT;
 
@@ -39,8 +37,7 @@ public class Project {
 
     private String vertical;
 
-    @JdbcTypeCode(SqlTypes.NAMED_ENUM)
-    @Column(columnDefinition = "project_status_type")
+    @Enumerated(EnumType.STRING)
     @Builder.Default
     private ProjectStatus status = ProjectStatus.ACTIVE;
 

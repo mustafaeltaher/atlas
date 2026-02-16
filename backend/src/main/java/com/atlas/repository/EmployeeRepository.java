@@ -87,7 +87,7 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long>, JpaSp
         // VACATION
         @Query(value = "SELECT DISTINCT e.* FROM employees e " +
                         "WHERE e.resignation_date IS NULL " +
-                        "AND (:search IS NULL OR LOWER(e.name) LIKE :search) " +
+                        "AND (CAST(:search AS text) IS NULL OR LOWER(e.name) LIKE :search) " +
                         "AND (CAST(:managerId AS bigint) IS NULL OR e.manager_id = :managerId) " +
                         "AND NOT EXISTS (" +
                         "  SELECT 1 FROM allocations a " +
@@ -105,7 +105,7 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long>, JpaSp
                         +
                         "ORDER BY e.name", countQuery = "SELECT COUNT(DISTINCT e.id) FROM employees e " +
                                         "WHERE e.resignation_date IS NULL " +
-                                        "AND (:search IS NULL OR LOWER(e.name) LIKE :search) " +
+                                        "AND (CAST(:search AS text) IS NULL OR LOWER(e.name) LIKE :search) " +
                                         "AND (CAST(:managerId AS bigint) IS NULL OR e.manager_id = :managerId) " +
                                         "AND NOT EXISTS (" +
                                         "  SELECT 1 FROM allocations a " +
@@ -131,7 +131,7 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long>, JpaSp
         @Query(value = "SELECT DISTINCT e.* FROM employees e " +
                         "WHERE e.resignation_date IS NULL " +
                         "AND e.id IN :employeeIds " +
-                        "AND (:search IS NULL OR LOWER(e.name) LIKE :search) " +
+                        "AND (CAST(:search AS text) IS NULL OR LOWER(e.name) LIKE :search) " +
                         "AND (CAST(:managerId AS bigint) IS NULL OR e.manager_id = :managerId) " +
                         "AND NOT EXISTS (" +
                         "  SELECT 1 FROM allocations a " +
@@ -150,7 +150,7 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long>, JpaSp
                         "ORDER BY e.name", countQuery = "SELECT COUNT(DISTINCT e.id) FROM employees e " +
                                         "WHERE e.resignation_date IS NULL " +
                                         "AND e.id IN :employeeIds " +
-                                        "AND (:search IS NULL OR LOWER(e.name) LIKE :search) " +
+                                        "AND (CAST(:search AS text) IS NULL OR LOWER(e.name) LIKE :search) " +
                                         "AND (CAST(:managerId AS bigint) IS NULL OR e.manager_id = :managerId) " +
                                         "AND NOT EXISTS (" +
                                         "  SELECT 1 FROM allocations a " +
@@ -176,7 +176,7 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long>, JpaSp
         // Find PROSPECT employees: has PROSPECT allocation but no active PROJECT
         @Query(value = "SELECT DISTINCT e.* FROM employees e " +
                         "WHERE e.resignation_date IS NULL " +
-                        "AND (:search IS NULL OR LOWER(e.name) LIKE :search) " +
+                        "AND (CAST(:search AS text) IS NULL OR LOWER(e.name) LIKE :search) " +
                         "AND (CAST(:managerId AS bigint) IS NULL OR e.manager_id = :managerId) " +
                         "AND EXISTS (SELECT 1 FROM allocations a WHERE a.employee_id = e.id AND a.allocation_type = 'PROSPECT') "
                         +
@@ -187,7 +187,7 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long>, JpaSp
                         "  AND ma.year = :currentYear AND ma.month = :currentMonth AND ma.percentage > 0) " +
                         "ORDER BY e.name", countQuery = "SELECT COUNT(DISTINCT e.id) FROM employees e " +
                                         "WHERE e.resignation_date IS NULL " +
-                                        "AND (:search IS NULL OR LOWER(e.name) LIKE :search) " +
+                                        "AND (CAST(:search AS text) IS NULL OR LOWER(e.name) LIKE :search) " +
                                         "AND (CAST(:managerId AS bigint) IS NULL OR e.manager_id = :managerId) " +
                                         "AND EXISTS (SELECT 1 FROM allocations a WHERE a.employee_id = e.id AND a.allocation_type = 'PROSPECT') "
                                         +
@@ -205,7 +205,7 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long>, JpaSp
 
         @Query(value = "SELECT DISTINCT e.* FROM employees e " +
                         "WHERE e.resignation_date IS NULL AND e.id IN :employeeIds " +
-                        "AND (:search IS NULL OR LOWER(e.name) LIKE :search) " +
+                        "AND (CAST(:search AS text) IS NULL OR LOWER(e.name) LIKE :search) " +
                         "AND (CAST(:managerId AS bigint) IS NULL OR e.manager_id = :managerId) " +
                         "AND EXISTS (SELECT 1 FROM allocations a WHERE a.employee_id = e.id AND a.allocation_type = 'PROSPECT') "
                         +
@@ -216,7 +216,7 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long>, JpaSp
                         "  AND ma.year = :currentYear AND ma.month = :currentMonth AND ma.percentage > 0) " +
                         "ORDER BY e.name", countQuery = "SELECT COUNT(DISTINCT e.id) FROM employees e " +
                                         "WHERE e.resignation_date IS NULL AND e.id IN :employeeIds " +
-                                        "AND (:search IS NULL OR LOWER(e.name) LIKE :search) " +
+                                        "AND (CAST(:search AS text) IS NULL OR LOWER(e.name) LIKE :search) " +
                                         "AND (CAST(:managerId AS bigint) IS NULL OR e.manager_id = :managerId) " +
                                         "AND EXISTS (SELECT 1 FROM allocations a WHERE a.employee_id = e.id AND a.allocation_type = 'PROSPECT') "
                                         +
@@ -245,7 +245,7 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long>, JpaSp
         // year/month
         @Query(value = "SELECT DISTINCT e.* FROM employees e " +
                         "WHERE e.resignation_date IS NULL " +
-                        "AND (:search IS NULL OR LOWER(e.name) LIKE :search) " +
+                        "AND (CAST(:search AS text) IS NULL OR LOWER(e.name) LIKE :search) " +
                         "AND (CAST(:managerId AS bigint) IS NULL OR e.manager_id = :managerId) " +
                         "AND EXISTS (" +
                         "  SELECT 1 FROM allocations a " +
@@ -258,7 +258,7 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long>, JpaSp
                         ") " +
                         "ORDER BY e.name", countQuery = "SELECT COUNT(DISTINCT e.id) FROM employees e " +
                                         "WHERE e.resignation_date IS NULL " +
-                                        "AND (:search IS NULL OR LOWER(e.name) LIKE :search) " +
+                                        "AND (CAST(:search AS text) IS NULL OR LOWER(e.name) LIKE :search) " +
                                         "AND (CAST(:managerId AS bigint) IS NULL OR e.manager_id = :managerId) " +
                                         "AND EXISTS (" +
                                         "  SELECT 1 FROM allocations a " +
@@ -280,7 +280,7 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long>, JpaSp
         @Query(value = "SELECT DISTINCT e.* FROM employees e " +
                         "WHERE e.resignation_date IS NULL " +
                         "AND e.id IN :employeeIds " +
-                        "AND (:search IS NULL OR LOWER(e.name) LIKE :search) " +
+                        "AND (CAST(:search AS text) IS NULL OR LOWER(e.name) LIKE :search) " +
                         "AND (CAST(:managerId AS bigint) IS NULL OR e.manager_id = :managerId) " +
                         "AND EXISTS (" +
                         "  SELECT 1 FROM allocations a " +
@@ -294,7 +294,7 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long>, JpaSp
                         "ORDER BY e.name", countQuery = "SELECT COUNT(DISTINCT e.id) FROM employees e " +
                                         "WHERE e.resignation_date IS NULL " +
                                         "AND e.id IN :employeeIds " +
-                                        "AND (:search IS NULL OR LOWER(e.name) LIKE :search) " +
+                                        "AND (CAST(:search AS text) IS NULL OR LOWER(e.name) LIKE :search) " +
                                         "AND (CAST(:managerId AS bigint) IS NULL OR e.manager_id = :managerId) " +
                                         "AND EXISTS (" +
                                         "  SELECT 1 FROM allocations a " +
@@ -316,7 +316,7 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long>, JpaSp
         // Find employees by allocation type (PROJECT, PROSPECT, VACATION, MATERNITY)
         @Query(value = "SELECT DISTINCT e.* FROM employees e " +
                         "WHERE e.resignation_date IS NULL " +
-                        "AND (:search IS NULL OR LOWER(e.name) LIKE :search) " +
+                        "AND (CAST(:search AS text) IS NULL OR LOWER(e.name) LIKE :search) " +
                         "AND (CAST(:managerId AS bigint) IS NULL OR e.manager_id = :managerId) " +
                         "AND EXISTS (" +
                         "  SELECT 1 FROM allocations a " +
@@ -325,7 +325,7 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long>, JpaSp
                         ") " +
                         "ORDER BY e.name", countQuery = "SELECT COUNT(DISTINCT e.id) FROM employees e " +
                                         "WHERE e.resignation_date IS NULL " +
-                                        "AND (:search IS NULL OR LOWER(e.name) LIKE :search) " +
+                                        "AND (CAST(:search AS text) IS NULL OR LOWER(e.name) LIKE :search) " +
                                         "AND (CAST(:managerId AS bigint) IS NULL OR e.manager_id = :managerId) " +
                                         "AND EXISTS (" +
                                         "  SELECT 1 FROM allocations a " +
@@ -342,7 +342,7 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long>, JpaSp
         @Query(value = "SELECT DISTINCT e.* FROM employees e " +
                         "WHERE e.resignation_date IS NULL " +
                         "AND e.id IN :employeeIds " +
-                        "AND (:search IS NULL OR LOWER(e.name) LIKE :search) " +
+                        "AND (CAST(:search AS text) IS NULL OR LOWER(e.name) LIKE :search) " +
                         "AND (CAST(:managerId AS bigint) IS NULL OR e.manager_id = :managerId) " +
                         "AND EXISTS (" +
                         "  SELECT 1 FROM allocations a " +
@@ -352,7 +352,7 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long>, JpaSp
                         "ORDER BY e.name", countQuery = "SELECT COUNT(DISTINCT e.id) FROM employees e " +
                                         "WHERE e.resignation_date IS NULL " +
                                         "AND e.id IN :employeeIds " +
-                                        "AND (:search IS NULL OR LOWER(e.name) LIKE :search) " +
+                                        "AND (CAST(:search AS text) IS NULL OR LOWER(e.name) LIKE :search) " +
                                         "AND (CAST(:managerId AS bigint) IS NULL OR e.manager_id = :managerId) " +
                                         "AND EXISTS (" +
                                         "  SELECT 1 FROM allocations a " +
@@ -405,53 +405,60 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long>, JpaSp
         // 1. No filter: all managers of active employees
         @Query("SELECT DISTINCT m FROM Employee m " +
                         "WHERE m.resignationDate IS NULL " +
+                        "AND LOWER(m.name) LIKE :search " +
                         "AND EXISTS (SELECT 1 FROM Employee e WHERE e.manager = m AND e.resignationDate IS NULL) " +
                         "ORDER BY m.name")
-        List<Employee> findDistinctManagers();
+        List<Employee> findDistinctManagers(@Param("search") String search);
 
         @Query("SELECT DISTINCT m FROM Employee m " +
                         "WHERE m.resignationDate IS NULL " +
+                        "AND LOWER(m.name) LIKE :search " +
                         "AND EXISTS (SELECT 1 FROM Employee e WHERE e.manager = m AND e.resignationDate IS NULL AND e.id IN :ids) "
                         +
                         "ORDER BY m.name")
-        List<Employee> findDistinctManagersByIds(@Param("ids") List<Long> ids);
+        List<Employee> findDistinctManagersByIds(@Param("ids") List<Long> ids, @Param("search") String search);
 
-        default List<Employee> findDistinctManagersFiltered(List<Long> ids) {
+        default List<Employee> findDistinctManagersFiltered(List<Long> ids, String search) {
                 if (ids == null)
-                        return findDistinctManagers();
-                return findDistinctManagersByIds(ids);
+                        return findDistinctManagers(search);
+                return findDistinctManagersByIds(ids, search);
         }
 
         // 2. Standard allocation type filter (e.g. PROJECT, PROSPECT)
         @Query(value = "SELECT DISTINCT m.* FROM employees m " +
                         "WHERE m.resignation_date IS NULL " +
+                        "AND LOWER(m.name) LIKE :search " +
                         "AND EXISTS (SELECT 1 FROM employees e " +
                         "  JOIN allocations a ON a.employee_id = e.id " +
                         "  WHERE e.manager_id = m.id AND e.resignation_date IS NULL " +
                         "  AND CAST(a.allocation_type AS text) = :type) " +
                         "ORDER BY m.name", nativeQuery = true)
-        List<Employee> findDistinctManagersByAllocationType(@Param("type") String type);
+        List<Employee> findDistinctManagersByAllocationType(@Param("type") String type, @Param("search") String search);
 
         @Query(value = "SELECT DISTINCT m.* FROM employees m " +
                         "WHERE m.resignation_date IS NULL " +
+                        "AND LOWER(m.name) LIKE :search " +
                         "AND EXISTS (SELECT 1 FROM employees e " +
                         "  JOIN allocations a ON a.employee_id = e.id " +
                         "  WHERE e.manager_id = m.id AND e.resignation_date IS NULL AND e.id IN :ids " +
                         "  AND CAST(a.allocation_type AS text) = :type) " +
                         "ORDER BY m.name", nativeQuery = true)
         List<Employee> findDistinctManagersByAllocationTypeByIds(
-                        @Param("ids") List<Long> ids, @Param("type") String type);
+                        @Param("ids") List<Long> ids, @Param("type") String type, @Param("search") String search);
 
-        default List<Employee> findDistinctManagersByAllocationTypeFiltered(List<Long> ids, String type) {
+        default List<Employee> findDistinctManagersByAllocationTypeFiltered(List<Long> ids, String type,
+                        String search) {
                 if (ids == null)
-                        return findDistinctManagersByAllocationType(type);
-                return findDistinctManagersByAllocationTypeByIds(ids, type);
+                        return findDistinctManagersByAllocationType(type, search);
+                return findDistinctManagersByAllocationTypeByIds(ids, type, search);
         }
 
         // 3. BENCH: managers with employees who have no active PROJECT allocation this
         // month
         @Query(value = "SELECT DISTINCT m.* FROM employees m " +
-                        "WHERE m.resignation_date IS NULL AND EXISTS (" +
+                        "WHERE m.resignation_date IS NULL " +
+                        "AND LOWER(m.name) LIKE :search " +
+                        "AND EXISTS (" +
                         "  SELECT 1 FROM employees e WHERE e.manager_id = m.id AND e.resignation_date IS NULL " +
                         "  AND NOT EXISTS (" +
                         "    SELECT 1 FROM allocations a JOIN monthly_allocations ma ON ma.allocation_id = a.id " +
@@ -460,10 +467,12 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long>, JpaSp
                         "  )" +
                         ") ORDER BY m.name", nativeQuery = true)
         List<Employee> findDistinctManagersOfBenchEmployees(
-                        @Param("year") int year, @Param("month") int month);
+                        @Param("year") int year, @Param("month") int month, @Param("search") String search);
 
         @Query(value = "SELECT DISTINCT m.* FROM employees m " +
-                        "WHERE m.resignation_date IS NULL AND EXISTS (" +
+                        "WHERE m.resignation_date IS NULL " +
+                        "AND LOWER(m.name) LIKE :search " +
+                        "AND EXISTS (" +
                         "  SELECT 1 FROM employees e WHERE e.manager_id = m.id AND e.resignation_date IS NULL " +
                         "  AND e.id IN :ids AND NOT EXISTS (" +
                         "    SELECT 1 FROM allocations a JOIN monthly_allocations ma ON ma.allocation_id = a.id " +
@@ -473,18 +482,76 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long>, JpaSp
                         ") ORDER BY m.name", nativeQuery = true)
         List<Employee> findDistinctManagersOfBenchEmployeesByIds(
                         @Param("ids") List<Long> ids,
-                        @Param("year") int year, @Param("month") int month);
+                        @Param("year") int year, @Param("month") int month, @Param("search") String search);
 
-        default List<Employee> findDistinctManagersOfBenchFiltered(List<Long> ids, int year, int month) {
+        default List<Employee> findDistinctManagersOfBenchFiltered(List<Long> ids, int year, int month, String search) {
                 if (ids == null)
-                        return findDistinctManagersOfBenchEmployees(year, month);
-                return findDistinctManagersOfBenchEmployeesByIds(ids, year, month);
+                        return findDistinctManagersOfBenchEmployees(year, month, search);
+                return findDistinctManagersOfBenchEmployeesByIds(ids, year, month, search);
+        }
+
+        // New method: Find managers of BENCH employees where EMPLOYEE matches search
+        @Query(value = "SELECT DISTINCT m.* FROM employees m " +
+                        "JOIN employees e ON e.manager_id = m.id " +
+                        "WHERE m.resignation_date IS NULL AND e.resignation_date IS NULL " +
+                        "AND (CAST(:search AS text) IS NULL OR LOWER(e.name) LIKE :search) " +
+                        "AND (CAST(:managerSearch AS text) IS NULL OR LOWER(m.name) LIKE :managerSearch) " +
+                        "AND NOT EXISTS (" +
+                        "  SELECT 1 FROM allocations a JOIN monthly_allocations ma ON ma.allocation_id = a.id " +
+                        "  WHERE a.employee_id = e.id AND a.allocation_type = 'PROJECT' " +
+                        "  AND ma.year = :year AND ma.month = :month AND ma.percentage > 0" +
+                        ") " +
+                        "AND NOT EXISTS (SELECT 1 FROM allocations a WHERE a.employee_id = e.id AND a.allocation_type = 'PROSPECT') "
+                        +
+                        "AND NOT EXISTS (SELECT 1 FROM allocations a WHERE a.employee_id = e.id AND a.allocation_type = 'MATERNITY') "
+                        +
+                        "AND NOT EXISTS (SELECT 1 FROM allocations a WHERE a.employee_id = e.id AND a.allocation_type = 'VACATION') "
+                        +
+                        "ORDER BY m.name", nativeQuery = true)
+        List<Employee> findDistinctManagersOfBenchByEmployeeSearch(
+                        @Param("year") int year, @Param("month") int month,
+                        @Param("search") String search, @Param("managerSearch") String managerSearch);
+
+        @Query(value = "SELECT DISTINCT m.* FROM employees m " +
+                        "JOIN employees e ON e.manager_id = m.id " +
+                        "WHERE m.resignation_date IS NULL AND e.resignation_date IS NULL " +
+                        "AND e.id IN :ids " +
+                        "AND (CAST(:search AS text) IS NULL OR LOWER(e.name) LIKE :search) " +
+                        "AND (CAST(:managerSearch AS text) IS NULL OR LOWER(m.name) LIKE :managerSearch) " +
+                        "AND NOT EXISTS (" +
+                        "  SELECT 1 FROM allocations a JOIN monthly_allocations ma ON ma.allocation_id = a.id " +
+                        "  WHERE a.employee_id = e.id AND a.allocation_type = 'PROJECT' " +
+                        "  AND ma.year = :year AND ma.month = :month AND ma.percentage > 0" +
+                        ") " +
+                        "AND NOT EXISTS (SELECT 1 FROM allocations a WHERE a.employee_id = e.id AND a.allocation_type = 'PROSPECT') "
+                        +
+                        "AND NOT EXISTS (SELECT 1 FROM allocations a WHERE a.employee_id = e.id AND a.allocation_type = 'MATERNITY') "
+                        +
+                        "AND NOT EXISTS (SELECT 1 FROM allocations a WHERE a.employee_id = e.id AND a.allocation_type = 'VACATION') "
+                        +
+                        "ORDER BY m.name", nativeQuery = true)
+        List<Employee> findDistinctManagersOfBenchByEmployeeSearchByIds(
+                        @Param("ids") List<Long> ids,
+                        @Param("year") int year, @Param("month") int month,
+                        @Param("search") String search, @Param("managerSearch") String managerSearch);
+
+        default List<Employee> findDistinctManagersOfBenchByEmployeeSearchFiltered(List<Long> ids, int year, int month,
+                        String search, String managerSearch) {
+                // Handle empty list case - IN () clause fails in native SQL
+                if (ids != null && ids.isEmpty()) {
+                        return java.util.Collections.emptyList();
+                }
+                if (ids == null)
+                        return findDistinctManagersOfBenchByEmployeeSearch(year, month, search, managerSearch);
+                return findDistinctManagersOfBenchByEmployeeSearchByIds(ids, year, month, search, managerSearch);
         }
 
         // 4. ACTIVE: managers with employees who have an active PROJECT allocation this
         // month
         @Query(value = "SELECT DISTINCT m.* FROM employees m " +
-                        "WHERE m.resignation_date IS NULL AND EXISTS (" +
+                        "WHERE m.resignation_date IS NULL " +
+                        "AND LOWER(m.name) LIKE :search " +
+                        "AND EXISTS (" +
                         "  SELECT 1 FROM employees e WHERE e.manager_id = m.id AND e.resignation_date IS NULL " +
                         "  AND EXISTS (" +
                         "    SELECT 1 FROM allocations a JOIN monthly_allocations ma ON ma.allocation_id = a.id " +
@@ -493,10 +560,12 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long>, JpaSp
                         "  )" +
                         ") ORDER BY m.name", nativeQuery = true)
         List<Employee> findDistinctManagersOfActiveEmployees(
-                        @Param("year") int year, @Param("month") int month);
+                        @Param("year") int year, @Param("month") int month, @Param("search") String search);
 
         @Query(value = "SELECT DISTINCT m.* FROM employees m " +
-                        "WHERE m.resignation_date IS NULL AND EXISTS (" +
+                        "WHERE m.resignation_date IS NULL " +
+                        "AND LOWER(m.name) LIKE :search " +
+                        "AND EXISTS (" +
                         "  SELECT 1 FROM employees e WHERE e.manager_id = m.id AND e.resignation_date IS NULL " +
                         "  AND e.id IN :ids AND EXISTS (" +
                         "    SELECT 1 FROM allocations a JOIN monthly_allocations ma ON ma.allocation_id = a.id " +
@@ -506,35 +575,85 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long>, JpaSp
                         ") ORDER BY m.name", nativeQuery = true)
         List<Employee> findDistinctManagersOfActiveEmployeesByIds(
                         @Param("ids") List<Long> ids,
-                        @Param("year") int year, @Param("month") int month);
+                        @Param("year") int year, @Param("month") int month, @Param("search") String search);
 
-        default List<Employee> findDistinctManagersOfActiveFiltered(List<Long> ids, int year, int month) {
+        default List<Employee> findDistinctManagersOfActiveFiltered(List<Long> ids, int year, int month,
+                        String search) {
                 if (ids == null)
-                        return findDistinctManagersOfActiveEmployees(year, month);
-                return findDistinctManagersOfActiveEmployeesByIds(ids, year, month);
+                        return findDistinctManagersOfActiveEmployees(year, month, search);
+                return findDistinctManagersOfActiveEmployeesByIds(ids, year, month, search);
+        }
+
+        // Find managers of ACTIVE employees with employee name search (for faceted search consistency)
+        // Mirrors findDistinctManagersOfBenchByEmployeeSearchFiltered for ACTIVE status
+        @Query(value = "SELECT DISTINCT m.* FROM employees m " +
+                        "JOIN employees e ON e.manager_id = m.id " +
+                        "WHERE m.resignation_date IS NULL AND e.resignation_date IS NULL " +
+                        "AND (CAST(:search AS text) IS NULL OR LOWER(e.name) LIKE :search) " +
+                        "AND (CAST(:managerSearch AS text) IS NULL OR LOWER(m.name) LIKE :managerSearch) " +
+                        "AND EXISTS (" +
+                        "  SELECT 1 FROM allocations a JOIN monthly_allocations ma ON ma.allocation_id = a.id " +
+                        "  WHERE a.employee_id = e.id AND a.allocation_type = 'PROJECT' " +
+                        "  AND ma.year = :year AND ma.month = :month AND ma.percentage > 0" +
+                        ") " +
+                        "ORDER BY m.name", nativeQuery = true)
+        List<Employee> findDistinctManagersOfActiveByEmployeeSearch(
+                        @Param("year") int year, @Param("month") int month,
+                        @Param("search") String search, @Param("managerSearch") String managerSearch);
+
+        @Query(value = "SELECT DISTINCT m.* FROM employees m " +
+                        "JOIN employees e ON e.manager_id = m.id " +
+                        "WHERE m.resignation_date IS NULL AND e.resignation_date IS NULL " +
+                        "AND e.id IN :ids " +
+                        "AND (CAST(:search AS text) IS NULL OR LOWER(e.name) LIKE :search) " +
+                        "AND (CAST(:managerSearch AS text) IS NULL OR LOWER(m.name) LIKE :managerSearch) " +
+                        "AND EXISTS (" +
+                        "  SELECT 1 FROM allocations a JOIN monthly_allocations ma ON ma.allocation_id = a.id " +
+                        "  WHERE a.employee_id = e.id AND a.allocation_type = 'PROJECT' " +
+                        "  AND ma.year = :year AND ma.month = :month AND ma.percentage > 0" +
+                        ") " +
+                        "ORDER BY m.name", nativeQuery = true)
+        List<Employee> findDistinctManagersOfActiveByEmployeeSearchByIds(
+                        @Param("ids") List<Long> ids,
+                        @Param("year") int year, @Param("month") int month,
+                        @Param("search") String search, @Param("managerSearch") String managerSearch);
+
+        default List<Employee> findDistinctManagersOfActiveByEmployeeSearchFiltered(List<Long> ids, int year, int month,
+                        String search, String managerSearch) {
+                // Handle empty list case - IN () clause fails in native SQL
+                if (ids != null && ids.isEmpty()) {
+                        return java.util.Collections.emptyList();
+                }
+                if (ids == null)
+                        return findDistinctManagersOfActiveByEmployeeSearch(year, month, search, managerSearch);
+                return findDistinctManagersOfActiveByEmployeeSearchByIds(ids, year, month, search, managerSearch);
         }
 
         // ===== Employee page filter dropdown queries =====
 
         // Distinct towers (for tower dropdown)
-        @Query(value = "SELECT DISTINCT t.description FROM employees e " +
-                        "JOIN tech_towers t ON e.tower = t.id " +
+
+        @Query(value = "SELECT DISTINCT t.description FROM tech_towers t " +
+                        "JOIN employees e ON e.tower = t.id " +
                         "WHERE e.resignation_date IS NULL " +
                         "AND (CAST(:managerId AS bigint) IS NULL OR e.manager_id = :managerId) " +
+                        "AND (:search IS NULL OR LOWER(e.name) LIKE :search OR LOWER(e.email) LIKE :search) " +
                         "ORDER BY t.description", nativeQuery = true)
-        List<String> findDistinctTowers(@Param("managerId") Long managerId);
+        List<String> findDistinctTowers(@Param("managerId") Long managerId, @Param("search") String search);
 
         @Query(value = "SELECT DISTINCT t.description FROM employees e " +
                         "JOIN tech_towers t ON e.tower = t.id " +
                         "WHERE e.resignation_date IS NULL AND e.id IN :ids " +
                         "AND (CAST(:managerId AS bigint) IS NULL OR e.manager_id = :managerId) " +
+                        "AND (:search IS NULL OR LOWER(e.name) LIKE :search OR LOWER(e.email) LIKE :search) " +
                         "ORDER BY t.description", nativeQuery = true)
-        List<String> findDistinctTowersByIds(@Param("ids") List<Long> ids, @Param("managerId") Long managerId);
+        List<String> findDistinctTowersByIds(@Param("ids") List<Long> ids, @Param("managerId") Long managerId,
+                        @Param("search") String search);
 
-        default List<String> findDistinctTowersFiltered(List<Long> ids, Long managerId) {
+        default List<String> findDistinctTowersFiltered(List<Long> ids, Long managerId, String search) {
                 if (ids == null)
-                        return findDistinctTowers(managerId);
-                return findDistinctTowersByIds(ids, managerId);
+                        return findDistinctTowers(managerId, search);
+                return findDistinctTowersByIds(ids, managerId, search);
         }
 
         // Distinct managers for employee page (managers whose reports match
@@ -544,9 +663,11 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long>, JpaSp
                         "AND EXISTS (SELECT 1 FROM employees e " +
                         "  LEFT JOIN tech_towers t ON e.tower = t.id " +
                         "  WHERE e.manager_id = m.id AND e.resignation_date IS NULL " +
-                        "  AND (:tower IS NULL OR t.description = :tower)) " +
+                        "  AND (:tower IS NULL OR t.description = :tower) " +
+                        "  AND (:search IS NULL OR LOWER(e.name) LIKE :search OR LOWER(e.email) LIKE :search)) " +
                         "ORDER BY m.name", nativeQuery = true)
-        List<Employee> findDistinctManagersForEmployeeFilters(@Param("tower") String tower);
+        List<Employee> findDistinctManagersForEmployeeFilters(@Param("tower") String tower,
+                        @Param("search") String search);
 
         @Query(value = "SELECT DISTINCT m.* FROM employees m " +
                         "WHERE m.resignation_date IS NULL " +
@@ -554,15 +675,18 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long>, JpaSp
                         "  LEFT JOIN tech_towers t ON e.tower = t.id " +
                         "  WHERE e.manager_id = m.id AND e.resignation_date IS NULL " +
                         "  AND e.id IN :ids " +
-                        "  AND (:tower IS NULL OR t.description = :tower)) " +
+                        "  AND (:tower IS NULL OR t.description = :tower) " +
+                        "  AND (:search IS NULL OR LOWER(e.name) LIKE :search OR LOWER(e.email) LIKE :search)) " +
                         "ORDER BY m.name", nativeQuery = true)
         List<Employee> findDistinctManagersForEmployeeFiltersByIds(
-                        @Param("ids") List<Long> ids, @Param("tower") String tower);
+                        @Param("ids") List<Long> ids, @Param("tower") String tower,
+                        @Param("search") String search);
 
-        default List<Employee> findDistinctManagersForEmployeeFiltersFiltered(List<Long> ids, String tower) {
+        default List<Employee> findDistinctManagersForEmployeeFiltersFiltered(List<Long> ids, String tower,
+                        String search) {
                 if (ids == null)
-                        return findDistinctManagersForEmployeeFilters(tower);
-                return findDistinctManagersForEmployeeFiltersByIds(ids, tower);
+                        return findDistinctManagersForEmployeeFilters(tower, search);
+                return findDistinctManagersForEmployeeFiltersByIds(ids, tower, search);
         }
 
         // ===== Dashboard count queries =====
@@ -692,6 +816,106 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long>, JpaSp
                 if (ids == null)
                         return averageAllocationPercentage(year, month);
                 return averageAllocationPercentageByIds(ids, year, month);
+        }
+
+        // ===== Managers for Allocations Page (with allocation type filter) =====
+        // Split queries: one for when allocationType filter is provided, one for when it's NULL (show all)
+
+        // No allocation type filter - return all managers
+        @Query(value = "SELECT DISTINCT m.* FROM allocations a " +
+                        "JOIN employees e ON e.id = a.employee_id " +
+                        "JOIN employees m ON m.id = e.manager_id " +
+                        "WHERE e.manager_id IS NOT NULL " +
+                        "AND e.resignation_date IS NULL " +
+                        "AND m.resignation_date IS NULL " +
+                        "AND LOWER(e.name) LIKE CAST(:search AS text) " +
+                        "AND LOWER(m.name) LIKE CAST(:managerSearch AS text) " +
+                        "ORDER BY m.name", nativeQuery = true)
+        List<Employee> findDistinctManagersFromAllocationsAllTypes(
+                        @Param("search") String search,
+                        @Param("managerSearch") String managerSearch);
+
+        @Query(value = "SELECT DISTINCT m.* FROM allocations a " +
+                        "JOIN employees e ON e.id = a.employee_id " +
+                        "JOIN employees m ON m.id = e.manager_id " +
+                        "WHERE e.manager_id IS NOT NULL " +
+                        "AND e.resignation_date IS NULL " +
+                        "AND m.resignation_date IS NULL " +
+                        "AND e.id IN :employeeIds " +
+                        "AND LOWER(e.name) LIKE CAST(:search AS text) " +
+                        "AND LOWER(m.name) LIKE CAST(:managerSearch AS text) " +
+                        "ORDER BY m.name", nativeQuery = true)
+        List<Employee> findDistinctManagersFromAllocationsAllTypesByIds(
+                        @Param("employeeIds") List<Long> employeeIds,
+                        @Param("search") String search,
+                        @Param("managerSearch") String managerSearch);
+
+        // With allocation type filter
+        @Query(value = "SELECT DISTINCT m.* FROM allocations a " +
+                        "JOIN employees e ON e.id = a.employee_id " +
+                        "JOIN employees m ON m.id = e.manager_id " +
+                        "WHERE e.manager_id IS NOT NULL " +
+                        "AND e.resignation_date IS NULL " +
+                        "AND m.resignation_date IS NULL " +
+                        "AND CAST(a.allocation_type AS text) = CAST(:allocationType AS text) " +
+                        "AND LOWER(e.name) LIKE CAST(:search AS text) " +
+                        "AND LOWER(m.name) LIKE CAST(:managerSearch AS text) " +
+                        "ORDER BY m.name", nativeQuery = true)
+        List<Employee> findDistinctManagersFromAllocationsByType(
+                        @Param("allocationType") String allocationType,
+                        @Param("search") String search,
+                        @Param("managerSearch") String managerSearch);
+
+        @Query(value = "SELECT DISTINCT m.* FROM allocations a " +
+                        "JOIN employees e ON e.id = a.employee_id " +
+                        "JOIN employees m ON m.id = e.manager_id " +
+                        "WHERE e.manager_id IS NOT NULL " +
+                        "AND e.resignation_date IS NULL " +
+                        "AND m.resignation_date IS NULL " +
+                        "AND e.id IN :employeeIds " +
+                        "AND CAST(a.allocation_type AS text) = CAST(:allocationType AS text) " +
+                        "AND LOWER(e.name) LIKE CAST(:search AS text) " +
+                        "AND LOWER(m.name) LIKE CAST(:managerSearch AS text) " +
+                        "ORDER BY m.name", nativeQuery = true)
+        List<Employee> findDistinctManagersFromAllocationsByTypeAndIds(
+                        @Param("employeeIds") List<Long> employeeIds,
+                        @Param("allocationType") String allocationType,
+                        @Param("search") String search,
+                        @Param("managerSearch") String managerSearch);
+
+        default List<Employee> findDistinctManagersFromAllocationsFiltered(
+                        String allocationType,
+                        List<Long> employeeIds,
+                        String search,
+                        String managerSearch) {
+                // Format search parameters with wildcards - NEVER pass NULL to avoid PostgreSQL type inference issues
+                // when same parameter is used multiple times in query
+                String searchParam = (search != null && !search.trim().isEmpty())
+                        ? "%" + search.trim().toLowerCase() + "%"
+                        : "%"; // Match all instead of NULL
+                String managerSearchParam = (managerSearch != null && !managerSearch.trim().isEmpty())
+                        ? "%" + managerSearch.trim().toLowerCase() + "%"
+                        : "%"; // Match all instead of NULL
+
+                // Handle empty list case - IN () clause fails in native SQL
+                if (employeeIds != null && employeeIds.isEmpty()) {
+                        return java.util.Collections.emptyList();
+                }
+
+                // Route to appropriate query based on whether allocationType filter is present
+                if (allocationType == null) {
+                        // No type filter - show all
+                        if (employeeIds == null) {
+                                return findDistinctManagersFromAllocationsAllTypes(searchParam, managerSearchParam);
+                        }
+                        return findDistinctManagersFromAllocationsAllTypesByIds(employeeIds, searchParam, managerSearchParam);
+                } else {
+                        // Specific type filter
+                        if (employeeIds == null) {
+                                return findDistinctManagersFromAllocationsByType(allocationType, searchParam, managerSearchParam);
+                        }
+                        return findDistinctManagersFromAllocationsByTypeAndIds(employeeIds, allocationType, searchParam, managerSearchParam);
+                }
         }
 
 }

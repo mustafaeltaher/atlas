@@ -7,8 +7,6 @@ import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
 import lombok.ToString;
-import org.hibernate.annotations.JdbcTypeCode;
-import org.hibernate.type.SqlTypes;
 
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -37,8 +35,8 @@ public class Allocation {
     @EqualsAndHashCode.Exclude
     private Project project;
 
-    @JdbcTypeCode(SqlTypes.NAMED_ENUM)
-    @Column(name = "allocation_type", columnDefinition = "allocation_type")
+    @Enumerated(EnumType.STRING)
+    @Column(name = "allocation_type")
     @Builder.Default
     private AllocationType allocationType = AllocationType.PROJECT;
 

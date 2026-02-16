@@ -58,18 +58,41 @@ public class ProjectService {
             return new PageImpl<>(List.of(), pageable, 0);
         }
 
-        Page<Project> projectPage = projectRepository.searchProjectsFiltered(
-                projectIds, searchParam, regionParam, statusEnum, pageable);
+        org.springframework.data.jpa.domain.Specification<Project> spec = com.atlas.specification.ProjectSpecification
+                .withFilters(statusEnum, regionParam, search, projectIds);
+
+        Page<Project> projectPage = projectRepository.findAll(spec, pageable);
         Map<Long, List<Allocation>> allocationsByProject = batchFetchAllocations(projectPage.getContent());
         return projectPage.map(p -> toDTO(p, allocationsByProject.getOrDefault(p.getId(), Collections.emptyList())));
     }
 
-    public List<String> getDistinctRegions(Project.ProjectStatus status) {
-        return projectRepository.findDistinctRegionsByStatus(status);
+    public List<String> getDistinctRegions(Project.ProjectStatus status, String search, User user) {
+        List<Long> filteredIds = getFilteredProjectIds(user);
+
+        org.springframework.data.jpa.domain.Specification<Project> spec = com.atlas.specification.ProjectSpecification
+                .distinctRegionsFilter(status, search, filteredIds);
+
+        return projectRepository.findAll(spec).stream()
+                .map(Project::getRegion)
+                .distinct()
+                .sorted()
+                .collect(Collectors.toList());
     }
 
-    public List<String> getDistinctStatuses(String region) {
-        return projectRepository.findDistinctStatusesByRegion(region).stream()
+    public List<String> getDistinctStatuses(String region, String search, User user) {
+        String searchParam = (search != null && !search.trim().isEmpty())
+                ? "%" + search.trim().toLowerCase() + "%"
+                : null;
+        List<Long> filteredIds = getFilteredProjectIds(user);
+
+        List<Project.ProjectStatus> statuses;
+        if (filteredIds == null) {
+            statuses = projectRepository.findDistinctStatuses(region, searchParam);
+        } else {
+            statuses = projectRepository.findDistinctStatusesByIds(filteredIds, region, searchParam);
+        }
+
+        return statuses.stream()
                 .map(Enum::name)
                 .collect(Collectors.toList());
     }
@@ -137,7 +160,7 @@ public class ProjectService {
         if (employees.isEmpty()) {
             return List.of();
         }
-        return projectRepository.findActiveProjectsByEmployees(employees).stream()
+        return projectRepository.findProjectsByEmployees(employees).stream()
                 .map(Project::getId).collect(Collectors.toList());
     }
 
@@ -149,7 +172,7 @@ public class ProjectService {
         if (employees.isEmpty()) {
             return List.of();
         }
-        return projectRepository.findActiveProjectsByEmployees(employees);
+        return projectRepository.findProjectsByEmployees(employees);
     }
 
     private boolean hasAccessToProject(User user, Project project) {

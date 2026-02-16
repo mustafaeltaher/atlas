@@ -247,14 +247,15 @@ public class EmployeeService {
         return employeeRepository.countActiveEmployees();
     }
 
-    public List<String> getDistinctStatuses(User currentUser, Long managerId, String tower) {
+    public List<String> getDistinctStatuses(User currentUser, Long managerId, String tower, String search) {
         List<Long> accessibleIds = getAccessibleEmployeeIds(currentUser);
         String towerParam = (tower != null && !tower.trim().isEmpty()) ? tower.trim() : null;
+        String searchParam = (search != null && !search.trim().isEmpty()) ? search.trim() : null;
         List<String> allStatuses = List.of("ACTIVE", "BENCH", "PROSPECT", "MATERNITY", "VACATION", "RESIGNED");
         List<String> result = new ArrayList<>();
         for (String s : allStatuses) {
             long count = employeeRepository.count(
-                    EmployeeSpecification.withFilters(null, towerParam, managerId, s, accessibleIds));
+                    EmployeeSpecification.withFilters(searchParam, towerParam, managerId, s, accessibleIds));
             if (count > 0) {
                 result.add(s);
             }
@@ -262,24 +263,31 @@ public class EmployeeService {
         return result;
     }
 
-    public List<String> getDistinctTowers(User currentUser, Long managerId, String status) {
+    public List<String> getDistinctTowers(User currentUser, Long managerId, String status, String search) {
         List<Long> accessibleIds = getAccessibleEmployeeIds(currentUser);
-        return employeeRepository.findDistinctTowersFiltered(accessibleIds, managerId);
+        String searchParam = (search != null && !search.trim().isEmpty())
+                ? "%" + search.trim().toLowerCase() + "%"
+                : "%";
+        return employeeRepository.findDistinctTowersFiltered(accessibleIds, managerId, searchParam);
     }
 
-    public List<EmployeeDTO> getAccessibleManagers(User currentUser, String tower, String status) {
+    public List<EmployeeDTO> getAccessibleManagers(User currentUser, String tower, String status, String search) {
         List<Long> accessibleIds = getAccessibleEmployeeIds(currentUser);
         String towerParam = (tower != null && !tower.trim().isEmpty()) ? tower.trim() : null;
         String statusParam = (status != null && !status.trim().isEmpty()) ? status.trim() : null;
+        String searchParam = (search != null && !search.trim().isEmpty())
+                ? "%" + search.trim().toLowerCase() + "%"
+                : "%";
 
         List<Employee> managers;
         if (statusParam == null) {
             // No status filter — use the optimized tower-only query
-            managers = employeeRepository.findDistinctManagersForEmployeeFiltersFiltered(accessibleIds, towerParam);
+            managers = employeeRepository.findDistinctManagersForEmployeeFiltersFiltered(accessibleIds, towerParam,
+                    searchParam);
         } else {
             // Status filter active — find matching employees via spec, then extract their
             // managers
-            var spec = EmployeeSpecification.withFilters(null, towerParam, null, statusParam, accessibleIds);
+            var spec = EmployeeSpecification.withFilters(searchParam, towerParam, null, statusParam, accessibleIds);
             List<Employee> matchingEmployees = employeeRepository.findAll(spec);
             Map<Long, Employee> uniqueManagers = new java.util.LinkedHashMap<>();
             for (Employee e : matchingEmployees) {

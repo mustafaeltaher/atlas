@@ -7,8 +7,6 @@ import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
 import lombok.ToString;
-import org.hibernate.annotations.JdbcTypeCode;
-import org.hibernate.type.SqlTypes;
 
 @Entity
 @Table(name = "employees_skills")
@@ -33,12 +31,12 @@ public class EmployeeSkill {
     @EqualsAndHashCode.Exclude
     private Skill skill;
 
-    @JdbcTypeCode(SqlTypes.NAMED_ENUM)
-    @Column(name = "skill_level", columnDefinition = "skill_level_type")
+    @Enumerated(EnumType.STRING)
+    @Column(name = "skill_level")
     private SkillLevel skillLevel;
 
-    @JdbcTypeCode(SqlTypes.NAMED_ENUM)
-    @Column(name = "skill_grade", columnDefinition = "skill_grade_type")
+    @Enumerated(EnumType.STRING)
+    @Column(name = "skill_grade")
     private SkillGrade skillGrade;
 
     public enum SkillLevel {

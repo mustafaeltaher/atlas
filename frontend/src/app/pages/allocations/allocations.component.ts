@@ -50,12 +50,30 @@ import { Allocation, EmployeeAllocationSummary, Employee, Project, Manager } fro
               <option [value]="type">{{ type | titlecase }}</option>
             }
           </select>
-          <select class="filter-select" [(ngModel)]="managerFilter" (change)="onFilter()">
-            <option value="">All Managers</option>
-            @for (mgr of managers(); track mgr.id) {
-              <option [value]="mgr.id">{{ mgr.name }}</option>
+          <div class="searchable-select filter-select-wrap">
+            <input type="text"
+                   class="filter-select"
+                   placeholder="All Managers"
+                   [(ngModel)]="managerSearchText"
+                   (input)="onManagerSearchInput()"
+                   (focus)="showManagerDropdown = true"
+                   (blur)="closeManagerDropdownDelayed()"
+                   autocomplete="off">
+            @if (managerFilter) {
+              <button type="button" class="clear-btn" (mousedown)="clearManagerSelection($event)">&times;</button>
             }
-          </select>
+            @if (showManagerDropdown) {
+              <div class="dropdown-list">
+                @for (mgr of managers(); track mgr.id) {
+                  <div class="dropdown-item" (mousedown)="selectManager(mgr)">
+                    {{ mgr.name }}
+                  </div>
+                } @empty {
+                  <div class="dropdown-item disabled">No managers found</div>
+                }
+              </div>
+            }
+          </div>
         </div>
 
         @if (loading() && employeeSummaries().length === 0) {
@@ -104,12 +122,20 @@ import { Allocation, EmployeeAllocationSummary, Employee, Project, Manager } fro
                       </div>
                     </td>
                     <td>
-                      <button class="btn-icon" (click)="openDetailModal(summary)" title="Edit allocations">
-                        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
-                          <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
-                          <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
-                        </svg>
-                      </button>
+                      <div class="action-group">
+                        <button class="btn-icon" (click)="viewEmployeeDetails(summary); $event.stopPropagation()" title="View Profile">
+                          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                            <circle cx="12" cy="12" r="3"></circle>
+                          </svg>
+                        </button>
+                        <button class="btn-icon" (click)="openDetailModal(summary); $event.stopPropagation()" title="Edit allocations">
+                          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+                             <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                             <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                          </svg>
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 } @empty {
@@ -243,6 +269,7 @@ import { Allocation, EmployeeAllocationSummary, Employee, Project, Manager } fro
                     <th>Type</th>
                     <th>Allocation</th>
                     <th>Status</th>
+                    <th>Start Date</th>
                     <th>End Date</th>
                     <th>Actions</th>
                   </tr>
@@ -285,6 +312,7 @@ import { Allocation, EmployeeAllocationSummary, Employee, Project, Manager } fro
                           {{ alloc.allocationType }}
                         </span>
                       </td>
+                      <td>{{ alloc.startDate | date:'mediumDate' }}</td>
                       <td>{{ alloc.endDate | date:'mediumDate' }}</td>
                       <td>
                         <div class="action-buttons">
@@ -366,34 +394,36 @@ import { Allocation, EmployeeAllocationSummary, Employee, Project, Manager } fro
                     }
                   </div>
                 </div>
-                <div class="form-group">
-                  <label class="form-label">Project</label>
-                  <div class="searchable-select">
-                    <input type="text"
-                           class="form-input"
-                           placeholder="Search projects..."
-                           [(ngModel)]="createProjectSearchText"
-                           (focus)="showCreateProjectDropdown = true"
-                           (input)="showCreateProjectDropdown = true"
-                           (blur)="closeDropdownDelayed('createProject')"
-                           name="projectSearch"
-                           autocomplete="off">
-                    @if (newAllocation.projectId) {
-                      <button type="button" class="clear-btn" (mousedown)="clearCreateProjectSelection($event)">&times;</button>
-                    }
-                    @if (showCreateProjectDropdown) {
-                      <div class="dropdown-list">
-                        @for (proj of getFilteredCreateProjects(); track proj.id) {
-                          <div class="dropdown-item" (mousedown)="selectCreateProject(proj)">
-                            {{ proj.description }} ({{ proj.projectId }})
-                          </div>
-                        } @empty {
-                          <div class="dropdown-item disabled">No matches found</div>
-                        }
-                      </div>
-                    }
+                @if (newAllocation.allocationType === 'PROJECT' || newAllocation.allocationType === 'PROSPECT') {
+                  <div class="form-group">
+                    <label class="form-label">Project</label>
+                    <div class="searchable-select">
+                      <input type="text"
+                             class="form-input"
+                             placeholder="Search projects..."
+                             [(ngModel)]="createProjectSearchText"
+                             (focus)="showCreateProjectDropdown = true"
+                             (input)="showCreateProjectDropdown = true"
+                             (blur)="closeDropdownDelayed('createProject')"
+                             name="projectSearch"
+                             autocomplete="off">
+                      @if (newAllocation.projectId) {
+                        <button type="button" class="clear-btn" (mousedown)="clearCreateProjectSelection($event)">&times;</button>
+                      }
+                      @if (showCreateProjectDropdown) {
+                        <div class="dropdown-list">
+                          @for (proj of getFilteredCreateProjects(); track proj.id) {
+                            <div class="dropdown-item" (mousedown)="selectCreateProject(proj)">
+                              {{ proj.description }} ({{ proj.projectId }})
+                            </div>
+                          } @empty {
+                            <div class="dropdown-item disabled">No matches found</div>
+                          }
+                        </div>
+                      }
+                    </div>
                   </div>
-                </div>
+                }
                 <div class="form-group">
                   <label class="form-label">Allocation Type</label>
                   <select class="form-input" [(ngModel)]="newAllocation.allocationType" name="allocationType" (change)="onCreateStatusChange()">
@@ -427,6 +457,112 @@ import { Allocation, EmployeeAllocationSummary, Employee, Project, Manager } fro
                   <button type="submit" class="btn btn-primary">Create</button>
                 </div>
               </form>
+            </div>
+          </div>
+        }
+
+        <!-- Employee Details Modal -->
+        @if (selectedEmployee()) {
+          <div class="modal-overlay" (click)="closeEmployeeDetails()">
+            <div class="modal-content" (click)="$event.stopPropagation()">
+              <div class="modal-header">
+
+                <h2>Allocations Details</h2>
+              </div>
+              <div class="modal-body">
+                <div class="detail-section">
+                  <h3>Employee Summary</h3>
+                  <div class="detail-grid">
+                    <div class="detail-item">
+                      <label>Full Name</label>
+                      <span>{{ selectedEmployee()?.name }}</span>
+                    </div>
+                    <div class="detail-item">
+                      <label>Oracle ID</label>
+                      <span>{{ selectedEmployee()?.oracleId || 'N/A' }}</span>
+                    </div>
+                    <div class="detail-item">
+                      <label>Title</label>
+                      <span>{{ selectedEmployee()?.title }}</span>
+                    </div>
+                    <div class="detail-item">
+                      <label>Manager</label>
+                      <span>{{ selectedEmployee()?.managerName || 'N/A' }}</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="detail-section">
+                  <h3>Allocations</h3>
+                  @if (selectedEmployeeAllocations().length > 0) {
+                    <table class="data-table detail-table">
+                      <thead>
+                        <tr>
+                          <th>Project</th>
+                          <th>Type</th>
+                          <th>Allocation</th>
+                          <th>End Date</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        @for (alloc of selectedEmployeeAllocations(); track alloc.id) {
+                          <tr>
+                            <td>{{ alloc.projectName }}</td>
+                            <td>
+                              <span class="status-pill"
+                                  [class.active]="alloc.allocationType === 'PROJECT'"
+                                  [class.prospect]="alloc.allocationType === 'PROSPECT'"
+                                  [class.vacation]="alloc.allocationType === 'VACATION'"
+                                  [class.maternity]="alloc.allocationType === 'MATERNITY'">
+                                {{ alloc.allocationType }}
+                              </span>
+                            </td>
+                            <td>
+                              @if (alloc.allocationType === 'PROJECT') {
+                                <div class="allocation-cell">
+                                  <div class="progress-bar">
+                                    <div class="progress-bar-fill"
+                                         [class.high]="(alloc.currentMonthAllocation || 0) >= 75"
+                                         [class.medium]="(alloc.currentMonthAllocation || 0) >= 50 && (alloc.currentMonthAllocation || 0) < 75"
+                                         [class.low]="(alloc.currentMonthAllocation || 0) < 50"
+                                         [style.width.%]="alloc.currentMonthAllocation || 0">
+                                    </div>
+                                  </div>
+                                  <span class="alloc-value">{{ alloc.currentMonthAllocation || 0 }}%</span>
+                                </div>
+                              } @else {
+                                <span class="text-muted">-</span>
+                              }
+                            </td>
+                            <td>{{ alloc.endDate | date:'mediumDate' }}</td>
+                          </tr>
+                        }
+                      </tbody>
+                    </table>
+                  } @else {
+                    <p class="text-muted">No active allocations.</p>
+                  }
+                </div>
+
+                <!-- Skills Section -->
+                @if (selectedEmployee()?.skills?.length) {
+                  <div class="detail-section">
+                    <h4>Skills</h4>
+                    <div class="skills-list">
+                      @for (skill of selectedEmployee()!.skills; track skill.skillName) {
+                        <div class="skill-tag" [class.primary]="skill.skillLevel === 'PRIMARY'" [class.secondary]="skill.skillLevel === 'SECONDARY'">
+                          <span class="skill-name">{{ skill.skillName }}</span>
+                          <span class="skill-grade">{{ skill.skillGrade }}</span>
+                        </div>
+                      }
+                    </div>
+                  </div>
+                }
+
+              </div>
+              <div class="modal-actions">
+                <button class="btn btn-primary" (click)="closeEmployeeDetails()">Close</button>
+              </div>
             </div>
           </div>
         }
@@ -637,12 +773,19 @@ import { Allocation, EmployeeAllocationSummary, Employee, Project, Manager } fro
       min-width: 160px;
     }
 
+    .action-group {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+
     .form-actions-inline {
       display: flex;
       gap: 8px;
       align-items: flex-end;
       padding-bottom: 2px;
     }
+
 
     .btn-sm {
       padding: 6px 12px;
@@ -778,6 +921,11 @@ import { Allocation, EmployeeAllocationSummary, Employee, Project, Manager } fro
       border-color: var(--primary);
     }
 
+    .filter-select-wrap {
+      position: relative;
+      min-width: 180px;
+    }
+
     .searchable-select {
       position: relative;
     }
@@ -798,6 +946,119 @@ import { Allocation, EmployeeAllocationSummary, Employee, Project, Manager } fro
       cursor: pointer;
       line-height: 1;
       padding: 0 4px;
+    }
+
+    /* Modal Styles */
+    .modal-content {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      width: 90%;
+      max-width: 800px;
+      max-height: 90vh;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+      animation: slideUp 0.3s ease-out;
+    }
+
+    .modal-header {
+      padding: 24px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-shrink: 0;
+    }
+
+    .modal-header h2 {
+      margin: 0;
+      font-size: 20px;
+    }
+
+    .modal-body {
+      padding: 24px;
+      overflow-y: auto;
+      flex: 1;
+    }
+
+    .detail-section {
+      margin-bottom: 32px;
+    }
+
+    .detail-section:last-child {
+      margin-bottom: 0;
+    }
+
+    .detail-section h3 {
+      font-size: 16px;
+      color: var(--text-muted);
+      margin-bottom: 16px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      font-weight: 600;
+    }
+
+    .detail-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+      gap: 20px;
+    }
+
+    .detail-item {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .detail-item label {
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+
+    .detail-item span {
+      font-weight: 500;
+      color: var(--text);
+    }
+
+    .skills-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .skill-tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 12px;
+      border-radius: 20px;
+      font-size: 13px;
+      background: rgba(100, 116, 139, 0.1);
+      color: var(--text);
+    }
+
+    .skill-tag.primary {
+      background: rgba(59, 130, 246, 0.12);
+      border: 1px solid rgba(59, 130, 246, 0.3);
+    }
+
+    .skill-tag.secondary {
+      background: rgba(100, 116, 139, 0.08);
+      border: 1px solid rgba(100, 116, 139, 0.2);
+    }
+
+    .skill-name { font-weight: 500; }
+
+    .skill-grade {
+      font-size: 11px;
+      color: var(--text-muted);
+      text-transform: lowercase;
+    }
+
+    @keyframes slideUp {
+      from { transform: translateY(20px); opacity: 0; }
+      to { transform: translateY(0); opacity: 1; }
     }
 
     .clear-btn:hover {
@@ -857,6 +1118,9 @@ export class AllocationsComponent implements OnInit {
   searchTerm = '';
   allocationTypeFilter = '';
   managerFilter = '';
+  managerSearchText = '';
+  showManagerDropdown = false;
+  private managerSearchTimeout: any;
 
   // Create modal (from master page)
   showCreateModal = false;
@@ -900,17 +1164,49 @@ export class AllocationsComponent implements OnInit {
     this.loadAllocations();
   }
 
-  loadManagers(): void {
+  loadManagers(managerNameSearch?: string): void {
     const allocationType = this.allocationTypeFilter || undefined;
-    this.apiService.getAllocationManagers(allocationType).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+    const globalSearch = this.searchTerm || undefined;
+    const managerSearch = managerNameSearch || undefined;
+    this.apiService.getAllocationManagers(allocationType, globalSearch, managerSearch).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: (managers) => this.managers.set(managers),
       error: () => { }
     });
   }
 
+  onManagerSearchInput(): void {
+    clearTimeout(this.managerSearchTimeout);
+    this.managerSearchTimeout = setTimeout(() => {
+      this.loadManagers(this.managerSearchText);
+    }, 300);
+    this.showManagerDropdown = true;
+  }
+
+  selectManager(mgr: Manager): void {
+    this.managerFilter = String(mgr.id);
+    this.managerSearchText = mgr.name;
+    this.showManagerDropdown = false;
+    this.onFilter();
+  }
+
+  clearManagerSelection(event: Event): void {
+    event.preventDefault();
+    this.managerFilter = '';
+    this.managerSearchText = '';
+    this.showManagerDropdown = false;
+    this.onFilter();
+  }
+
+  closeManagerDropdownDelayed(): void {
+    setTimeout(() => {
+      this.showManagerDropdown = false;
+    }, 200);
+  }
+
   loadAllocationTypes(): void {
     const managerId = this.managerFilter ? Number(this.managerFilter) : undefined;
-    this.apiService.getAllocationTypes(managerId).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+    const search = this.searchTerm || undefined;
+    this.apiService.getAllocationTypes(managerId, search).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: (types) => this.allocationTypes.set(types),
       error: () => { }
     });
@@ -956,6 +1252,8 @@ export class AllocationsComponent implements OnInit {
   onSearch(): void {
     this.currentPage.set(0);
     this.loadAllocations();
+    this.loadManagers();
+    this.loadAllocationTypes();
   }
 
   onFilter(): void {
@@ -1260,4 +1558,31 @@ export class AllocationsComponent implements OnInit {
       this.newDetailAllocation.currentMonthAllocation = '100';
     }
   }
+  // Employee Details Modal
+  selectedEmployee = signal<Employee | null>(null);
+  selectedEmployeeAllocations = signal<Allocation[]>([]);
+
+  viewEmployeeDetails(summary: EmployeeAllocationSummary): void {
+    this.selectedEmployeeAllocations.set(summary.allocations || []);
+    // Fetch full employee details to get skills and other info not in summary
+    this.apiService.getEmployee(summary.employeeId).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: (employee) => {
+        this.selectedEmployee.set(employee);
+      },
+      error: (err) => {
+        console.error('Failed to load employee details', err);
+        // Fallback or alert? For now just log.
+      }
+    });
+  }
+
+  closeEmployeeDetails(): void {
+    this.selectedEmployee.set(null);
+    this.selectedEmployeeAllocations.set([]);
+  }
+
+  formatEmployeeStatus(status: string): string {
+    return status ? status.charAt(0).toUpperCase() + status.slice(1).toLowerCase().replace('_', ' ') : '';
+  }
 }
+

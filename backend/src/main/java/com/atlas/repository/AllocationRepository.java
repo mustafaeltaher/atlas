@@ -3,6 +3,7 @@ package com.atlas.repository;
 import com.atlas.entity.Allocation;
 import com.atlas.entity.Employee;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -10,7 +11,7 @@ import org.springframework.stereotype.Repository;
 import java.util.List;
 
 @Repository
-public interface AllocationRepository extends JpaRepository<Allocation, Long> {
+public interface AllocationRepository extends JpaRepository<Allocation, Long>, JpaSpecificationExecutor<Allocation> {
 
         @Query("SELECT a FROM Allocation a JOIN FETCH a.employee LEFT JOIN FETCH a.project WHERE a.project.id = :projectId AND a.allocationType = :allocationType")
         List<Allocation> findAllocationsByProjectIdAndType(
@@ -48,105 +49,74 @@ public interface AllocationRepository extends JpaRepository<Allocation, Long> {
         @Query("SELECT a FROM Allocation a JOIN FETCH a.employee LEFT JOIN FETCH a.project WHERE a.employee.id IN :employeeIds")
         List<Allocation> findByEmployeeIdsWithDetails(@Param("employeeIds") List<Long> employeeIds);
 
-        // With allocationType filter
-        @Query(value = "SELECT a FROM Allocation a JOIN FETCH a.employee e LEFT JOIN FETCH a.project p " +
-                        "WHERE a.allocationType = :allocationType " +
-                        "AND (:managerId IS NULL OR e.manager.id = :managerId) " +
-                        "AND (:search IS NULL OR LOWER(e.name) LIKE :search " +
-                        "OR (p IS NOT NULL AND LOWER(p.description) LIKE :search))", countQuery = "SELECT COUNT(a) FROM Allocation a JOIN a.employee e LEFT JOIN a.project p "
-                                        +
-                                        "WHERE a.allocationType = :allocationType " +
-                                        "AND (:managerId IS NULL OR e.manager.id = :managerId) " +
-                                        "AND (:search IS NULL OR LOWER(e.name) LIKE :search " +
-                                        "OR (p IS NOT NULL AND LOWER(p.description) LIKE :search))")
-        org.springframework.data.domain.Page<Allocation> findAllocationsWithTypeFilter(
-                        @Param("search") String search,
-                        @Param("allocationType") Allocation.AllocationType allocationType,
-                        @Param("managerId") Long managerId,
-                        org.springframework.data.domain.Pageable pageable);
-
-        // Without allocationType filter
-        @Query(value = "SELECT a FROM Allocation a JOIN FETCH a.employee e LEFT JOIN FETCH a.project p " +
-                        "WHERE (:managerId IS NULL OR e.manager.id = :managerId) " +
-                        "AND (:search IS NULL OR LOWER(e.name) LIKE :search " +
-                        "OR (p IS NOT NULL AND LOWER(p.description) LIKE :search))", countQuery = "SELECT COUNT(a) FROM Allocation a JOIN a.employee e LEFT JOIN a.project p "
-                                        +
-                                        "WHERE (:managerId IS NULL OR e.manager.id = :managerId) " +
-                                        "AND (:search IS NULL OR LOWER(e.name) LIKE :search " +
-                                        "OR (p IS NOT NULL AND LOWER(p.description) LIKE :search))")
-        org.springframework.data.domain.Page<Allocation> findAllocationsNoTypeFilter(
-                        @Param("search") String search,
-                        @Param("managerId") Long managerId,
-                        org.springframework.data.domain.Pageable pageable);
-
-        default org.springframework.data.domain.Page<Allocation> findAllocationsWithFilters(
-                        String search, Allocation.AllocationType allocationType, Long managerId,
-                        org.springframework.data.domain.Pageable pageable) {
-                if (allocationType != null) {
-                        return findAllocationsWithTypeFilter(search, allocationType, managerId, pageable);
-                }
-                return findAllocationsNoTypeFilter(search, managerId, pageable);
-        }
-
-        // With allocationType filter by employee IDs
-        @Query(value = "SELECT a FROM Allocation a JOIN FETCH a.employee e LEFT JOIN FETCH a.project p " +
-                        "WHERE e.id IN :employeeIds " +
-                        "AND a.allocationType = :allocationType " +
-                        "AND (:managerId IS NULL OR e.manager.id = :managerId) " +
-                        "AND (:search IS NULL OR LOWER(e.name) LIKE :search " +
-                        "OR (p IS NOT NULL AND LOWER(p.description) LIKE :search))", countQuery = "SELECT COUNT(a) FROM Allocation a JOIN a.employee e LEFT JOIN a.project p "
-                                        +
-                                        "WHERE e.id IN :employeeIds " +
-                                        "AND a.allocationType = :allocationType " +
-                                        "AND (:managerId IS NULL OR e.manager.id = :managerId) " +
-                                        "AND (:search IS NULL OR LOWER(e.name) LIKE :search " +
-                                        "OR (p IS NOT NULL AND LOWER(p.description) LIKE :search))")
-        org.springframework.data.domain.Page<Allocation> findAllocationsByIdsWithTypeFilter(
-                        @Param("employeeIds") List<Long> employeeIds,
-                        @Param("search") String search,
-                        @Param("allocationType") Allocation.AllocationType allocationType,
-                        @Param("managerId") Long managerId,
-                        org.springframework.data.domain.Pageable pageable);
-
-        // Without allocationType filter by employee IDs
-        @Query(value = "SELECT a FROM Allocation a JOIN FETCH a.employee e LEFT JOIN FETCH a.project p " +
-                        "WHERE e.id IN :employeeIds " +
-                        "AND (:managerId IS NULL OR e.manager.id = :managerId) " +
-                        "AND (:search IS NULL OR LOWER(e.name) LIKE :search " +
-                        "OR (p IS NOT NULL AND LOWER(p.description) LIKE :search))", countQuery = "SELECT COUNT(a) FROM Allocation a JOIN a.employee e LEFT JOIN a.project p "
-                                        +
-                                        "WHERE e.id IN :employeeIds " +
-                                        "AND (:managerId IS NULL OR e.manager.id = :managerId) " +
-                                        "AND (:search IS NULL OR LOWER(e.name) LIKE :search " +
-                                        "OR (p IS NOT NULL AND LOWER(p.description) LIKE :search))")
-        org.springframework.data.domain.Page<Allocation> findAllocationsByIdsNoTypeFilter(
-                        @Param("employeeIds") List<Long> employeeIds,
-                        @Param("search") String search,
-                        @Param("managerId") Long managerId,
-                        org.springframework.data.domain.Pageable pageable);
-
-        default org.springframework.data.domain.Page<Allocation> findAllocationsWithFiltersByEmployeeIds(
-                        List<Long> employeeIds, String search, Allocation.AllocationType allocationType,
-                        Long managerId, org.springframework.data.domain.Pageable pageable) {
-                if (allocationType != null) {
-                        return findAllocationsByIdsWithTypeFilter(employeeIds, search, allocationType, managerId,
-                                        pageable);
-                }
-                return findAllocationsByIdsNoTypeFilter(employeeIds, search, managerId, pageable);
-        }
-
-        // Unified routing: accept nullable employeeIds (null = no filter)
-        default org.springframework.data.domain.Page<Allocation> findAllocationsFiltered(
-                        List<Long> employeeIds, String search, Allocation.AllocationType allocationType,
-                        Long managerId, org.springframework.data.domain.Pageable pageable) {
-                if (employeeIds == null) {
-                        return findAllocationsWithFilters(search, allocationType, managerId, pageable);
-                }
-                return findAllocationsWithFiltersByEmployeeIds(employeeIds, search, allocationType, managerId,
-                                pageable);
-        }
-
+        // Distinct values for facets
         @Query("SELECT DISTINCT a.allocationType FROM Allocation a JOIN a.employee e WHERE " +
                         "(:managerId IS NULL OR e.manager.id = :managerId)")
         List<Allocation.AllocationType> findDistinctAllocationTypesByManager(@Param("managerId") Long managerId);
+
+        // Get distinct managers from allocations (for faceted search dropdown)
+        // Use native SQL with JOIN to match EmployeeRepository pattern
+
+        @Query(value = "SELECT DISTINCT m.* FROM allocations a " +
+                        "JOIN employees e ON e.id = a.employee_id " +
+                        "JOIN employees m ON m.id = e.manager_id " +
+                        "LEFT JOIN projects p ON p.id = a.project_id " +
+                        "WHERE e.manager_id IS NOT NULL " +
+                        "AND e.resignation_date IS NULL " +
+                        "AND m.resignation_date IS NULL " +
+                        "AND (CAST(:allocationType AS text) IS NULL OR CAST(a.allocation_type AS text) = CAST(:allocationType AS text)) " +
+                        "AND (CAST(:search AS text) IS NULL OR LOWER(e.name) LIKE CAST(:search AS text) " +
+                        "     OR (p.id IS NOT NULL AND LOWER(p.description) LIKE CAST(:search AS text))) " +
+                        "AND (CAST(:managerSearch AS text) IS NULL OR LOWER(m.name) LIKE CAST(:managerSearch AS text)) " +
+                        "ORDER BY m.name", nativeQuery = true)
+        List<Employee> findDistinctManagersByFiltersNoIds(
+                        @Param("allocationType") String allocationType,
+                        @Param("search") String search,
+                        @Param("managerSearch") String managerSearch);
+
+        @Query(value = "SELECT DISTINCT m.* FROM allocations a " +
+                        "JOIN employees e ON e.id = a.employee_id " +
+                        "JOIN employees m ON m.id = e.manager_id " +
+                        "LEFT JOIN projects p ON p.id = a.project_id " +
+                        "WHERE e.manager_id IS NOT NULL " +
+                        "AND e.resignation_date IS NULL " +
+                        "AND m.resignation_date IS NULL " +
+                        "AND e.id IN :employeeIds " +
+                        "AND (CAST(:allocationType AS text) IS NULL OR CAST(a.allocation_type AS text) = CAST(:allocationType AS text)) " +
+                        "AND (CAST(:search AS text) IS NULL OR LOWER(e.name) LIKE CAST(:search AS text) " +
+                        "     OR (p.id IS NOT NULL AND LOWER(p.description) LIKE CAST(:search AS text))) " +
+                        "AND (CAST(:managerSearch AS text) IS NULL OR LOWER(m.name) LIKE CAST(:managerSearch AS text)) " +
+                        "ORDER BY m.name", nativeQuery = true)
+        List<Employee> findDistinctManagersByFiltersWithIds(
+                        @Param("employeeIds") List<Long> employeeIds,
+                        @Param("allocationType") String allocationType,
+                        @Param("search") String search,
+                        @Param("managerSearch") String managerSearch);
+
+        // Default method to route between queries and convert enum to string
+        default List<Employee> findDistinctManagersByFilters(
+                        Allocation.AllocationType allocationType,
+                        List<Long> employeeIds,
+                        String search,
+                        String managerSearch) {
+                // Format search parameters to include wildcards (or NULL for IS NULL checks)
+                String searchParam = (search != null && !search.trim().isEmpty())
+                        ? "%" + search.trim().toLowerCase() + "%"
+                        : null;
+                String managerSearchParam = (managerSearch != null && !managerSearch.trim().isEmpty())
+                        ? "%" + managerSearch.trim().toLowerCase() + "%"
+                        : null;
+                // Convert enum to String (NULL for IS NULL checks)
+                String allocationTypeParam = (allocationType != null) ? allocationType.name() : null;
+
+                // Handle empty list case - IN () clause fails in native SQL
+                if (employeeIds != null && employeeIds.isEmpty()) {
+                        return java.util.Collections.emptyList();
+                }
+
+                if (employeeIds == null) {
+                        return findDistinctManagersByFiltersNoIds(allocationTypeParam, searchParam, managerSearchParam);
+                }
+                return findDistinctManagersByFiltersWithIds(employeeIds, allocationTypeParam, searchParam, managerSearchParam);
+        }
 }

@@ -7,8 +7,6 @@ import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
 import lombok.ToString;
-import org.hibernate.annotations.JdbcTypeCode;
-import org.hibernate.type.SqlTypes;
 
 import java.time.LocalDate;
 
@@ -29,8 +27,7 @@ public class Employee {
     @Column(nullable = false)
     private String name;
 
-    @JdbcTypeCode(SqlTypes.NAMED_ENUM)
-    @Column(columnDefinition = "gender_type")
+    @Enumerated(EnumType.STRING)
     private Gender gender;
 
     private String email;
@@ -39,8 +36,8 @@ public class Employee {
 
     private String nationality;
 
-    @JdbcTypeCode(SqlTypes.NAMED_ENUM)
-    @Column(name = "hiring_type", columnDefinition = "hiring_type")
+    @Enumerated(EnumType.STRING)
+    @Column(name = "hiring_type")
     private HiringType hiringType;
 
     @Column(name = "hire_date")
@@ -54,8 +51,8 @@ public class Employee {
 
     private String grade;
 
-    @JdbcTypeCode(SqlTypes.NAMED_ENUM)
-    @Column(name = "job_level", columnDefinition = "job_level_type")
+    @Enumerated(EnumType.STRING)
+    @Column(name = "job_level")
     private JobLevel jobLevel;
 
     private String title;

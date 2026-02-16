@@ -10,6 +10,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+
 @RestController
 @RequestMapping("/api/projects")
 @RequiredArgsConstructor
@@ -36,7 +38,10 @@ public class ProjectController {
     }
 
     @GetMapping("/regions")
-    public ResponseEntity<java.util.List<String>> getRegions(@RequestParam(required = false) String status) {
+    public ResponseEntity<java.util.List<String>> getRegions(
+            Authentication authentication,
+            @RequestParam(required = false) String status,
+            @RequestParam(required = false) String search) {
         com.atlas.entity.Project.ProjectStatus projectStatus = null;
         if (status != null && !status.isEmpty()) {
             try {
@@ -45,12 +50,18 @@ public class ProjectController {
                 // ignore invalid status
             }
         }
-        return ResponseEntity.ok(projectService.getDistinctRegions(projectStatus));
+        User currentUser = userDetailsService.getUserByUsername(authentication.getName());
+        List<String> regions = projectService.getDistinctRegions(projectStatus, search, currentUser);
+        return ResponseEntity.ok(regions);
     }
 
     @GetMapping("/statuses")
-    public ResponseEntity<java.util.List<String>> getStatuses(@RequestParam(required = false) String region) {
-        return ResponseEntity.ok(projectService.getDistinctStatuses(region));
+    public ResponseEntity<java.util.List<String>> getStatuses(
+            Authentication authentication,
+            @RequestParam(required = false) String region,
+            @RequestParam(required = false) String search) {
+        User currentUser = userDetailsService.getUserByUsername(authentication.getName());
+        return ResponseEntity.ok(projectService.getDistinctStatuses(region, search, currentUser));
     }
 
     @GetMapping("/{id}")
@@ -64,8 +75,8 @@ public class ProjectController {
         return ResponseEntity.ok(projectService.createProject(projectDTO));
     }
 
-    @PutMapping("/{id}")
-    public ResponseEntity<ProjectDTO> updateProject(@PathVariable Long id, @Valid @RequestBody ProjectDTO projectDTO) {
+    @PatchMapping("/{id}")
+    public ResponseEntity<ProjectDTO> updateProject(@PathVariable Long id, @RequestBody ProjectDTO projectDTO) {
         return ResponseEntity.ok(projectService.updateProject(id, projectDTO));
     }
 }

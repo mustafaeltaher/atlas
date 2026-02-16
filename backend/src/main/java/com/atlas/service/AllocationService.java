@@ -55,7 +55,7 @@ public class AllocationService {
             }
         }
 
-        String searchParam = (search != null && !search.trim().isEmpty()) ? "%" + search.trim().toLowerCase() + "%"
+        String searchParam = (search != null && !search.trim().isEmpty()) ? search.trim()
                 : null;
 
         List<Long> accessibleIds = employeeService.getAccessibleEmployeeIds(currentUser);
@@ -63,8 +63,10 @@ public class AllocationService {
             return new PageImpl<>(List.of(), pageable, 0);
         }
 
-        Page<Allocation> allocationPage = allocationRepository
-                .findAllocationsFiltered(accessibleIds, searchParam, allocationTypeEnum, managerId, pageable);
+        org.springframework.data.jpa.domain.Specification<Allocation> spec = com.atlas.specification.AllocationSpecification
+                .withFilters(allocationTypeEnum, managerId, searchParam, accessibleIds);
+
+        Page<Allocation> allocationPage = allocationRepository.findAll(spec, pageable);
         return allocationPage.map(this::toDTO);
     }
 
@@ -241,20 +243,41 @@ public class AllocationService {
 
         allocation = allocationRepository.save(allocation);
 
-        // Create monthly allocation for current month if percentage provided
+        // Create monthly allocations for the entire date range if percentage provided
         if (dto.getCurrentMonthAllocation() != null && allocationType == Allocation.AllocationType.PROJECT) {
-            int year = dto.getYear() != null ? dto.getYear() : LocalDate.now().getYear();
-            int month = LocalDate.now().getMonthValue();
-
             validateAllocationPercentage(dto.getCurrentMonthAllocation());
 
-            MonthlyAllocation monthlyAlloc = MonthlyAllocation.builder()
-                    .allocation(allocation)
-                    .year(year)
-                    .month(month)
-                    .percentage(dto.getCurrentMonthAllocation())
-                    .build();
-            monthlyAllocationRepository.save(monthlyAlloc);
+            LocalDate current = allocation.getStartDate();
+            LocalDate end = allocation.getEndDate();
+
+            if (current != null && end != null) {
+                // Normalize to start of month to ensure we cover all months
+                current = current.withDayOfMonth(1);
+                LocalDate endMonth = end.withDayOfMonth(1);
+
+                while (!current.isAfter(endMonth)) {
+                    MonthlyAllocation monthlyAlloc = MonthlyAllocation.builder()
+                            .allocation(allocation)
+                            .year(current.getYear())
+                            .month(current.getMonthValue())
+                            .percentage(dto.getCurrentMonthAllocation())
+                            .build();
+                    monthlyAllocationRepository.save(monthlyAlloc);
+                    current = current.plusMonths(1);
+                }
+            } else {
+                // Fallback: Create for current month if dates are missing
+                int year = dto.getYear() != null ? dto.getYear() : LocalDate.now().getYear();
+                int month = LocalDate.now().getMonthValue();
+
+                MonthlyAllocation monthlyAlloc = MonthlyAllocation.builder()
+                        .allocation(allocation)
+                        .year(year)
+                        .month(month)
+                        .percentage(dto.getCurrentMonthAllocation())
+                        .build();
+                monthlyAllocationRepository.save(monthlyAlloc);
+            }
         }
 
         // If monthly allocations list is provided, create them (only for PROJECT
@@ -446,30 +469,71 @@ public class AllocationService {
                 .build();
     }
 
-    public List<Map<String, Object>> getManagersForAllocations(User currentUser, String allocationType) {
+    public List<Map<String, Object>> getManagersForAllocations(User currentUser, String allocationType, String search,
+            String managerSearch) {
         List<Long> accessibleIds = employeeService.getAccessibleEmployeeIds(currentUser);
-        if (accessibleIds != null && accessibleIds.isEmpty()) {
-            return List.of();
+
+        boolean isBenchFilter = "BENCH".equalsIgnoreCase(allocationType);
+        boolean isActiveFilter = "ACTIVE".equalsIgnoreCase(allocationType);
+        boolean isShowAll = allocationType == null || allocationType.isEmpty() || allocationType.trim().isEmpty();
+
+        Allocation.AllocationType allocationTypeEnum = null;
+        if (allocationType != null && !allocationType.trim().isEmpty() && !isBenchFilter && !isActiveFilter) {
+            try {
+                allocationTypeEnum = Allocation.AllocationType.valueOf(allocationType.toUpperCase());
+            } catch (IllegalArgumentException e) {
+                // Ignore invalid type
+            }
         }
+
+        String searchTerm = (search != null && !search.trim().isEmpty()) ? search.trim() : null;
+        String managerSearchTerm = (managerSearch != null && !managerSearch.trim().isEmpty())
+                ? managerSearch.trim() : null;
+
+        // Pre-format search for native queries (with wildcards)
+        String searchParamLike = (searchTerm != null) ? "%" + searchTerm.toLowerCase() + "%" : null;
+        String managerSearchParamLike = (managerSearchTerm != null)
+                ? "%" + managerSearchTerm.toLowerCase() + "%" : null;
 
         int currentYear = LocalDate.now().getYear();
         int currentMonth = LocalDate.now().getMonthValue();
 
-        List<Employee> managers;
-        if (allocationType == null || allocationType.trim().isEmpty()) {
-            managers = employeeRepository.findDistinctManagersFiltered(accessibleIds);
-        } else if ("BENCH".equalsIgnoreCase(allocationType)) {
-            managers = employeeRepository.findDistinctManagersOfBenchFiltered(
-                    accessibleIds, currentYear, currentMonth);
-        } else if ("ACTIVE".equalsIgnoreCase(allocationType)) {
-            managers = employeeRepository.findDistinctManagersOfActiveFiltered(
-                    accessibleIds, currentYear, currentMonth);
-        } else {
-            managers = employeeRepository.findDistinctManagersByAllocationTypeFiltered(
-                    accessibleIds, allocationType.toUpperCase());
+        List<Employee> allManagers = new ArrayList<>();
+
+        // 1. Get managers from standard Allocations (PROJECT, PROSPECT, MATERNITY, VACATION)
+        // Run when: specific allocation type OR showAll (but not when BENCH or ACTIVE exclusively)
+        if (!isBenchFilter && !isActiveFilter) {
+            // Repository method handles search formatting internally
+            String allocationTypeParam = (allocationTypeEnum != null) ? allocationTypeEnum.name() : null;
+            List<Employee> standardManagers = employeeRepository.findDistinctManagersFromAllocationsFiltered(
+                    allocationTypeParam,
+                    accessibleIds,
+                    searchTerm,
+                    managerSearchTerm);
+            allManagers.addAll(standardManagers);
         }
 
-        return managers.stream()
+        // 2. Get managers from ACTIVE employees (those with active PROJECT allocations)
+        // Only run if ACTIVE filter is selected OR showAll
+        // Now supports employee name search for consistency with BENCH and standard types
+        if (isActiveFilter || isShowAll) {
+            List<Employee> activeManagers = employeeRepository.findDistinctManagersOfActiveByEmployeeSearchFiltered(
+                    accessibleIds, currentYear, currentMonth, searchParamLike, managerSearchParamLike);
+            allManagers.addAll(activeManagers);
+        }
+
+        // 3. Get managers from BENCH employees
+        // Only run if BENCH filter is selected OR showAll
+        if (isBenchFilter || isShowAll) {
+            List<Employee> benchManagers = employeeRepository.findDistinctManagersOfBenchByEmployeeSearchFiltered(
+                    accessibleIds, currentYear, currentMonth, searchParamLike, managerSearchParamLike);
+            allManagers.addAll(benchManagers);
+        }
+
+        // Deduplicate and Sort
+        return allManagers.stream()
+                .distinct()
+                .sorted((m1, m2) -> m1.getName().compareToIgnoreCase(m2.getName()))
                 .map(m -> {
                     Map<String, Object> map = new java.util.LinkedHashMap<>();
                     map.put("id", m.getId());
@@ -479,14 +543,22 @@ public class AllocationService {
                 .collect(Collectors.toList());
     }
 
-    public List<String> getDistinctAllocationTypes(Long managerId) {
-        List<String> types = allocationRepository.findDistinctAllocationTypesByManager(managerId).stream()
+    public List<String> getDistinctAllocationTypes(Long managerId, String search, String allocationType) {
+        String searchParam = (search != null && !search.trim().isEmpty()) ? search.trim() : null;
+
+        // Get distinct allocation types using specification
+        org.springframework.data.jpa.domain.Specification<Allocation> spec = com.atlas.specification.AllocationSpecification
+                .withFilters(null, managerId, searchParam, null);
+
+        List<Allocation.AllocationType> types = allocationRepository.findAll(spec).stream()
+                .map(Allocation::getAllocationType)
+                .distinct()
+                .collect(Collectors.toList());
+
+        // Return only actual allocation types (PROJECT, PROSPECT, VACATION, MATERNITY)
+        // Do NOT include derived statuses like BENCH or ACTIVE
+        return types.stream()
                 .map(Allocation.AllocationType::name)
-                .collect(Collectors.toCollection(ArrayList::new));
-        // BENCH is a derived state (no active PROJECT allocation), always include it
-        if (!types.contains("BENCH")) {
-            types.add("BENCH");
-        }
-        return types;
+                .collect(Collectors.toList());
     }
 }
