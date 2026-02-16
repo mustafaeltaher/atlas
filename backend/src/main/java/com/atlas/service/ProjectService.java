@@ -69,14 +69,9 @@ public class ProjectService {
     public List<String> getDistinctRegions(Project.ProjectStatus status, String search, User user) {
         List<Long> filteredIds = getFilteredProjectIds(user);
 
-        org.springframework.data.jpa.domain.Specification<Project> spec = com.atlas.specification.ProjectSpecification
-                .distinctRegionsFilter(status, search, filteredIds);
-
-        return projectRepository.findAll(spec).stream()
-                .map(Project::getRegion)
-                .distinct()
-                .sorted()
-                .collect(Collectors.toList());
+        // Use custom repository method for DB-level distinct region selection
+        // This avoids in-memory distinct and sorting operations on large result sets
+        return projectRepository.findDistinctRegionsByProjectSpec(status, search, filteredIds);
     }
 
     public List<String> getDistinctStatuses(String region, String search, User user) {

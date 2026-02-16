@@ -14,7 +14,7 @@ import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 
 @Repository
-public interface ProjectRepository extends JpaSpecificationExecutor<Project>, JpaRepository<Project, Long> {
+public interface ProjectRepository extends JpaSpecificationExecutor<Project>, JpaRepository<Project, Long>, ProjectRepositoryCustom {
 
         Optional<Project> findByProjectId(String projectId);
 
