@@ -52,9 +52,11 @@ public class EmployeeController {
             Authentication authentication,
             @RequestParam(required = false) String tower,
             @RequestParam(required = false) String status,
-            @RequestParam(required = false) String search) {
+            @RequestParam(required = false) String search,
+            @RequestParam(required = false) String managerSearch) {
         User currentUser = userDetailsService.getUserByUsername(authentication.getName());
-        return ResponseEntity.ok(employeeService.getAccessibleManagers(currentUser, tower, status, search));
+        return ResponseEntity
+                .ok(employeeService.getAccessibleManagers(currentUser, tower, status, search, managerSearch));
     }
 
     @GetMapping("/towers")

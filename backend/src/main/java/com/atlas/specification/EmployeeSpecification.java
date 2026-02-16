@@ -17,7 +17,8 @@ public class EmployeeSpecification {
             String tower,
             Long managerId,
             String status,
-            List<Long> employeeIds) {
+            List<Long> employeeIds,
+            String managerName) {
         return (root, query, cb) -> {
             List<Predicate> predicates = new ArrayList<>();
 
@@ -41,6 +42,12 @@ public class EmployeeSpecification {
             // Manager filter
             if (managerId != null) {
                 predicates.add(cb.equal(root.get("manager").get("id"), managerId));
+            }
+
+            // Manager Name filter (for manager dropdown search)
+            if (managerName != null && !managerName.trim().isEmpty()) {
+                String searchLike = "%" + managerName.toLowerCase() + "%";
+                predicates.add(cb.like(cb.lower(root.get("manager").get("name")), searchLike));
             }
 
             // Search filter (name and email only)

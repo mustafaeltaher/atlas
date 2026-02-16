@@ -75,11 +75,12 @@ export class ApiService {
         return this.http.get<Employee>(`${this.API_URL}/employees/${id}`);
     }
 
-    getManagers(tower?: string, status?: string, search?: string): Observable<Manager[]> {
+    getManagers(tower?: string, status?: string, search?: string, managerSearch?: string): Observable<Manager[]> {
         let url = `${this.API_URL}/employees/managers?`;
         if (tower) url += `tower=${encodeURIComponent(tower)}&`;
         if (status) url += `status=${encodeURIComponent(status)}&`;
         if (search) url += `search=${encodeURIComponent(search)}&`;
+        if (managerSearch) url += `managerSearch=${encodeURIComponent(managerSearch)}&`;
         return this.http.get<Manager[]>(url);
     }
 

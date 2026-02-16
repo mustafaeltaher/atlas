@@ -774,16 +774,20 @@ export class EmployeesComponent implements OnInit {
     return user?.isTopLevel === true;
   }
 
-  loadManagers(search?: string): void {
+  loadManagers(managerSearch?: string): void {
     const tower = this.towerFilter || undefined;
     const status = this.statusFilter || undefined;
-    // Prefer specific manager search text if available, otherwise use general search term
-    const searchParam = search || (this.searchTerm ? this.searchTerm : undefined);
+    // explicit manager search from dropdown input
+    const managerSearchParam = managerSearch || undefined;
+    // general employee search term
+    const employeeSearchParam = this.searchTerm || undefined;
 
-    this.apiService.getManagers(tower, status, searchParam).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
-      next: (managers) => this.managers.set(managers),
-      error: () => { }
-    });
+    this.apiService.getManagers(tower, status, employeeSearchParam, managerSearchParam)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (managers) => this.managers.set(managers),
+        error: () => { }
+      });
   }
 
   onManagerSearchInput(): void {

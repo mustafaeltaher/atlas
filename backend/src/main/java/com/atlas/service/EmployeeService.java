@@ -64,7 +64,7 @@ public class EmployeeService {
 
         // DB-level pagination with all filters applied via Specification
         Page<Employee> employeePage = employeeRepository.findAll(
-                EmployeeSpecification.withFilters(searchParam, towerParam, managerId, statusParam, accessibleIds),
+                EmployeeSpecification.withFilters(searchParam, towerParam, managerId, statusParam, accessibleIds, null),
                 pageable);
 
         // Batch fetch allocations for page content only
@@ -255,7 +255,7 @@ public class EmployeeService {
         List<String> result = new ArrayList<>();
         for (String s : allStatuses) {
             long count = employeeRepository.count(
-                    EmployeeSpecification.withFilters(searchParam, towerParam, managerId, s, accessibleIds));
+                    EmployeeSpecification.withFilters(searchParam, towerParam, managerId, s, accessibleIds, null));
             if (count > 0) {
                 result.add(s);
             }
@@ -271,33 +271,31 @@ public class EmployeeService {
         return employeeRepository.findDistinctTowersFiltered(accessibleIds, managerId, searchParam);
     }
 
-    public List<EmployeeDTO> getAccessibleManagers(User currentUser, String tower, String status, String search) {
+    public List<EmployeeDTO> getAccessibleManagers(User currentUser, String tower, String status, String search,
+            String managerSearch) {
         List<Long> accessibleIds = getAccessibleEmployeeIds(currentUser);
         String towerParam = (tower != null && !tower.trim().isEmpty()) ? tower.trim() : null;
         String statusParam = (status != null && !status.trim().isEmpty()) ? status.trim() : null;
-        String searchParam = (search != null && !search.trim().isEmpty())
-                ? "%" + search.trim().toLowerCase() + "%"
-                : "%";
+        String searchParam = (search != null && !search.trim().isEmpty()) ? search.trim() : null;
+        String managerSearchParam = (managerSearch != null && !managerSearch.trim().isEmpty()) ? managerSearch.trim()
+                : null;
 
-        List<Employee> managers;
-        if (statusParam == null) {
-            // No status filter — use the optimized tower-only query
-            managers = employeeRepository.findDistinctManagersForEmployeeFiltersFiltered(accessibleIds, towerParam,
-                    searchParam);
-        } else {
-            // Status filter active — find matching employees via spec, then extract their
-            // managers
-            var spec = EmployeeSpecification.withFilters(searchParam, towerParam, null, statusParam, accessibleIds);
-            List<Employee> matchingEmployees = employeeRepository.findAll(spec);
-            Map<Long, Employee> uniqueManagers = new java.util.LinkedHashMap<>();
-            for (Employee e : matchingEmployees) {
-                if (e.getManager() != null && e.getManager().getResignationDate() == null) {
-                    uniqueManagers.putIfAbsent(e.getManager().getId(), e.getManager());
-                }
+        // Use specification for all cases to ensure consistency with other filters
+        var spec = EmployeeSpecification.withFilters(searchParam, towerParam, null, statusParam, accessibleIds,
+                managerSearchParam);
+        List<Employee> matchingEmployees = employeeRepository.findAll(spec);
+
+        Map<Long, Employee> uniqueManagers = new java.util.LinkedHashMap<>();
+
+        for (Employee e : matchingEmployees) {
+            if (e.getManager() != null && e.getManager().getResignationDate() == null) {
+                uniqueManagers.putIfAbsent(e.getManager().getId(), e.getManager());
             }
-            managers = new ArrayList<>(uniqueManagers.values());
-            managers.sort(java.util.Comparator.comparing(Employee::getName));
         }
+
+        List<Employee> managers = new ArrayList<>(uniqueManagers.values());
+        managers.sort(java.util.Comparator.comparing(Employee::getName));
+
         return managers.stream()
                 .map(m -> EmployeeDTO.builder()
                         .id(m.getId())

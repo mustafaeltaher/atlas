@@ -584,7 +584,8 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long>, JpaSp
                 return findDistinctManagersOfActiveEmployeesByIds(ids, year, month, search);
         }
 
-        // Find managers of ACTIVE employees with employee name search (for faceted search consistency)
+        // Find managers of ACTIVE employees with employee name search (for faceted
+        // search consistency)
         // Mirrors findDistinctManagersOfBenchByEmployeeSearchFiltered for ACTIVE status
         @Query(value = "SELECT DISTINCT m.* FROM employees m " +
                         "JOIN employees e ON e.manager_id = m.id " +
@@ -660,6 +661,7 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long>, JpaSp
         // tower/status filters)
         @Query(value = "SELECT DISTINCT m.* FROM employees m " +
                         "WHERE m.resignation_date IS NULL " +
+                        "AND (:managerSearch IS NULL OR LOWER(m.name) LIKE :managerSearch) " +
                         "AND EXISTS (SELECT 1 FROM employees e " +
                         "  LEFT JOIN tech_towers t ON e.tower = t.id " +
                         "  WHERE e.manager_id = m.id AND e.resignation_date IS NULL " +
@@ -667,10 +669,12 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long>, JpaSp
                         "  AND (:search IS NULL OR LOWER(e.name) LIKE :search OR LOWER(e.email) LIKE :search)) " +
                         "ORDER BY m.name", nativeQuery = true)
         List<Employee> findDistinctManagersForEmployeeFilters(@Param("tower") String tower,
-                        @Param("search") String search);
+                        @Param("search") String search,
+                        @Param("managerSearch") String managerSearch);
 
         @Query(value = "SELECT DISTINCT m.* FROM employees m " +
                         "WHERE m.resignation_date IS NULL " +
+                        "AND (:managerSearch IS NULL OR LOWER(m.name) LIKE :managerSearch) " +
                         "AND EXISTS (SELECT 1 FROM employees e " +
                         "  LEFT JOIN tech_towers t ON e.tower = t.id " +
                         "  WHERE e.manager_id = m.id AND e.resignation_date IS NULL " +
@@ -680,13 +684,14 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long>, JpaSp
                         "ORDER BY m.name", nativeQuery = true)
         List<Employee> findDistinctManagersForEmployeeFiltersByIds(
                         @Param("ids") List<Long> ids, @Param("tower") String tower,
-                        @Param("search") String search);
+                        @Param("search") String search,
+                        @Param("managerSearch") String managerSearch);
 
         default List<Employee> findDistinctManagersForEmployeeFiltersFiltered(List<Long> ids, String tower,
-                        String search) {
+                        String search, String managerSearch) {
                 if (ids == null)
-                        return findDistinctManagersForEmployeeFilters(tower, search);
-                return findDistinctManagersForEmployeeFiltersByIds(ids, tower, search);
+                        return findDistinctManagersForEmployeeFilters(tower, search, managerSearch);
+                return findDistinctManagersForEmployeeFiltersByIds(ids, tower, search, managerSearch);
         }
 
         // ===== Dashboard count queries =====
@@ -819,7 +824,8 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long>, JpaSp
         }
 
         // ===== Managers for Allocations Page (with allocation type filter) =====
-        // Split queries: one for when allocationType filter is provided, one for when it's NULL (show all)
+        // Split queries: one for when allocationType filter is provided, one for when
+        // it's NULL (show all)
 
         // No allocation type filter - return all managers
         @Query(value = "SELECT DISTINCT m.* FROM allocations a " +
@@ -888,14 +894,15 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long>, JpaSp
                         List<Long> employeeIds,
                         String search,
                         String managerSearch) {
-                // Format search parameters with wildcards - NEVER pass NULL to avoid PostgreSQL type inference issues
+                // Format search parameters with wildcards - NEVER pass NULL to avoid PostgreSQL
+                // type inference issues
                 // when same parameter is used multiple times in query
                 String searchParam = (search != null && !search.trim().isEmpty())
-                        ? "%" + search.trim().toLowerCase() + "%"
-                        : "%"; // Match all instead of NULL
+                                ? "%" + search.trim().toLowerCase() + "%"
+                                : "%"; // Match all instead of NULL
                 String managerSearchParam = (managerSearch != null && !managerSearch.trim().isEmpty())
-                        ? "%" + managerSearch.trim().toLowerCase() + "%"
-                        : "%"; // Match all instead of NULL
+                                ? "%" + managerSearch.trim().toLowerCase() + "%"
+                                : "%"; // Match all instead of NULL
 
                 // Handle empty list case - IN () clause fails in native SQL
                 if (employeeIds != null && employeeIds.isEmpty()) {
@@ -908,13 +915,16 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long>, JpaSp
                         if (employeeIds == null) {
                                 return findDistinctManagersFromAllocationsAllTypes(searchParam, managerSearchParam);
                         }
-                        return findDistinctManagersFromAllocationsAllTypesByIds(employeeIds, searchParam, managerSearchParam);
+                        return findDistinctManagersFromAllocationsAllTypesByIds(employeeIds, searchParam,
+                                        managerSearchParam);
                 } else {
                         // Specific type filter
                         if (employeeIds == null) {
-                                return findDistinctManagersFromAllocationsByType(allocationType, searchParam, managerSearchParam);
+                                return findDistinctManagersFromAllocationsByType(allocationType, searchParam,
+                                                managerSearchParam);
                         }
-                        return findDistinctManagersFromAllocationsByTypeAndIds(employeeIds, allocationType, searchParam, managerSearchParam);
+                        return findDistinctManagersFromAllocationsByTypeAndIds(employeeIds, allocationType, searchParam,
+                                        managerSearchParam);
                 }
         }
 
