@@ -44,7 +44,7 @@ import { Employee, Manager } from '../../models';
             class="form-input search-input"
             [(ngModel)]="searchTerm"
             (ngModelChange)="filterEmployees()"
-            placeholder="Search by name, skill, or tower...">
+            placeholder="Search by name or email...">
 
           <select class="form-input filter-select" [(ngModel)]="statusFilter" (ngModelChange)="filterEmployees()">
             <option value="">All Status</option>
