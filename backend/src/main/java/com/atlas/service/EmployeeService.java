@@ -290,21 +290,10 @@ public class EmployeeService {
         String managerSearchParam = (managerSearch != null && !managerSearch.trim().isEmpty()) ? managerSearch.trim()
                 : null;
 
-        // Use specification for all cases to ensure consistency with other filters
-        var spec = EmployeeSpecification.withFilters(searchParam, towerParam, null, statusParam, accessibleIds,
-                managerSearchParam);
-        List<Employee> matchingEmployees = employeeRepository.findAll(spec);
-
-        Map<Long, Employee> uniqueManagers = new java.util.LinkedHashMap<>();
-
-        for (Employee e : matchingEmployees) {
-            if (e.getManager() != null && e.getManager().getResignationDate() == null) {
-                uniqueManagers.putIfAbsent(e.getManager().getId(), e.getManager());
-            }
-        }
-
-        List<Employee> managers = new ArrayList<>(uniqueManagers.values());
-        managers.sort(java.util.Comparator.comparing(Employee::getName));
+        // Use custom repository method for DB-level distinct manager selection
+        // This avoids in-memory filtering and sorting of large result sets
+        List<Employee> managers = employeeRepository.findDistinctManagersByEmployeeSpec(
+                searchParam, towerParam, null, statusParam, accessibleIds, managerSearchParam);
 
         return managers.stream()
                 .map(m -> EmployeeDTO.builder()
