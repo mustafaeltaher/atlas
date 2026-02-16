@@ -64,10 +64,11 @@ public class EmployeeController {
             Authentication authentication,
             @RequestParam(required = false) Long managerId,
             @RequestParam(required = false) String status,
-            @RequestParam(required = false) String search) {
+            @RequestParam(required = false) String search,
+            @RequestParam(required = false) String managerSearch) {
         User currentUser = userDetailsService.getUserByUsername(authentication.getName());
         return ResponseEntity.ok(Map.of(
-                "towers", employeeService.getDistinctTowers(currentUser, managerId, status, search)));
+                "towers", employeeService.getDistinctTowers(currentUser, managerId, status, search, managerSearch)));
     }
 
     @GetMapping("/statuses")
@@ -75,9 +76,10 @@ public class EmployeeController {
             Authentication authentication,
             @RequestParam(required = false) Long managerId,
             @RequestParam(required = false) String tower,
-            @RequestParam(required = false) String search) {
+            @RequestParam(required = false) String search,
+            @RequestParam(required = false) String managerSearch) {
         User currentUser = userDetailsService.getUserByUsername(authentication.getName());
-        return ResponseEntity.ok(employeeService.getDistinctStatuses(currentUser, managerId, tower, search));
+        return ResponseEntity.ok(employeeService.getDistinctStatuses(currentUser, managerId, tower, search, managerSearch));
     }
 
     @PostMapping("/import")

@@ -825,7 +825,8 @@ export class EmployeesComponent implements OnInit {
       const managerId = this.managerFilter ? Number(this.managerFilter) : undefined;
       const status = this.statusFilter || undefined;
       const search = this.searchTerm || undefined;
-      this.apiService.getEmployeeTowers(managerId, status, search).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      const managerSearch = this.managerSearchText || undefined;
+      this.apiService.getEmployeeTowers(managerId, status, search, managerSearch).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
         next: (data) => this.towers.set(data.towers),
         error: () => { }
       });
@@ -906,8 +907,9 @@ export class EmployeesComponent implements OnInit {
     const managerId = this.managerFilter ? parseInt(this.managerFilter) : undefined;
     const tower = this.towerFilter || undefined;
     const search = this.searchTerm || undefined;
+    const managerSearch = this.managerSearchText || undefined;
 
-    this.apiService.getEmployeeStatuses(managerId, tower, search)
+    this.apiService.getEmployeeStatuses(managerId, tower, search, managerSearch)
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (statuses) => this.statuses.set(statuses),

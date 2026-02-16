@@ -33,19 +33,21 @@ export class ApiService {
         return this.http.get<Page<Employee>>(url);
     }
 
-    getEmployeeTowers(managerId?: number, status?: string, search?: string): Observable<{ towers: string[] }> {
+    getEmployeeTowers(managerId?: number, status?: string, search?: string, managerSearch?: string): Observable<{ towers: string[] }> {
         let url = `${this.API_URL}/employees/towers?`;
         if (managerId) url += `managerId=${managerId}&`;
         if (status) url += `status=${encodeURIComponent(status)}&`;
         if (search) url += `search=${encodeURIComponent(search)}&`;
+        if (managerSearch) url += `managerSearch=${encodeURIComponent(managerSearch)}&`;
         return this.http.get<{ towers: string[] }>(url);
     }
 
-    getEmployeeStatuses(managerId?: number, tower?: string, search?: string): Observable<string[]> {
+    getEmployeeStatuses(managerId?: number, tower?: string, search?: string, managerSearch?: string): Observable<string[]> {
         let params = new HttpParams();
         if (managerId) params = params.set('managerId', managerId.toString());
         if (tower) params = params.set('tower', tower);
         if (search) params = params.set('search', search);
+        if (managerSearch) params = params.set('managerSearch', managerSearch);
         return this.http.get<string[]>(`${this.API_URL}/employees/statuses`, { params });
     }
 

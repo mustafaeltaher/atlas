@@ -7,6 +7,7 @@ import com.atlas.entity.User;
 import com.atlas.repository.AllocationRepository;
 import com.atlas.repository.EmployeeRepository;
 import com.atlas.repository.EmployeeSkillRepository;
+import com.atlas.repository.TechTowerRepository;
 import com.atlas.specification.EmployeeSpecification;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -18,7 +19,6 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -30,6 +30,7 @@ public class EmployeeService {
     private final EmployeeRepository employeeRepository;
     private final AllocationRepository allocationRepository;
     private final EmployeeSkillRepository employeeSkillRepository;
+    private final TechTowerRepository techTowerRepository;
 
     public List<EmployeeDTO> getAllEmployees(User currentUser) {
         List<Employee> employees = getFilteredEmployees(currentUser);
@@ -247,15 +248,19 @@ public class EmployeeService {
         return employeeRepository.countActiveEmployees();
     }
 
-    public List<String> getDistinctStatuses(User currentUser, Long managerId, String tower, String search) {
+    public List<String> getDistinctStatuses(User currentUser, Long managerId, String tower, String search,
+            String managerSearch) {
         List<Long> accessibleIds = getAccessibleEmployeeIds(currentUser);
         String towerParam = (tower != null && !tower.trim().isEmpty()) ? tower.trim() : null;
         String searchParam = (search != null && !search.trim().isEmpty()) ? search.trim() : null;
+        String managerSearchParam = (managerSearch != null && !managerSearch.trim().isEmpty()) ? managerSearch.trim()
+                : null;
         List<String> allStatuses = List.of("ACTIVE", "BENCH", "PROSPECT", "MATERNITY", "VACATION", "RESIGNED");
         List<String> result = new ArrayList<>();
         for (String s : allStatuses) {
             long count = employeeRepository.count(
-                    EmployeeSpecification.withFilters(searchParam, towerParam, managerId, s, accessibleIds, null));
+                    EmployeeSpecification.withFilters(searchParam, towerParam, managerId, s, accessibleIds,
+                            managerSearchParam));
             if (count > 0) {
                 result.add(s);
             }
@@ -263,12 +268,17 @@ public class EmployeeService {
         return result;
     }
 
-    public List<String> getDistinctTowers(User currentUser, Long managerId, String status, String search) {
+    public List<String> getDistinctTowers(User currentUser, Long managerId, String status, String search,
+            String managerSearch) {
         List<Long> accessibleIds = getAccessibleEmployeeIds(currentUser);
-        String searchParam = (search != null && !search.trim().isEmpty())
-                ? "%" + search.trim().toLowerCase() + "%"
-                : "%";
-        return employeeRepository.findDistinctTowersFiltered(accessibleIds, managerId, searchParam);
+        String searchParam = (search != null && !search.trim().isEmpty()) ? search.trim() : null;
+        String statusParam = (status != null && !status.trim().isEmpty()) ? status.trim() : null;
+        String managerSearchParam = (managerSearch != null && !managerSearch.trim().isEmpty()) ? managerSearch.trim()
+                : null;
+
+        // Use TechTowerRepository custom method with EmployeeSpecification
+        return techTowerRepository.findDistinctDescriptionsByEmployeeSpec(
+                searchParam, null, managerId, statusParam, accessibleIds, managerSearchParam);
     }
 
     public List<EmployeeDTO> getAccessibleManagers(User currentUser, String tower, String status, String search,
