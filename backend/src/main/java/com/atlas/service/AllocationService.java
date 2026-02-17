@@ -498,42 +498,14 @@ public class AllocationService {
         int currentYear = LocalDate.now().getYear();
         int currentMonth = LocalDate.now().getMonthValue();
 
-        List<Employee> allManagers = new ArrayList<>();
+        // Use EmployeeSpecification to filter employees by allocation criteria
+        // Then select their distinct managers at DB level (same pattern as employees page)
+        String statusParam = allocationType;  // status can be ACTIVE/BENCH or allocation type
 
-        // 1. Get managers from standard Allocations (PROJECT, PROSPECT, MATERNITY, VACATION)
-        // Run when: specific allocation type OR showAll (but not when BENCH or ACTIVE exclusively)
-        if (!isBenchFilter && !isActiveFilter) {
-            // Repository method handles search formatting internally
-            String allocationTypeParam = (allocationTypeEnum != null) ? allocationTypeEnum.name() : null;
-            List<Employee> standardManagers = employeeRepository.findDistinctManagersFromAllocationsFiltered(
-                    allocationTypeParam,
-                    accessibleIds,
-                    searchTerm,
-                    managerSearchTerm);
-            allManagers.addAll(standardManagers);
-        }
+        List<Employee> distinctManagers = employeeRepository.findDistinctManagersByEmployeeSpec(
+                searchTerm, null, null, statusParam, accessibleIds, managerSearchTerm);
 
-        // 2. Get managers from ACTIVE employees (those with active PROJECT allocations)
-        // Only run if ACTIVE filter is selected OR showAll
-        // Now supports employee name search for consistency with BENCH and standard types
-        if (isActiveFilter || isShowAll) {
-            List<Employee> activeManagers = employeeRepository.findDistinctManagersOfActiveByEmployeeSearchFiltered(
-                    accessibleIds, currentYear, currentMonth, searchParamLike, managerSearchParamLike);
-            allManagers.addAll(activeManagers);
-        }
-
-        // 3. Get managers from BENCH employees
-        // Only run if BENCH filter is selected OR showAll
-        if (isBenchFilter || isShowAll) {
-            List<Employee> benchManagers = employeeRepository.findDistinctManagersOfBenchByEmployeeSearchFiltered(
-                    accessibleIds, currentYear, currentMonth, searchParamLike, managerSearchParamLike);
-            allManagers.addAll(benchManagers);
-        }
-
-        // Deduplicate and Sort
-        return allManagers.stream()
-                .distinct()
-                .sorted((m1, m2) -> m1.getName().compareToIgnoreCase(m2.getName()))
+        return distinctManagers.stream()
                 .map(m -> {
                     Map<String, Object> map = new java.util.LinkedHashMap<>();
                     map.put("id", m.getId());
@@ -546,14 +518,10 @@ public class AllocationService {
     public List<String> getDistinctAllocationTypes(Long managerId, String search, String allocationType) {
         String searchParam = (search != null && !search.trim().isEmpty()) ? search.trim() : null;
 
-        // Get distinct allocation types using specification
-        org.springframework.data.jpa.domain.Specification<Allocation> spec = com.atlas.specification.AllocationSpecification
-                .withFilters(null, managerId, searchParam, null);
-
-        List<Allocation.AllocationType> types = allocationRepository.findAll(spec).stream()
-                .map(Allocation::getAllocationType)
-                .distinct()
-                .collect(Collectors.toList());
+        // Use custom repository method for DB-level distinct allocation types
+        // This avoids in-memory distinct operations on large result sets
+        List<Allocation.AllocationType> types = allocationRepository.findDistinctAllocationTypesBySpec(
+                managerId, searchParam, null);
 
         // Return only actual allocation types (PROJECT, PROSPECT, VACATION, MATERNITY)
         // Do NOT include derived statuses like BENCH or ACTIVE
