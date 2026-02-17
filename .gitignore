@@ -23,3 +23,6 @@ Thumbs.db
 # Environment
 .env
 *.log
+
+# Spec Kit - Claude agent folder (may contain credentials)
+.claude/
