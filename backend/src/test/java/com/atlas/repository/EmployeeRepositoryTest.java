@@ -34,11 +34,11 @@ public class EmployeeRepositoryTest extends RepositoryTestBase {
                     null, null, currentYear, currentMonth, pageable
             );
 
-            // Then: Only BENCH employee is returned
+            // Then: BENCH employees are returned (CEO, managers, and employeeBench have no allocations)
             assertThat(result.getContent())
-                    .hasSize(1)
+                    .hasSize(4)
                     .extracting(Employee::getEmail)
-                    .containsExactly("bench@atlas.com");
+                    .contains("bench@atlas.com", "ceo@atlas.com", "manager1@atlas.com", "manager2@atlas.com");
         }
 
         @Test
@@ -76,15 +76,16 @@ public class EmployeeRepositoryTest extends RepositoryTestBase {
                     null, manager1.getId(), currentYear, currentMonth, pageable
             );
 
-            // Then: Find the BENCH employee
+            // Then: Find the BENCH employee under manager1
             assertThat(result.getContent()).hasSize(1);
+            assertThat(result.getContent().get(0).getEmail()).isEqualTo("bench@atlas.com");
 
             // When: Filter by manager2
             result = employeeRepository.findBenchEmployees(
                     null, manager2.getId(), currentYear, currentMonth, pageable
             );
 
-            // Then: No results (employeeBench doesn't report to manager2)
+            // Then: No BENCH employees under manager2 (no subordinates without allocations)
             assertThat(result.getContent()).isEmpty();
         }
 
@@ -111,8 +112,8 @@ public class EmployeeRepositoryTest extends RepositoryTestBase {
             // When: Count BENCH employees
             long count = employeeRepository.countBenchEmployees(currentYear, currentMonth);
 
-            // Then: Count is 1 (only employeeBench)
-            assertThat(count).isEqualTo(1);
+            // Then: Count is 4 (CEO, manager1, manager2, employeeBench all have no allocations)
+            assertThat(count).isEqualTo(4);
         }
 
         @Test

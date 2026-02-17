@@ -2,6 +2,7 @@ package com.atlas.repository;
 
 import com.atlas.entity.Allocation;
 import com.atlas.entity.Employee;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
@@ -9,6 +10,7 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface AllocationRepository extends JpaRepository<Allocation, Long>, JpaSpecificationExecutor<Allocation>, AllocationRepositoryCustom {
@@ -34,20 +36,49 @@ public interface AllocationRepository extends JpaRepository<Allocation, Long>, J
                 return findAllocationsByProjectIdsAndType(projectIds, Allocation.AllocationType.PROJECT);
         }
 
-        @Query("SELECT a FROM Allocation a JOIN FETCH a.employee LEFT JOIN FETCH a.project")
-        List<Allocation> findAllWithEmployeeAndProject();
+        // Refactored to use @EntityGraph instead of explicit JOIN FETCH
+        // EntityGraph provides cleaner, more maintainable fetch strategy
+        @EntityGraph("Allocation.withDetails")
+        @Override
+        List<Allocation> findAll();
 
-        @Query("SELECT a FROM Allocation a JOIN FETCH a.employee LEFT JOIN FETCH a.project WHERE a.employee.id = :employeeId")
-        List<Allocation> findByEmployeeIdWithDetails(@Param("employeeId") Long employeeId);
+        // Keep method name for backward compatibility
+        default List<Allocation> findAllWithEmployeeAndProject() {
+                return findAll();
+        }
 
-        @Query("SELECT a FROM Allocation a JOIN FETCH a.employee LEFT JOIN FETCH a.project WHERE a.project.id = :projectId")
-        List<Allocation> findByProjectIdWithDetails(@Param("projectId") Long projectId);
+        @EntityGraph("Allocation.withDetails")
+        List<Allocation> findByEmployeeId(Long employeeId);
 
-        @Query("SELECT a FROM Allocation a JOIN FETCH a.employee LEFT JOIN FETCH a.project WHERE a.id = :id")
-        java.util.Optional<Allocation> findByIdWithDetails(@Param("id") Long id);
+        // Keep method name for backward compatibility
+        default List<Allocation> findByEmployeeIdWithDetails(Long employeeId) {
+                return findByEmployeeId(employeeId);
+        }
 
-        @Query("SELECT a FROM Allocation a JOIN FETCH a.employee LEFT JOIN FETCH a.project WHERE a.employee.id IN :employeeIds")
-        List<Allocation> findByEmployeeIdsWithDetails(@Param("employeeIds") List<Long> employeeIds);
+        @EntityGraph("Allocation.withDetails")
+        List<Allocation> findByProjectId(Long projectId);
+
+        // Keep method name for backward compatibility
+        default List<Allocation> findByProjectIdWithDetails(Long projectId) {
+                return findByProjectId(projectId);
+        }
+
+        @EntityGraph("Allocation.withDetails")
+        @Override
+        Optional<Allocation> findById(Long id);
+
+        // Keep method name for backward compatibility
+        default Optional<Allocation> findByIdWithDetails(Long id) {
+                return findById(id);
+        }
+
+        @EntityGraph("Allocation.withDetails")
+        List<Allocation> findByEmployeeIdIn(List<Long> employeeIds);
+
+        // Keep method name for backward compatibility
+        default List<Allocation> findByEmployeeIdsWithDetails(List<Long> employeeIds) {
+                return findByEmployeeIdIn(employeeIds);
+        }
 
         // Distinct values for facets
         @Query("SELECT DISTINCT a.allocationType FROM Allocation a JOIN a.employee e WHERE " +

@@ -9,8 +9,8 @@ import lombok.NoArgsConstructor;
 import lombok.ToString;
 
 @Entity
-@Table(name = "monthly_allocations", uniqueConstraints = @UniqueConstraint(columnNames = { "allocation_id", "year",
-        "month" }))
+@Table(name = "monthly_allocations", uniqueConstraints = @UniqueConstraint(columnNames = { "allocation_id", "\"year\"",
+        "\"month\"" }))
 @Data
 @Builder
 @NoArgsConstructor
@@ -26,10 +26,10 @@ public class MonthlyAllocation {
     @EqualsAndHashCode.Exclude
     private Allocation allocation;
 
-    @Column(nullable = false)
+    @Column(name = "\"year\"", nullable = false)
     private Integer year;
 
-    @Column(nullable = false)
+    @Column(name = "\"month\"", nullable = false)
     private Integer month; // 1-12
 
     @Column(nullable = false)

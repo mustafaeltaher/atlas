@@ -14,6 +14,13 @@ import java.util.List;
 
 @Entity
 @Table(name = "allocations")
+@NamedEntityGraph(
+    name = "Allocation.withDetails",
+    attributeNodes = {
+        @NamedAttributeNode("employee"),
+        @NamedAttributeNode("project")
+    }
+)
 @Data
 @Builder
 @NoArgsConstructor

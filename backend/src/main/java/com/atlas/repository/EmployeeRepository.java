@@ -31,11 +31,11 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long>, JpaSp
 
         // Recursive query to find all subordinate IDs (direct and indirect reports)
         // This replaces the in-memory recursive check and allows unified access control
-        @Query(value = "WITH RECURSIVE subordinates AS (" +
+        @Query(value = "WITH RECURSIVE subordinates(id) AS (" +
                         "  SELECT id FROM employees WHERE id = :managerId " +
                         "  UNION " +
                         "  SELECT e.id FROM employees e " +
-                        "  INNER JOIN subordinates s ON s.id = e.manager_id " +
+                        "  INNER JOIN subordinates ON subordinates.id = e.manager_id " +
                         ") SELECT id FROM subordinates", nativeQuery = true)
         List<Long> findAllSubordinateIds(@Param("managerId") Long managerId);
 
@@ -50,8 +50,8 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long>, JpaSp
                         "  JOIN monthly_allocations ma ON ma.allocation_id = a.id " +
                         "  WHERE a.employee_id = e.id " +
                         "  AND a.allocation_type = 'PROJECT' " +
-                        "  AND ma.year = :currentYear " +
-                        "  AND ma.month = :currentMonth " +
+                        "  AND ma.\"year\" = :currentYear " +
+                        "  AND ma.\"month\" = :currentMonth " +
                         "  AND ma.percentage > 0) " +
                         "AND NOT EXISTS (SELECT 1 FROM allocations a WHERE a.employee_id = e.id AND a.allocation_type = 'PROSPECT') "
                         +
@@ -68,8 +68,8 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long>, JpaSp
                                         "  JOIN monthly_allocations ma ON ma.allocation_id = a.id " +
                                         "  WHERE a.employee_id = e.id " +
                                         "  AND a.allocation_type = 'PROJECT' " +
-                                        "  AND ma.year = :currentYear " +
-                                        "  AND ma.month = :currentMonth " +
+                                        "  AND ma.\"year\" = :currentYear " +
+                                        "  AND ma.\"month\" = :currentMonth " +
                                         "  AND ma.percentage > 0) " +
                                         "AND NOT EXISTS (SELECT 1 FROM allocations a WHERE a.employee_id = e.id AND a.allocation_type = 'PROSPECT') "
                                         +
@@ -94,8 +94,8 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long>, JpaSp
                         "  JOIN monthly_allocations ma ON ma.allocation_id = a.id " +
                         "  WHERE a.employee_id = e.id " +
                         "  AND a.allocation_type = 'PROJECT' " +
-                        "  AND ma.year = :currentYear " +
-                        "  AND ma.month = :currentMonth " +
+                        "  AND ma.\"year\" = :currentYear " +
+                        "  AND ma.\"month\" = :currentMonth " +
                         "  AND ma.percentage > 0) " +
                         "AND NOT EXISTS (SELECT 1 FROM allocations a WHERE a.employee_id = e.id AND a.allocation_type = 'PROSPECT') "
                         +
@@ -113,8 +113,8 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long>, JpaSp
                                         "  JOIN monthly_allocations ma ON ma.allocation_id = a.id " +
                                         "  WHERE a.employee_id = e.id " +
                                         "  AND a.allocation_type = 'PROJECT' " +
-                                        "  AND ma.year = :currentYear " +
-                                        "  AND ma.month = :currentMonth " +
+                                        "  AND ma.\"year\" = :currentYear " +
+                                        "  AND ma.\"month\" = :currentMonth " +
                                         "  AND ma.percentage > 0) " +
                                         "AND NOT EXISTS (SELECT 1 FROM allocations a WHERE a.employee_id = e.id AND a.allocation_type = 'PROSPECT') "
                                         +
@@ -140,7 +140,7 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long>, JpaSp
                         "  SELECT 1 FROM allocations a " +
                         "  JOIN monthly_allocations ma ON ma.allocation_id = a.id " +
                         "  WHERE a.employee_id = e.id AND a.allocation_type = 'PROJECT' " +
-                        "  AND ma.year = :currentYear AND ma.month = :currentMonth AND ma.percentage > 0) " +
+                        "  AND ma.\"year\" = :currentYear AND ma.\"month\" = :currentMonth AND ma.percentage > 0) " +
                         "ORDER BY e.name", countQuery = "SELECT COUNT(DISTINCT e.id) FROM employees e " +
                                         "WHERE e.resignation_date IS NULL " +
                                         "AND (CAST(:search AS text) IS NULL OR LOWER(e.name) LIKE :search) " +
@@ -151,7 +151,7 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long>, JpaSp
                                         "  SELECT 1 FROM allocations a " +
                                         "  JOIN monthly_allocations ma ON ma.allocation_id = a.id " +
                                         "  WHERE a.employee_id = e.id AND a.allocation_type = 'PROJECT' " +
-                                        "  AND ma.year = :currentYear AND ma.month = :currentMonth AND ma.percentage > 0)", nativeQuery = true)
+                                        "  AND ma.\"year\" = :currentYear AND ma.\"month\" = :currentMonth AND ma.percentage > 0)", nativeQuery = true)
         Page<Employee> findProspectEmployees(
                         @Param("search") String search,
                         @Param("managerId") Long managerId,
@@ -169,7 +169,7 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long>, JpaSp
                         "  SELECT 1 FROM allocations a " +
                         "  JOIN monthly_allocations ma ON ma.allocation_id = a.id " +
                         "  WHERE a.employee_id = e.id AND a.allocation_type = 'PROJECT' " +
-                        "  AND ma.year = :currentYear AND ma.month = :currentMonth AND ma.percentage > 0) " +
+                        "  AND ma.\"year\" = :currentYear AND ma.\"month\" = :currentMonth AND ma.percentage > 0) " +
                         "ORDER BY e.name", countQuery = "SELECT COUNT(DISTINCT e.id) FROM employees e " +
                                         "WHERE e.resignation_date IS NULL AND e.id IN :employeeIds " +
                                         "AND (CAST(:search AS text) IS NULL OR LOWER(e.name) LIKE :search) " +
@@ -180,7 +180,7 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long>, JpaSp
                                         "  SELECT 1 FROM allocations a " +
                                         "  JOIN monthly_allocations ma ON ma.allocation_id = a.id " +
                                         "  WHERE a.employee_id = e.id AND a.allocation_type = 'PROJECT' " +
-                                        "  AND ma.year = :currentYear AND ma.month = :currentMonth AND ma.percentage > 0)", nativeQuery = true)
+                                        "  AND ma.\"year\" = :currentYear AND ma.\"month\" = :currentMonth AND ma.percentage > 0)", nativeQuery = true)
         Page<Employee> findProspectEmployeesByIds(
                         @Param("employeeIds") List<Long> employeeIds,
                         @Param("search") String search,
@@ -208,8 +208,8 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long>, JpaSp
                         "  JOIN monthly_allocations ma ON ma.allocation_id = a.id " +
                         "  WHERE a.employee_id = e.id " +
                         "  AND a.allocation_type = 'PROJECT' " +
-                        "  AND ma.year = :currentYear " +
-                        "  AND ma.month = :currentMonth " +
+                        "  AND ma.\"year\" = :currentYear " +
+                        "  AND ma.\"month\" = :currentMonth " +
                         "  AND ma.percentage > 0" +
                         ") " +
                         "ORDER BY e.name", countQuery = "SELECT COUNT(DISTINCT e.id) FROM employees e " +
@@ -221,8 +221,8 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long>, JpaSp
                                         "  JOIN monthly_allocations ma ON ma.allocation_id = a.id " +
                                         "  WHERE a.employee_id = e.id " +
                                         "  AND a.allocation_type = 'PROJECT' " +
-                                        "  AND ma.year = :currentYear " +
-                                        "  AND ma.month = :currentMonth " +
+                                        "  AND ma.\"year\" = :currentYear " +
+                                        "  AND ma.\"month\" = :currentMonth " +
                                         "  AND ma.percentage > 0" +
                                         ")", nativeQuery = true)
         Page<Employee> findActiveAllocatedEmployees(
@@ -243,8 +243,8 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long>, JpaSp
                         "  JOIN monthly_allocations ma ON ma.allocation_id = a.id " +
                         "  WHERE a.employee_id = e.id " +
                         "  AND a.allocation_type = 'PROJECT' " +
-                        "  AND ma.year = :currentYear " +
-                        "  AND ma.month = :currentMonth " +
+                        "  AND ma.\"year\" = :currentYear " +
+                        "  AND ma.\"month\" = :currentMonth " +
                         "  AND ma.percentage > 0" +
                         ") " +
                         "ORDER BY e.name", countQuery = "SELECT COUNT(DISTINCT e.id) FROM employees e " +
@@ -257,8 +257,8 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long>, JpaSp
                                         "  JOIN monthly_allocations ma ON ma.allocation_id = a.id " +
                                         "  WHERE a.employee_id = e.id " +
                                         "  AND a.allocation_type = 'PROJECT' " +
-                                        "  AND ma.year = :currentYear " +
-                                        "  AND ma.month = :currentMonth " +
+                                        "  AND ma.\"year\" = :currentYear " +
+                                        "  AND ma.\"month\" = :currentMonth " +
                                         "  AND ma.percentage > 0" +
                                         ")", nativeQuery = true)
         Page<Employee> findActiveAllocatedEmployeesByIds(
@@ -412,7 +412,7 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long>, JpaSp
                         "  AND NOT EXISTS (" +
                         "    SELECT 1 FROM allocations a JOIN monthly_allocations ma ON ma.allocation_id = a.id " +
                         "    WHERE a.employee_id = e.id AND a.allocation_type = 'PROJECT' " +
-                        "    AND ma.year = :year AND ma.month = :month AND ma.percentage > 0" +
+                        "    AND ma.\"year\" = :year AND ma.\"month\" = :month AND ma.percentage > 0" +
                         "  )" +
                         ") ORDER BY m.name", nativeQuery = true)
         List<Employee> findDistinctManagersOfBenchEmployees(
@@ -426,7 +426,7 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long>, JpaSp
                         "  AND e.id IN :ids AND NOT EXISTS (" +
                         "    SELECT 1 FROM allocations a JOIN monthly_allocations ma ON ma.allocation_id = a.id " +
                         "    WHERE a.employee_id = e.id AND a.allocation_type = 'PROJECT' " +
-                        "    AND ma.year = :year AND ma.month = :month AND ma.percentage > 0" +
+                        "    AND ma.\"year\" = :year AND ma.\"month\" = :month AND ma.percentage > 0" +
                         "  )" +
                         ") ORDER BY m.name", nativeQuery = true)
         List<Employee> findDistinctManagersOfBenchEmployeesByIds(
@@ -448,7 +448,7 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long>, JpaSp
                         "AND NOT EXISTS (" +
                         "  SELECT 1 FROM allocations a JOIN monthly_allocations ma ON ma.allocation_id = a.id " +
                         "  WHERE a.employee_id = e.id AND a.allocation_type = 'PROJECT' " +
-                        "  AND ma.year = :year AND ma.month = :month AND ma.percentage > 0" +
+                        "  AND ma.\"year\" = :year AND ma.\"month\" = :month AND ma.percentage > 0" +
                         ") " +
                         "AND NOT EXISTS (SELECT 1 FROM allocations a WHERE a.employee_id = e.id AND a.allocation_type = 'PROSPECT') "
                         +
@@ -470,7 +470,7 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long>, JpaSp
                         "AND NOT EXISTS (" +
                         "  SELECT 1 FROM allocations a JOIN monthly_allocations ma ON ma.allocation_id = a.id " +
                         "  WHERE a.employee_id = e.id AND a.allocation_type = 'PROJECT' " +
-                        "  AND ma.year = :year AND ma.month = :month AND ma.percentage > 0" +
+                        "  AND ma.\"year\" = :year AND ma.\"month\" = :month AND ma.percentage > 0" +
                         ") " +
                         "AND NOT EXISTS (SELECT 1 FROM allocations a WHERE a.employee_id = e.id AND a.allocation_type = 'PROSPECT') "
                         +
@@ -505,7 +505,7 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long>, JpaSp
                         "  AND EXISTS (" +
                         "    SELECT 1 FROM allocations a JOIN monthly_allocations ma ON ma.allocation_id = a.id " +
                         "    WHERE a.employee_id = e.id AND a.allocation_type = 'PROJECT' " +
-                        "    AND ma.year = :year AND ma.month = :month AND ma.percentage > 0" +
+                        "    AND ma.\"year\" = :year AND ma.\"month\" = :month AND ma.percentage > 0" +
                         "  )" +
                         ") ORDER BY m.name", nativeQuery = true)
         List<Employee> findDistinctManagersOfActiveEmployees(
@@ -519,7 +519,7 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long>, JpaSp
                         "  AND e.id IN :ids AND EXISTS (" +
                         "    SELECT 1 FROM allocations a JOIN monthly_allocations ma ON ma.allocation_id = a.id " +
                         "    WHERE a.employee_id = e.id AND a.allocation_type = 'PROJECT' " +
-                        "    AND ma.year = :year AND ma.month = :month AND ma.percentage > 0" +
+                        "    AND ma.\"year\" = :year AND ma.\"month\" = :month AND ma.percentage > 0" +
                         "  )" +
                         ") ORDER BY m.name", nativeQuery = true)
         List<Employee> findDistinctManagersOfActiveEmployeesByIds(
@@ -544,7 +544,7 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long>, JpaSp
                         "AND EXISTS (" +
                         "  SELECT 1 FROM allocations a JOIN monthly_allocations ma ON ma.allocation_id = a.id " +
                         "  WHERE a.employee_id = e.id AND a.allocation_type = 'PROJECT' " +
-                        "  AND ma.year = :year AND ma.month = :month AND ma.percentage > 0" +
+                        "  AND ma.\"year\" = :year AND ma.\"month\" = :month AND ma.percentage > 0" +
                         ") " +
                         "ORDER BY m.name", nativeQuery = true)
         List<Employee> findDistinctManagersOfActiveByEmployeeSearch(
@@ -560,7 +560,7 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long>, JpaSp
                         "AND EXISTS (" +
                         "  SELECT 1 FROM allocations a JOIN monthly_allocations ma ON ma.allocation_id = a.id " +
                         "  WHERE a.employee_id = e.id AND a.allocation_type = 'PROJECT' " +
-                        "  AND ma.year = :year AND ma.month = :month AND ma.percentage > 0" +
+                        "  AND ma.\"year\" = :year AND ma.\"month\" = :month AND ma.percentage > 0" +
                         ") " +
                         "ORDER BY m.name", nativeQuery = true)
         List<Employee> findDistinctManagersOfActiveByEmployeeSearchByIds(
@@ -658,7 +658,7 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long>, JpaSp
                         "  SELECT 1 FROM allocations a " +
                         "  JOIN monthly_allocations ma ON ma.allocation_id = a.id " +
                         "  WHERE a.employee_id = e.id AND a.allocation_type = 'PROJECT' " +
-                        "  AND ma.year = :year AND ma.month = :month AND ma.percentage > 0) " +
+                        "  AND ma.\"year\" = :year AND ma.\"month\" = :month AND ma.percentage > 0) " +
                         "AND NOT EXISTS (" +
                         "  SELECT 1 FROM allocations a WHERE a.employee_id = e.id " +
                         "  AND a.allocation_type = 'PROSPECT')", nativeQuery = true)
@@ -676,7 +676,7 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long>, JpaSp
                         "  SELECT 1 FROM allocations a " +
                         "  JOIN monthly_allocations ma ON ma.allocation_id = a.id " +
                         "  WHERE a.employee_id = e.id AND a.allocation_type = 'PROJECT' " +
-                        "  AND ma.year = :year AND ma.month = :month AND ma.percentage > 0) " +
+                        "  AND ma.\"year\" = :year AND ma.\"month\" = :month AND ma.percentage > 0) " +
                         "AND NOT EXISTS (" +
                         "  SELECT 1 FROM allocations a WHERE a.employee_id = e.id " +
                         "  AND a.allocation_type = 'PROSPECT')", nativeQuery = true)
@@ -694,7 +694,7 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long>, JpaSp
                         "JOIN monthly_allocations ma ON ma.allocation_id = a.id " +
                         "WHERE e.resignation_date IS NULL " +
                         "AND a.allocation_type = 'PROJECT' " +
-                        "AND ma.year = :year AND ma.month = :month AND ma.percentage > 0", nativeQuery = true)
+                        "AND ma.\"year\" = :year AND ma.\"month\" = :month AND ma.percentage > 0", nativeQuery = true)
         long countActiveAllocatedEmployees(@Param("year") int year, @Param("month") int month);
 
         @Query(value = "SELECT COUNT(DISTINCT e.id) FROM employees e " +
@@ -702,7 +702,7 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long>, JpaSp
                         "JOIN monthly_allocations ma ON ma.allocation_id = a.id " +
                         "WHERE e.resignation_date IS NULL AND e.id IN :ids " +
                         "AND a.allocation_type = 'PROJECT' " +
-                        "AND ma.year = :year AND ma.month = :month AND ma.percentage > 0", nativeQuery = true)
+                        "AND ma.\"year\" = :year AND ma.\"month\" = :month AND ma.percentage > 0", nativeQuery = true)
         long countActiveAllocatedEmployeesByIds(@Param("ids") List<Long> ids,
                         @Param("year") int year, @Param("month") int month);
 
@@ -721,7 +721,7 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long>, JpaSp
                         "  SELECT 1 FROM allocations a " +
                         "  JOIN monthly_allocations ma ON ma.allocation_id = a.id " +
                         "  WHERE a.employee_id = e.id AND a.allocation_type = 'PROJECT' " +
-                        "  AND ma.year = :year AND ma.month = :month AND ma.percentage > 0)", nativeQuery = true)
+                        "  AND ma.\"year\" = :year AND ma.\"month\" = :month AND ma.percentage > 0)", nativeQuery = true)
         long countProspectEmployees(@Param("year") int year, @Param("month") int month);
 
         @Query(value = "SELECT COUNT(*) FROM employees e " +
@@ -732,7 +732,7 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long>, JpaSp
                         "  SELECT 1 FROM allocations a " +
                         "  JOIN monthly_allocations ma ON ma.allocation_id = a.id " +
                         "  WHERE a.employee_id = e.id AND a.allocation_type = 'PROJECT' " +
-                        "  AND ma.year = :year AND ma.month = :month AND ma.percentage > 0)", nativeQuery = true)
+                        "  AND ma.\"year\" = :year AND ma.\"month\" = :month AND ma.percentage > 0)", nativeQuery = true)
         long countProspectEmployeesByIds(@Param("ids") List<Long> ids,
                         @Param("year") int year, @Param("month") int month);
 
@@ -749,7 +749,7 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long>, JpaSp
                         "  JOIN monthly_allocations ma ON ma.allocation_id = a.id " +
                         "  WHERE e.resignation_date IS NULL " +
                         "  AND a.allocation_type = 'PROJECT' " +
-                        "  AND ma.year = :year AND ma.month = :month AND ma.percentage > 0 " +
+                        "  AND ma.\"year\" = :year AND ma.\"month\" = :month AND ma.percentage > 0 " +
                         "  GROUP BY e.id" +
                         ") sub", nativeQuery = true)
         double averageAllocationPercentage(@Param("year") int year, @Param("month") int month);
@@ -760,7 +760,7 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long>, JpaSp
                         "  JOIN monthly_allocations ma ON ma.allocation_id = a.id " +
                         "  WHERE e.resignation_date IS NULL AND e.id IN :ids " +
                         "  AND a.allocation_type = 'PROJECT' " +
-                        "  AND ma.year = :year AND ma.month = :month AND ma.percentage > 0 " +
+                        "  AND ma.\"year\" = :year AND ma.\"month\" = :month AND ma.percentage > 0 " +
                         "  GROUP BY e.id" +
                         ") sub", nativeQuery = true)
         double averageAllocationPercentageByIds(@Param("ids") List<Long> ids,
