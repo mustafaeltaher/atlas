@@ -357,7 +357,7 @@ import { Allocation, EmployeeAllocationSummary, Employee, Project, Manager } fro
               </table>
 
               <div class="modal-actions">
-                <button class="btn btn-secondary" (click)="showDetailModal = false">Close</button>
+                <button class="btn btn-primary" (click)="showDetailModal = false">Close</button>
               </div>
             </div>
           </div>
@@ -818,9 +818,14 @@ import { Allocation, EmployeeAllocationSummary, Employee, Project, Manager } fro
     }
 
     .modal-actions {
+      padding: 16px 24px;
       display: flex;
-      gap: 12px;
       justify-content: flex-end;
+      gap: 12px;
+      background: var(--bg-card);
+      border-bottom-left-radius: 12px;
+      border-bottom-right-radius: 12px;
+      flex-shrink: 0;
       margin-top: 20px;
     }
 
