@@ -73,11 +73,6 @@ public interface ProjectRepository extends JpaSpecificationExecutor<Project>, Jp
 
         // Faceted Search - Statuses
         @Query("SELECT DISTINCT p.status FROM Project p " +
-                        "WHERE (:region IS NULL OR p.region = :region)")
-        List<Project.ProjectStatus> findDistinctStatusesByRegion(@Param("region") String region);
-
-        // Unified routing: accept nullable projectIds (null = no filter)
-        @Query("SELECT DISTINCT p.status FROM Project p " +
                         "WHERE (:region IS NULL OR p.region = :region) " +
                         "AND (:search IS NULL OR LOWER(p.description) LIKE :search OR LOWER(p.projectId) LIKE :search) "
                         +

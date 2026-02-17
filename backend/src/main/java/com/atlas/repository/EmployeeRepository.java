@@ -26,9 +26,6 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long>, JpaSp
 
         boolean existsByEmail(String email);
 
-        @Query("SELECT e FROM Employee e LEFT JOIN FETCH e.manager WHERE e.resignationDate IS NULL")
-        List<Employee> findAllWithManager();
-
         @Query("SELECT e FROM Employee e LEFT JOIN FETCH e.tower")
         List<Employee> findAllWithTower();
 
@@ -41,43 +38,6 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long>, JpaSp
                         "  INNER JOIN subordinates s ON s.id = e.manager_id " +
                         ") SELECT id FROM subordinates", nativeQuery = true)
         List<Long> findAllSubordinateIds(@Param("managerId") Long managerId);
-
-        // Paginated query for allocation view: LEFT JOINs with allocations
-        @Query(value = "SELECT DISTINCT e FROM Employee e " +
-                        "LEFT JOIN Allocation a ON a.employee = e " +
-                        "LEFT JOIN a.project p " +
-                        "WHERE e.resignationDate IS NULL " +
-                        "AND (:search IS NULL OR LOWER(e.name) LIKE :search OR LOWER(e.email) LIKE :search) " +
-                        "AND (:managerId IS NULL OR e.manager.id = :managerId) " +
-                        "ORDER BY e.name", countQuery = "SELECT COUNT(DISTINCT e.id) FROM Employee e " +
-                                        "LEFT JOIN Allocation a ON a.employee = e " +
-                                        "LEFT JOIN a.project p " +
-                                        "WHERE e.resignationDate IS NULL " +
-                                        "AND (:search IS NULL OR LOWER(e.name) LIKE :search OR LOWER(e.email) LIKE :search) " +
-                                        "AND (:managerId IS NULL OR e.manager.id = :managerId)")
-        Page<Employee> findEmployeesForAllocationView(
-                        @Param("search") String search,
-                        @Param("managerId") Long managerId,
-                        Pageable pageable);
-
-        // Paginated query for allocation view by employee IDs
-        @Query(value = "SELECT DISTINCT e FROM Employee e " +
-                        "LEFT JOIN Allocation a ON a.employee = e " +
-                        "LEFT JOIN a.project p " +
-                        "WHERE e.resignationDate IS NULL AND e.id IN :employeeIds " +
-                        "AND (:search IS NULL OR LOWER(e.name) LIKE :search OR LOWER(e.email) LIKE :search) " +
-                        "AND (:managerId IS NULL OR e.manager.id = :managerId) " +
-                        "ORDER BY e.name", countQuery = "SELECT COUNT(DISTINCT e.id) FROM Employee e " +
-                                        "LEFT JOIN Allocation a ON a.employee = e " +
-                                        "LEFT JOIN a.project p " +
-                                        "WHERE e.resignationDate IS NULL AND e.id IN :employeeIds " +
-                                        "AND (:search IS NULL OR LOWER(e.name) LIKE :search OR LOWER(e.email) LIKE :search) " +
-                                        "AND (:managerId IS NULL OR e.manager.id = :managerId)")
-        Page<Employee> findEmployeesForAllocationViewByIds(
-                        @Param("employeeIds") List<Long> employeeIds,
-                        @Param("search") String search,
-                        @Param("managerId") Long managerId,
-                        Pageable pageable);
 
         // Find BENCH employees: no active PROJECT, no PROSPECT, no MATERNITY, no
         // VACATION
@@ -363,13 +323,6 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long>, JpaSp
                         Pageable pageable);
 
         // Unified routing methods: accept nullable employeeIds (null = no filter)
-
-        default Page<Employee> findEmployeesForAllocationViewFiltered(
-                        List<Long> employeeIds, String search, Long managerId, Pageable pageable) {
-                if (employeeIds == null)
-                        return findEmployeesForAllocationView(search, managerId, pageable);
-                return findEmployeesForAllocationViewByIds(employeeIds, search, managerId, pageable);
-        }
 
         default Page<Employee> findBenchEmployeesFiltered(
                         List<Long> employeeIds, String search, Long managerId,
