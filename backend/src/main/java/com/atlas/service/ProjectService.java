@@ -130,13 +130,16 @@ public class ProjectService {
         Project project = projectRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Project not found: " + id));
 
-        project.setDescription(projectDTO.getDescription());
-        project.setProjectType(projectDTO.getProjectType());
-        project.setRegion(projectDTO.getRegion());
-        project.setVertical(projectDTO.getVertical());
-        project.setStartDate(projectDTO.getStartDate());
-        project.setEndDate(projectDTO.getEndDate());
-        project.setStatus(projectDTO.getStatus());
+        // Only update editable fields: status, startDate, endDate
+        if (projectDTO.getStatus() != null) {
+            project.setStatus(projectDTO.getStatus());
+        }
+        if (projectDTO.getStartDate() != null) {
+            project.setStartDate(projectDTO.getStartDate());
+        }
+        if (projectDTO.getEndDate() != null) {
+            project.setEndDate(projectDTO.getEndDate());
+        }
 
         project = projectRepository.save(project);
         return toDTO(project);

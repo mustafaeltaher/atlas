@@ -42,7 +42,7 @@ import { Allocation, EmployeeAllocationSummary, Employee, Project, Manager } fro
               <circle cx="11" cy="11" r="8"></circle>
               <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
             </svg>
-            <input type="text" placeholder="Search by employee or project..." [(ngModel)]="searchTerm" (input)="onSearch()">
+            <input type="text" placeholder="Search by employee name..." [(ngModel)]="searchTerm" (input)="onSearch()">
           </div>
           <select class="filter-select" [(ngModel)]="allocationTypeFilter" (change)="onFilter()">
             <option value="">All Types</option>
