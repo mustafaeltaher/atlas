@@ -47,15 +47,13 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long>, JpaSp
                         "LEFT JOIN Allocation a ON a.employee = e " +
                         "LEFT JOIN a.project p " +
                         "WHERE e.resignationDate IS NULL " +
-                        "AND (:search IS NULL OR LOWER(e.name) LIKE :search " +
-                        "OR (p IS NOT NULL AND LOWER(p.description) LIKE :search)) " +
+                        "AND (:search IS NULL OR LOWER(e.name) LIKE :search OR LOWER(e.email) LIKE :search) " +
                         "AND (:managerId IS NULL OR e.manager.id = :managerId) " +
                         "ORDER BY e.name", countQuery = "SELECT COUNT(DISTINCT e.id) FROM Employee e " +
                                         "LEFT JOIN Allocation a ON a.employee = e " +
                                         "LEFT JOIN a.project p " +
                                         "WHERE e.resignationDate IS NULL " +
-                                        "AND (:search IS NULL OR LOWER(e.name) LIKE :search " +
-                                        "OR (p IS NOT NULL AND LOWER(p.description) LIKE :search)) " +
+                                        "AND (:search IS NULL OR LOWER(e.name) LIKE :search OR LOWER(e.email) LIKE :search) " +
                                         "AND (:managerId IS NULL OR e.manager.id = :managerId)")
         Page<Employee> findEmployeesForAllocationView(
                         @Param("search") String search,
@@ -67,15 +65,13 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long>, JpaSp
                         "LEFT JOIN Allocation a ON a.employee = e " +
                         "LEFT JOIN a.project p " +
                         "WHERE e.resignationDate IS NULL AND e.id IN :employeeIds " +
-                        "AND (:search IS NULL OR LOWER(e.name) LIKE :search " +
-                        "OR (p IS NOT NULL AND LOWER(p.description) LIKE :search)) " +
+                        "AND (:search IS NULL OR LOWER(e.name) LIKE :search OR LOWER(e.email) LIKE :search) " +
                         "AND (:managerId IS NULL OR e.manager.id = :managerId) " +
                         "ORDER BY e.name", countQuery = "SELECT COUNT(DISTINCT e.id) FROM Employee e " +
                                         "LEFT JOIN Allocation a ON a.employee = e " +
                                         "LEFT JOIN a.project p " +
                                         "WHERE e.resignationDate IS NULL AND e.id IN :employeeIds " +
-                                        "AND (:search IS NULL OR LOWER(e.name) LIKE :search " +
-                                        "OR (p IS NOT NULL AND LOWER(p.description) LIKE :search)) " +
+                                        "AND (:search IS NULL OR LOWER(e.name) LIKE :search OR LOWER(e.email) LIKE :search) " +
                                         "AND (:managerId IS NULL OR e.manager.id = :managerId)")
         Page<Employee> findEmployeesForAllocationViewByIds(
                         @Param("employeeIds") List<Long> employeeIds,
@@ -87,7 +83,7 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long>, JpaSp
         // VACATION
         @Query(value = "SELECT DISTINCT e.* FROM employees e " +
                         "WHERE e.resignation_date IS NULL " +
-                        "AND (CAST(:search AS text) IS NULL OR LOWER(e.name) LIKE :search) " +
+                        "AND (CAST(:search AS text) IS NULL OR LOWER(e.name) LIKE :search OR LOWER(e.email) LIKE :search) " +
                         "AND (CAST(:managerId AS bigint) IS NULL OR e.manager_id = :managerId) " +
                         "AND NOT EXISTS (" +
                         "  SELECT 1 FROM allocations a " +
@@ -105,7 +101,7 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long>, JpaSp
                         +
                         "ORDER BY e.name", countQuery = "SELECT COUNT(DISTINCT e.id) FROM employees e " +
                                         "WHERE e.resignation_date IS NULL " +
-                                        "AND (CAST(:search AS text) IS NULL OR LOWER(e.name) LIKE :search) " +
+                                        "AND (CAST(:search AS text) IS NULL OR LOWER(e.name) LIKE :search OR LOWER(e.email) LIKE :search) " +
                                         "AND (CAST(:managerId AS bigint) IS NULL OR e.manager_id = :managerId) " +
                                         "AND NOT EXISTS (" +
                                         "  SELECT 1 FROM allocations a " +

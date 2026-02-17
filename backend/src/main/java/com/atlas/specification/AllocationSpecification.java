@@ -55,11 +55,12 @@ public class AllocationSpecification {
                 predicates.add(cb.equal(employeeJoin.get("manager").get("id"), managerId));
             }
 
-            // Search Filter (Employee Name only - not project description)
+            // Search Filter (Employee Name or Email)
             if (search != null && !search.trim().isEmpty()) {
                 String searchLike = "%" + search.trim().toLowerCase() + "%";
                 Predicate employeeNameLike = cb.like(cb.lower(employeeJoin.get("name")), searchLike);
-                predicates.add(employeeNameLike);
+                Predicate employeeEmailLike = cb.like(cb.lower(employeeJoin.get("email")), searchLike);
+                predicates.add(cb.or(employeeNameLike, employeeEmailLike));
             }
 
             // Order by? Typically handled by Pageable, but we can add default sorting if

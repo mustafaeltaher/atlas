@@ -69,10 +69,12 @@ public class AllocationController {
 
     @GetMapping("/allocation-types")
     public ResponseEntity<List<String>> getAllocationTypes(
+            Authentication authentication,
             @RequestParam(required = false) Long managerId,
             @RequestParam(required = false) String search,
             @RequestParam(required = false) String allocationType) {
-        return ResponseEntity.ok(allocationService.getDistinctAllocationTypes(managerId, search, allocationType));
+        User currentUser = userDetailsService.getUserByUsername(authentication.getName());
+        return ResponseEntity.ok(allocationService.getDistinctAllocationTypes(currentUser, managerId, search, allocationType));
     }
 
     @GetMapping("/{id}")

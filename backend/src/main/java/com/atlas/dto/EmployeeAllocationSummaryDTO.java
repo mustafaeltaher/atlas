@@ -14,6 +14,7 @@ import java.util.List;
 public class EmployeeAllocationSummaryDTO {
     private Long employeeId;
     private String employeeName;
+    private String employeeEmail;
     private String employeeOracleId;
     private Double totalAllocationPercentage;
     private int projectCount;

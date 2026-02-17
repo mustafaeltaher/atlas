@@ -42,7 +42,7 @@ import { Allocation, EmployeeAllocationSummary, Employee, Project, Manager } fro
               <circle cx="11" cy="11" r="8"></circle>
               <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
             </svg>
-            <input type="text" placeholder="Search by employee name..." [(ngModel)]="searchTerm" (input)="onSearch()">
+            <input type="text" placeholder="Search by name or email..." [(ngModel)]="searchTerm" (input)="onSearch()">
           </div>
           <select class="filter-select" [(ngModel)]="allocationTypeFilter" (change)="onFilter()">
             <option value="">All Types</option>
@@ -97,7 +97,10 @@ import { Allocation, EmployeeAllocationSummary, Employee, Project, Manager } fro
                     <td>
                       <div class="employee-cell">
                         <div class="avatar-sm">{{ getInitials(summary.employeeName) }}</div>
-                        <span>{{ summary.employeeName }}</span>
+                        <div class="employee-info">
+                          <div class="name">{{ summary.employeeName }}</div>
+                          <div class="email">{{ summary.employeeEmail }}</div>
+                        </div>
                       </div>
                     </td>
                     <td class="text-muted">{{ summary.employeeOracleId || '-' }}</td>
@@ -607,6 +610,22 @@ import { Allocation, EmployeeAllocationSummary, Employee, Project, Manager } fro
       font-size: 12px;
       font-weight: 600;
       flex-shrink: 0;
+    }
+
+    .employee-info {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .name {
+      font-weight: 500;
+      color: var(--text-primary);
+    }
+
+    .email {
+      font-size: 12px;
+      color: var(--text-muted);
     }
 
     .project-count {

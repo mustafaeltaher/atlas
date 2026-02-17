@@ -113,6 +113,7 @@ export interface Allocation {
 export interface EmployeeAllocationSummary {
     employeeId: number;
     employeeName: string;
+    employeeEmail: string;
     employeeOracleId: string;
     totalAllocationPercentage: number;
     projectCount: number;
