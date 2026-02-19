@@ -354,14 +354,14 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long>, JpaSp
         // 1. No filter: all managers of active employees
         @Query("SELECT DISTINCT m FROM Employee m " +
                         "WHERE m.resignationDate IS NULL " +
-                        "AND LOWER(m.name) LIKE :search " +
+                        "AND (:search IS NULL OR LOWER(m.name) LIKE :search) " +
                         "AND EXISTS (SELECT 1 FROM Employee e WHERE e.manager = m AND e.resignationDate IS NULL) " +
                         "ORDER BY m.name")
         List<Employee> findDistinctManagers(@Param("search") String search);
 
         @Query("SELECT DISTINCT m FROM Employee m " +
                         "WHERE m.resignationDate IS NULL " +
-                        "AND LOWER(m.name) LIKE :search " +
+                        "AND (:search IS NULL OR LOWER(m.name) LIKE :search) " +
                         "AND EXISTS (SELECT 1 FROM Employee e WHERE e.manager = m AND e.resignationDate IS NULL AND e.id IN :ids) "
                         +
                         "ORDER BY m.name")
@@ -376,7 +376,7 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long>, JpaSp
         // 2. Standard allocation type filter (e.g. PROJECT, PROSPECT)
         @Query(value = "SELECT DISTINCT m.* FROM employees m " +
                         "WHERE m.resignation_date IS NULL " +
-                        "AND LOWER(m.name) LIKE :search " +
+                        "AND (CAST(:search AS text) IS NULL OR LOWER(m.name) LIKE :search) " +
                         "AND EXISTS (SELECT 1 FROM employees e " +
                         "  JOIN allocations a ON a.employee_id = e.id " +
                         "  WHERE e.manager_id = m.id AND e.resignation_date IS NULL " +
@@ -386,7 +386,7 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long>, JpaSp
 
         @Query(value = "SELECT DISTINCT m.* FROM employees m " +
                         "WHERE m.resignation_date IS NULL " +
-                        "AND LOWER(m.name) LIKE :search " +
+                        "AND (CAST(:search AS text) IS NULL OR LOWER(m.name) LIKE :search) " +
                         "AND EXISTS (SELECT 1 FROM employees e " +
                         "  JOIN allocations a ON a.employee_id = e.id " +
                         "  WHERE e.manager_id = m.id AND e.resignation_date IS NULL AND e.id IN :ids " +
@@ -406,7 +406,7 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long>, JpaSp
         // month
         @Query(value = "SELECT DISTINCT m.* FROM employees m " +
                         "WHERE m.resignation_date IS NULL " +
-                        "AND LOWER(m.name) LIKE :search " +
+                        "AND (CAST(:search AS text) IS NULL OR LOWER(m.name) LIKE :search) " +
                         "AND EXISTS (" +
                         "  SELECT 1 FROM employees e WHERE e.manager_id = m.id AND e.resignation_date IS NULL " +
                         "  AND NOT EXISTS (" +
@@ -420,7 +420,7 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long>, JpaSp
 
         @Query(value = "SELECT DISTINCT m.* FROM employees m " +
                         "WHERE m.resignation_date IS NULL " +
-                        "AND LOWER(m.name) LIKE :search " +
+                        "AND (CAST(:search AS text) IS NULL OR LOWER(m.name) LIKE :search) " +
                         "AND EXISTS (" +
                         "  SELECT 1 FROM employees e WHERE e.manager_id = m.id AND e.resignation_date IS NULL " +
                         "  AND e.id IN :ids AND NOT EXISTS (" +
@@ -499,7 +499,7 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long>, JpaSp
         // month
         @Query(value = "SELECT DISTINCT m.* FROM employees m " +
                         "WHERE m.resignation_date IS NULL " +
-                        "AND LOWER(m.name) LIKE :search " +
+                        "AND (CAST(:search AS text) IS NULL OR LOWER(m.name) LIKE :search) " +
                         "AND EXISTS (" +
                         "  SELECT 1 FROM employees e WHERE e.manager_id = m.id AND e.resignation_date IS NULL " +
                         "  AND EXISTS (" +
@@ -513,7 +513,7 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long>, JpaSp
 
         @Query(value = "SELECT DISTINCT m.* FROM employees m " +
                         "WHERE m.resignation_date IS NULL " +
-                        "AND LOWER(m.name) LIKE :search " +
+                        "AND (CAST(:search AS text) IS NULL OR LOWER(m.name) LIKE :search) " +
                         "AND EXISTS (" +
                         "  SELECT 1 FROM employees e WHERE e.manager_id = m.id AND e.resignation_date IS NULL " +
                         "  AND e.id IN :ids AND EXISTS (" +
