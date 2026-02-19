@@ -53,7 +53,7 @@ public class Allocation {
     @Column(name = "end_date")
     private LocalDate endDate;
 
-    @OneToMany(mappedBy = "allocation", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
+    @OneToMany(mappedBy = "allocation", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     @Builder.Default
     @ToString.Exclude
     @EqualsAndHashCode.Exclude

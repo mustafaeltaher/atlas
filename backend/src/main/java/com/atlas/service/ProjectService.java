@@ -3,9 +3,11 @@ package com.atlas.service;
 import com.atlas.dto.ProjectDTO;
 import com.atlas.entity.Allocation;
 import com.atlas.entity.Employee;
+import com.atlas.entity.MonthlyAllocation;
 import com.atlas.entity.Project;
 import com.atlas.entity.User;
 import com.atlas.repository.AllocationRepository;
+import com.atlas.repository.MonthlyAllocationRepository;
 import com.atlas.repository.ProjectRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -27,6 +29,7 @@ public class ProjectService {
     private final EmployeeService employeeService;
     private final ProjectRepository projectRepository;
     private final AllocationRepository allocationRepository;
+    private final MonthlyAllocationRepository monthlyAllocationRepository;
 
     public List<ProjectDTO> getAllProjects(User currentUser) {
         List<Project> projects = getFilteredProjects(currentUser);
@@ -49,8 +52,6 @@ public class ProjectService {
             }
         }
 
-        String searchParam = (search != null && !search.trim().isEmpty()) ? "%" + search.trim().toLowerCase() + "%"
-                : null;
         String regionParam = (region != null && !region.trim().isEmpty()) ? region.trim() : null;
 
         List<Long> projectIds = getFilteredProjectIds(currentUser);
@@ -199,11 +200,30 @@ public class ProjectService {
     private ProjectDTO toDTO(Project project, List<Allocation> allocations) {
         int currentYear = LocalDate.now().getYear();
         int currentMonth = LocalDate.now().getMonthValue();
+
+        // Batch-fetch monthly allocations for current month (database-level filtering)
+        // This avoids N lazy loads and in-memory filtering
+        List<Long> allocationIds = allocations.stream()
+                .map(Allocation::getId)
+                .collect(Collectors.toList());
+
+        Map<Long, Integer> currentMonthAllocations = Collections.emptyMap();
+        if (!allocationIds.isEmpty()) {
+            currentMonthAllocations = monthlyAllocationRepository
+                    .findByAllocationIdsAndYearAndMonth(allocationIds, currentYear, currentMonth)
+                    .stream()
+                    .collect(Collectors.toMap(
+                            ma -> ma.getAllocation().getId(),
+                            MonthlyAllocation::getPercentage,
+                            (a, b) -> a));
+        }
+
+        // Calculate average allocation across employees with >0% allocation
         int totalAllocation = 0;
         int count = 0;
 
         for (Allocation allocation : allocations) {
-            Integer alloc = allocation.getAllocationForYearMonth(currentYear, currentMonth);
+            Integer alloc = currentMonthAllocations.get(allocation.getId());
             if (alloc != null && alloc > 0) {
                 totalAllocation += alloc;
                 count++;

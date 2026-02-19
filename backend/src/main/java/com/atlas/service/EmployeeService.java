@@ -3,10 +3,12 @@ package com.atlas.service;
 import com.atlas.dto.EmployeeDTO;
 import com.atlas.entity.Allocation;
 import com.atlas.entity.Employee;
+import com.atlas.entity.MonthlyAllocation;
 import com.atlas.entity.User;
 import com.atlas.repository.AllocationRepository;
 import com.atlas.repository.EmployeeRepository;
 import com.atlas.repository.EmployeeSkillRepository;
+import com.atlas.repository.MonthlyAllocationRepository;
 import com.atlas.repository.TechTowerRepository;
 import com.atlas.specification.EmployeeSpecification;
 import lombok.RequiredArgsConstructor;
@@ -31,6 +33,7 @@ public class EmployeeService {
     private final AllocationRepository allocationRepository;
     private final EmployeeSkillRepository employeeSkillRepository;
     private final TechTowerRepository techTowerRepository;
+    private final MonthlyAllocationRepository monthlyAllocationRepository;
 
     public List<EmployeeDTO> getAllEmployees(User currentUser) {
         List<Employee> employees = getFilteredEmployees(currentUser);
@@ -160,6 +163,23 @@ public class EmployeeService {
             employeeStatus = "ACTIVE";
         }
 
+        // Batch-fetch monthly allocations for current month (database-level filtering)
+        // This avoids N lazy loads and in-memory filtering
+        List<Long> allocationIds = allocations.stream()
+                .map(Allocation::getId)
+                .collect(Collectors.toList());
+
+        Map<Long, Integer> currentMonthAllocations = Collections.emptyMap();
+        if (!allocationIds.isEmpty()) {
+            currentMonthAllocations = monthlyAllocationRepository
+                    .findByAllocationIdsAndYearAndMonth(allocationIds, currentYear, currentMonth)
+                    .stream()
+                    .collect(Collectors.toMap(
+                            ma -> ma.getAllocation().getId(),
+                            MonthlyAllocation::getPercentage,
+                            (a, b) -> a));
+        }
+
         // Derive allocation status from PROJECT/PROSPECT allocations
         boolean hasActive = false;
         boolean hasProspect = false;
@@ -168,8 +188,13 @@ public class EmployeeService {
         for (Allocation allocation : allocations) {
             if (allocation.getAllocationType() == Allocation.AllocationType.PROSPECT) {
                 hasProspect = true;
+                // PROSPECT allocations have percentages, so add them to total
+                Integer alloc = currentMonthAllocations.get(allocation.getId());
+                if (alloc != null && alloc > 0) {
+                    totalAllocation += alloc;
+                }
             } else if (allocation.getAllocationType() == Allocation.AllocationType.PROJECT) {
-                Integer alloc = allocation.getAllocationForYearMonth(currentYear, currentMonth);
+                Integer alloc = currentMonthAllocations.get(allocation.getId());
                 if (alloc != null && alloc > 0) {
                     totalAllocation += alloc;
                     hasActive = true;

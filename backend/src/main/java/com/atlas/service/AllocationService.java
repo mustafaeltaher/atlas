@@ -282,27 +282,6 @@ public class AllocationService {
             }
         }
 
-        // If monthly allocations list is provided, create them (only for PROJECT
-        // allocations)
-        if (dto.getMonthlyAllocations() != null && !dto.getMonthlyAllocations().isEmpty()) {
-            if (allocationType == Allocation.AllocationType.PROSPECT) {
-                throw new RuntimeException("PROSPECT allocations cannot have monthly allocation percentages. " +
-                        "Change allocation type to PROJECT to add monthly allocations.");
-            }
-            for (MonthlyAllocationDTO maDTO : dto.getMonthlyAllocations()) {
-                Integer pct = maDTO.getPercentage();
-                validateAllocationPercentage(pct);
-
-                MonthlyAllocation monthlyAlloc = MonthlyAllocation.builder()
-                        .allocation(allocation)
-                        .year(maDTO.getYear())
-                        .month(maDTO.getMonth())
-                        .percentage(pct)
-                        .build();
-                monthlyAllocationRepository.save(monthlyAlloc);
-            }
-        }
-
         return toDTO(allocation);
     }
 
@@ -414,20 +393,12 @@ public class AllocationService {
         int currentYear = LocalDate.now().getYear();
         int currentMonth = LocalDate.now().getMonthValue();
 
-        // Get current month allocation (Integer from helper)
-        Integer currentMonthAlloc = allocation.getAllocationForYearMonth(currentYear, currentMonth);
+        // Fetch ONLY the percentage value from database (Projection query)
+        // This avoids lazy loading ALL monthlyAllocations and filtering in-memory
+        Integer currentMonthAlloc = monthlyAllocationRepository
+                .findPercentageByAllocationIdAndYearMonth(allocation.getId(), currentYear, currentMonth)
+                .orElse(null);
         Double allocationPercentage = currentMonthAlloc != null ? (double) currentMonthAlloc : 0.0;
-
-        // Map monthly allocations
-        List<MonthlyAllocationDTO> monthlyDTOs = allocation.getMonthlyAllocations().stream()
-                .map(ma -> MonthlyAllocationDTO.builder()
-                        .id(ma.getId())
-                        .allocationId(allocation.getId())
-                        .year(ma.getYear())
-                        .month(ma.getMonth())
-                        .percentage(ma.getPercentage())
-                        .build())
-                .collect(Collectors.toList());
 
         return AllocationDTO.builder()
                 .id(allocation.getId())
@@ -444,7 +415,6 @@ public class AllocationService {
                 .allocationType(allocation.getAllocationType())
                 .currentMonthAllocation(currentMonthAlloc)
                 .allocationPercentage(allocationPercentage)
-                .monthlyAllocations(monthlyDTOs)
                 .build();
     }
 
