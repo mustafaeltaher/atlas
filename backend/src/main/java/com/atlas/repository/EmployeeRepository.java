@@ -11,6 +11,8 @@ import org.springframework.stereotype.Repository;
 import java.util.List;
 
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
+import com.atlas.specification.EmployeeSpecification;
+import java.time.LocalDate;
 
 @Repository
 public interface EmployeeRepository extends JpaRepository<Employee, Long>, JpaSpecificationExecutor<Employee>, EmployeeRepositoryCustom {
@@ -192,13 +194,9 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long>, JpaSp
         default Page<Employee> findProspectEmployeesFiltered(
                         List<Long> employeeIds, String search, Long managerId,
                         int currentYear, int currentMonth, Pageable pageable) {
-                // Handle empty list case - IN () clause fails in native SQL
-                if (employeeIds != null && employeeIds.isEmpty()) {
-                        return Page.empty(pageable);
-                }
-                if (employeeIds == null)
-                        return findProspectEmployees(search, managerId, currentYear, currentMonth, pageable);
-                return findProspectEmployeesByIds(employeeIds, search, managerId, currentYear, currentMonth, pageable);
+                // Use Specification instead of native SQL - more type-safe and maintainable
+                return findAll(EmployeeSpecification.prospectEmployees(search, managerId, employeeIds,
+                                currentYear, currentMonth), pageable);
         }
 
         // Find ACTIVE allocated employees: those with PROJECT allocation in current
@@ -331,26 +329,17 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long>, JpaSp
         default Page<Employee> findBenchEmployeesFiltered(
                         List<Long> employeeIds, String search, Long managerId,
                         int currentYear, int currentMonth, Pageable pageable) {
-                // Handle empty list case - IN () clause fails in native SQL
-                if (employeeIds != null && employeeIds.isEmpty()) {
-                        return Page.empty(pageable);
-                }
-                if (employeeIds == null)
-                        return findBenchEmployees(search, managerId, currentYear, currentMonth, pageable);
-                return findBenchEmployeesByIds(employeeIds, search, managerId, currentYear, currentMonth, pageable);
+                // Use Specification instead of native SQL - more type-safe and maintainable
+                return findAll(EmployeeSpecification.benchEmployees(search, managerId, employeeIds,
+                                currentYear, currentMonth), pageable);
         }
 
         default Page<Employee> findActiveAllocatedEmployeesFiltered(
                         List<Long> employeeIds, String search, Long managerId,
                         int currentYear, int currentMonth, Pageable pageable) {
-                // Handle empty list case - IN () clause fails in native SQL
-                if (employeeIds != null && employeeIds.isEmpty()) {
-                        return Page.empty(pageable);
-                }
-                if (employeeIds == null)
-                        return findActiveAllocatedEmployees(search, managerId, currentYear, currentMonth, pageable);
-                return findActiveAllocatedEmployeesByIds(employeeIds, search, managerId, currentYear, currentMonth,
-                                pageable);
+                // Use Specification instead of native SQL - more type-safe and maintainable
+                return findAll(EmployeeSpecification.activeEmployees(search, managerId, employeeIds,
+                                currentYear, currentMonth), pageable);
         }
 
         default Page<Employee> findEmployeesByAllocationTypeFiltered(
