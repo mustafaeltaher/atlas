@@ -192,6 +192,10 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long>, JpaSp
         default Page<Employee> findProspectEmployeesFiltered(
                         List<Long> employeeIds, String search, Long managerId,
                         int currentYear, int currentMonth, Pageable pageable) {
+                // Handle empty list case - IN () clause fails in native SQL
+                if (employeeIds != null && employeeIds.isEmpty()) {
+                        return Page.empty(pageable);
+                }
                 if (employeeIds == null)
                         return findProspectEmployees(search, managerId, currentYear, currentMonth, pageable);
                 return findProspectEmployeesByIds(employeeIds, search, managerId, currentYear, currentMonth, pageable);
@@ -327,6 +331,10 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long>, JpaSp
         default Page<Employee> findBenchEmployeesFiltered(
                         List<Long> employeeIds, String search, Long managerId,
                         int currentYear, int currentMonth, Pageable pageable) {
+                // Handle empty list case - IN () clause fails in native SQL
+                if (employeeIds != null && employeeIds.isEmpty()) {
+                        return Page.empty(pageable);
+                }
                 if (employeeIds == null)
                         return findBenchEmployees(search, managerId, currentYear, currentMonth, pageable);
                 return findBenchEmployeesByIds(employeeIds, search, managerId, currentYear, currentMonth, pageable);
@@ -335,6 +343,10 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long>, JpaSp
         default Page<Employee> findActiveAllocatedEmployeesFiltered(
                         List<Long> employeeIds, String search, Long managerId,
                         int currentYear, int currentMonth, Pageable pageable) {
+                // Handle empty list case - IN () clause fails in native SQL
+                if (employeeIds != null && employeeIds.isEmpty()) {
+                        return Page.empty(pageable);
+                }
                 if (employeeIds == null)
                         return findActiveAllocatedEmployees(search, managerId, currentYear, currentMonth, pageable);
                 return findActiveAllocatedEmployeesByIds(employeeIds, search, managerId, currentYear, currentMonth,
@@ -344,6 +356,10 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long>, JpaSp
         default Page<Employee> findEmployeesByAllocationTypeFiltered(
                         List<Long> employeeIds, String search, Long managerId,
                         String allocationType, Pageable pageable) {
+                // Handle empty list case - IN () clause fails in native SQL
+                if (employeeIds != null && employeeIds.isEmpty()) {
+                        return Page.empty(pageable);
+                }
                 if (employeeIds == null)
                         return findEmployeesByAllocationType(search, managerId, allocationType, pageable);
                 return findEmployeesByAllocationTypeByIds(employeeIds, search, managerId, allocationType, pageable);
@@ -368,6 +384,10 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long>, JpaSp
         List<Employee> findDistinctManagersByIds(@Param("ids") List<Long> ids, @Param("search") String search);
 
         default List<Employee> findDistinctManagersFiltered(List<Long> ids, String search) {
+                // Handle empty list case - IN () clause fails in native SQL
+                if (ids != null && ids.isEmpty()) {
+                        return java.util.Collections.emptyList();
+                }
                 if (ids == null)
                         return findDistinctManagers(search);
                 return findDistinctManagersByIds(ids, search);
@@ -397,6 +417,10 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long>, JpaSp
 
         default List<Employee> findDistinctManagersByAllocationTypeFiltered(List<Long> ids, String type,
                         String search) {
+                // Handle empty list case - IN () clause fails in native SQL
+                if (ids != null && ids.isEmpty()) {
+                        return java.util.Collections.emptyList();
+                }
                 if (ids == null)
                         return findDistinctManagersByAllocationType(type, search);
                 return findDistinctManagersByAllocationTypeByIds(ids, type, search);
@@ -434,6 +458,10 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long>, JpaSp
                         @Param("year") int year, @Param("month") int month, @Param("search") String search);
 
         default List<Employee> findDistinctManagersOfBenchFiltered(List<Long> ids, int year, int month, String search) {
+                // Handle empty list case - IN () clause fails in native SQL
+                if (ids != null && ids.isEmpty()) {
+                        return java.util.Collections.emptyList();
+                }
                 if (ids == null)
                         return findDistinctManagersOfBenchEmployees(year, month, search);
                 return findDistinctManagersOfBenchEmployeesByIds(ids, year, month, search);
@@ -528,6 +556,10 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long>, JpaSp
 
         default List<Employee> findDistinctManagersOfActiveFiltered(List<Long> ids, int year, int month,
                         String search) {
+                // Handle empty list case - IN () clause fails in native SQL
+                if (ids != null && ids.isEmpty()) {
+                        return java.util.Collections.emptyList();
+                }
                 if (ids == null)
                         return findDistinctManagersOfActiveEmployees(year, month, search);
                 return findDistinctManagersOfActiveEmployeesByIds(ids, year, month, search);
@@ -601,6 +633,10 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long>, JpaSp
                         @Param("search") String search);
 
         default List<String> findDistinctTowersFiltered(List<Long> ids, Long managerId, String search) {
+                // Handle empty list case - IN () clause fails in native SQL
+                if (ids != null && ids.isEmpty()) {
+                        return java.util.Collections.emptyList();
+                }
                 if (ids == null)
                         return findDistinctTowers(managerId, search);
                 return findDistinctTowersByIds(ids, managerId, search);
@@ -638,6 +674,10 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long>, JpaSp
 
         default List<Employee> findDistinctManagersForEmployeeFiltersFiltered(List<Long> ids, String tower,
                         String search, String managerSearch) {
+                // Handle empty list case - IN () clause fails in native SQL
+                if (ids != null && ids.isEmpty()) {
+                        return java.util.Collections.emptyList();
+                }
                 if (ids == null)
                         return findDistinctManagersForEmployeeFilters(tower, search, managerSearch);
                 return findDistinctManagersForEmployeeFiltersByIds(ids, tower, search, managerSearch);
@@ -683,6 +723,10 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long>, JpaSp
         long countBenchEmployeesByIds(@Param("ids") List<Long> ids, @Param("year") int year, @Param("month") int month);
 
         default long countBenchEmployeesFiltered(List<Long> ids, int year, int month) {
+                // Handle empty list case - IN () clause fails in native SQL
+                if (ids != null && ids.isEmpty()) {
+                        return 0L;
+                }
                 if (ids == null)
                         return countBenchEmployees(year, month);
                 return countBenchEmployeesByIds(ids, year, month);
@@ -707,6 +751,10 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long>, JpaSp
                         @Param("year") int year, @Param("month") int month);
 
         default long countActiveAllocatedEmployeesFiltered(List<Long> ids, int year, int month) {
+                // Handle empty list case - IN () clause fails in native SQL
+                if (ids != null && ids.isEmpty()) {
+                        return 0L;
+                }
                 if (ids == null)
                         return countActiveAllocatedEmployees(year, month);
                 return countActiveAllocatedEmployeesByIds(ids, year, month);
@@ -737,6 +785,10 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long>, JpaSp
                         @Param("year") int year, @Param("month") int month);
 
         default long countProspectEmployeesFiltered(List<Long> ids, int year, int month) {
+                // Handle empty list case - IN () clause fails in native SQL
+                if (ids != null && ids.isEmpty()) {
+                        return 0L;
+                }
                 if (ids == null)
                         return countProspectEmployees(year, month);
                 return countProspectEmployeesByIds(ids, year, month);
@@ -767,6 +819,10 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long>, JpaSp
                         @Param("year") int year, @Param("month") int month);
 
         default double averageAllocationPercentageFiltered(List<Long> ids, int year, int month) {
+                // Handle empty list case - IN () clause fails in native SQL
+                if (ids != null && ids.isEmpty()) {
+                        return 0.0;
+                }
                 if (ids == null)
                         return averageAllocationPercentage(year, month);
                 return averageAllocationPercentageByIds(ids, year, month);
