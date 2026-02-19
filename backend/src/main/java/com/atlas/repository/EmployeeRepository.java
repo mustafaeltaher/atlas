@@ -828,8 +828,8 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long>, JpaSp
                         "WHERE e.manager_id IS NOT NULL " +
                         "AND e.resignation_date IS NULL " +
                         "AND m.resignation_date IS NULL " +
-                        "AND LOWER(e.name) LIKE CAST(:search AS text) " +
-                        "AND LOWER(m.name) LIKE CAST(:managerSearch AS text) " +
+                        "AND (CAST(:search AS text) IS NULL OR LOWER(e.name) LIKE :search) " +
+                        "AND (CAST(:managerSearch AS text) IS NULL OR LOWER(m.name) LIKE :managerSearch) " +
                         "ORDER BY m.name", nativeQuery = true)
         List<Employee> findDistinctManagersFromAllocationsAllTypes(
                         @Param("search") String search,
@@ -842,8 +842,8 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long>, JpaSp
                         "AND e.resignation_date IS NULL " +
                         "AND m.resignation_date IS NULL " +
                         "AND e.id IN :employeeIds " +
-                        "AND LOWER(e.name) LIKE CAST(:search AS text) " +
-                        "AND LOWER(m.name) LIKE CAST(:managerSearch AS text) " +
+                        "AND (CAST(:search AS text) IS NULL OR LOWER(e.name) LIKE :search) " +
+                        "AND (CAST(:managerSearch AS text) IS NULL OR LOWER(m.name) LIKE :managerSearch) " +
                         "ORDER BY m.name", nativeQuery = true)
         List<Employee> findDistinctManagersFromAllocationsAllTypesByIds(
                         @Param("employeeIds") List<Long> employeeIds,
@@ -858,8 +858,8 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long>, JpaSp
                         "AND e.resignation_date IS NULL " +
                         "AND m.resignation_date IS NULL " +
                         "AND CAST(a.allocation_type AS text) = CAST(:allocationType AS text) " +
-                        "AND LOWER(e.name) LIKE CAST(:search AS text) " +
-                        "AND LOWER(m.name) LIKE CAST(:managerSearch AS text) " +
+                        "AND (CAST(:search AS text) IS NULL OR LOWER(e.name) LIKE :search) " +
+                        "AND (CAST(:managerSearch AS text) IS NULL OR LOWER(m.name) LIKE :managerSearch) " +
                         "ORDER BY m.name", nativeQuery = true)
         List<Employee> findDistinctManagersFromAllocationsByType(
                         @Param("allocationType") String allocationType,
@@ -874,8 +874,8 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long>, JpaSp
                         "AND m.resignation_date IS NULL " +
                         "AND e.id IN :employeeIds " +
                         "AND CAST(a.allocation_type AS text) = CAST(:allocationType AS text) " +
-                        "AND LOWER(e.name) LIKE CAST(:search AS text) " +
-                        "AND LOWER(m.name) LIKE CAST(:managerSearch AS text) " +
+                        "AND (CAST(:search AS text) IS NULL OR LOWER(e.name) LIKE :search) " +
+                        "AND (CAST(:managerSearch AS text) IS NULL OR LOWER(m.name) LIKE :managerSearch) " +
                         "ORDER BY m.name", nativeQuery = true)
         List<Employee> findDistinctManagersFromAllocationsByTypeAndIds(
                         @Param("employeeIds") List<Long> employeeIds,
@@ -888,15 +888,14 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long>, JpaSp
                         List<Long> employeeIds,
                         String search,
                         String managerSearch) {
-                // Format search parameters with wildcards - NEVER pass NULL to avoid PostgreSQL
-                // type inference issues
-                // when same parameter is used multiple times in query
+                // Format search parameters with wildcards, pass NULL for empty search
+                // Queries use (CAST(:param AS text) IS NULL OR condition) pattern
                 String searchParam = (search != null && !search.trim().isEmpty())
                                 ? "%" + search.trim().toLowerCase() + "%"
-                                : "%"; // Match all instead of NULL
+                                : null;
                 String managerSearchParam = (managerSearch != null && !managerSearch.trim().isEmpty())
                                 ? "%" + managerSearch.trim().toLowerCase() + "%"
-                                : "%"; // Match all instead of NULL
+                                : null;
 
                 // Handle empty list case - IN () clause fails in native SQL
                 if (employeeIds != null && employeeIds.isEmpty()) {
