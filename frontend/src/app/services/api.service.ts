@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
-import { Employee, Project, Allocation, EmployeeAllocationSummary, DashboardStats, Page, Manager } from '../models';
+import { Employee, Project, Allocation, EmployeeAllocationSummary, DashboardStats, Page, Manager, EmployeeSkillDTO, SkillDTO, AddSkillRequest } from '../models';
 
 @Injectable({ providedIn: 'root' })
 export class ApiService {
@@ -155,5 +155,22 @@ export class ApiService {
 
     deleteAllocation(id: number): Observable<void> {
         return this.http.delete<void>(`${this.API_URL}/allocations/${id}`);
+    }
+
+    // Employee Skills Management
+    getEmployeeSkills(employeeId: number): Observable<EmployeeSkillDTO[]> {
+        return this.http.get<EmployeeSkillDTO[]>(`${this.API_URL}/employees/${employeeId}/skills`);
+    }
+
+    getAvailableSkills(employeeId: number): Observable<SkillDTO[]> {
+        return this.http.get<SkillDTO[]>(`${this.API_URL}/employees/${employeeId}/skills/available`);
+    }
+
+    addSkillToEmployee(employeeId: number, request: AddSkillRequest): Observable<EmployeeSkillDTO> {
+        return this.http.post<EmployeeSkillDTO>(`${this.API_URL}/employees/${employeeId}/skills`, request);
+    }
+
+    removeSkillFromEmployee(employeeId: number, skillId: number): Observable<void> {
+        return this.http.delete<void>(`${this.API_URL}/employees/${employeeId}/skills/${skillId}`);
     }
 }

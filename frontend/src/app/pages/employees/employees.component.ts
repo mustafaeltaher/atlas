@@ -162,6 +162,12 @@ import { Employee, Manager } from '../../models';
                             <circle cx="12" cy="12" r="3"></circle>
                           </svg>
                         </button>
+                        <button class="btn-icon" (click)="openEditSkillsModal(emp)" title="Edit Skills">
+                          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                          </svg>
+                        </button>
                       </div>
                     </td>
                   </tr>
@@ -313,6 +319,79 @@ import { Employee, Manager } from '../../models';
               </div>
               <div class="modal-actions">
                 <button class="btn btn-primary" (click)="closeDetails()">Close</button>
+              </div>
+            </div>
+          </div>
+        }
+
+        <!-- Edit Skills Modal -->
+        @if (showEditSkillsModal()) {
+          <div class="modal-overlay" (click)="closeEditSkillsModal()">
+            <div class="modal-content edit-skills-modal" (click)="$event.stopPropagation()">
+              <div class="modal-header">
+                <h2>Edit Skills - {{ editingEmployee()?.name }}</h2>
+                <button class="btn-close" (click)="closeEditSkillsModal()">&times;</button>
+              </div>
+              <div class="modal-body">
+                <!-- Current Skills -->
+                <div class="detail-section">
+                  <h3>Current Skills</h3>
+                  @if (loadingSkills()) {
+                    <div class="loading-spinner">Loading skills...</div>
+                  } @else if (assignedSkills().length > 0) {
+                    <div class="skills-list-editable">
+                      @for (skill of assignedSkills(); track skill.id) {
+                        <div class="skill-chip">
+                          <span class="skill-name">{{ skill.skillDescription }}</span>
+                          <span class="skill-meta">{{ skill.skillLevel }} • {{ skill.skillGrade }}</span>
+                          <button class="btn-remove" (click)="removeSkillFromEmployee(skill.skillId)" title="Remove skill">
+                            &times;
+                          </button>
+                        </div>
+                      }
+                    </div>
+                  } @else {
+                    <p class="empty-message">No skills assigned yet.</p>
+                  }
+                </div>
+
+                <!-- Add New Skill -->
+                <div class="detail-section">
+                  <h3>Add Skill</h3>
+                  <div class="add-skill-form">
+                    <div class="form-row">
+                      <select class="form-select" [(ngModel)]="selectedSkillId" (ngModelChange)="selectedSkillId.set($event)">
+                        <option [value]="null">Select a skill...</option>
+                        @for (skill of availableSkills(); track skill.id) {
+                          <option [value]="skill.id">{{ skill.description }}</option>
+                        }
+                      </select>
+
+                      <select class="form-select" [(ngModel)]="selectedSkillLevel" (ngModelChange)="selectedSkillLevel.set($event)">
+                        <option [value]="null">Select level...</option>
+                        <option value="PRIMARY">Primary</option>
+                        <option value="SECONDARY">Secondary</option>
+                      </select>
+
+                      <select class="form-select" [(ngModel)]="selectedSkillGrade" (ngModelChange)="selectedSkillGrade.set($event)">
+                        <option [value]="null">Select grade...</option>
+                        <option value="ADVANCED">Advanced</option>
+                        <option value="INTERMEDIATE">Intermediate</option>
+                        <option value="BEGINNER">Beginner</option>
+                      </select>
+
+                      <button
+                        class="btn btn-primary"
+                        (click)="addSkillToEmployee()"
+                        [disabled]="!selectedSkillId() || !selectedSkillLevel() || !selectedSkillGrade()">
+                        Add Skill
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div class="modal-actions">
+                <button class="btn btn-secondary" (click)="closeEditSkillsModal()">Close</button>
               </div>
             </div>
           </div>
@@ -716,6 +795,135 @@ import { Employee, Manager } from '../../models';
       background: rgba(107, 114, 128, 0.15);
       color: #6b7280;
     }
+
+    /* Edit Skills Modal Styles */
+    .edit-skills-modal {
+      max-width: 700px;
+      max-height: 80vh;
+    }
+
+    .btn-close {
+      background: none;
+      border: none;
+      font-size: 28px;
+      color: var(--text-muted);
+      cursor: pointer;
+      padding: 0;
+      line-height: 1;
+      transition: color 0.2s;
+    }
+
+    .btn-close:hover {
+      color: var(--text-primary);
+    }
+
+    .skills-list-editable {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
+    .skill-chip {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 16px;
+      background: var(--bg-hover);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      transition: all 0.2s;
+    }
+
+    .skill-chip:hover {
+      border-color: var(--primary);
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+
+    .skill-name {
+      font-weight: 500;
+      color: var(--text-primary);
+    }
+
+    .skill-meta {
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+
+    .btn-remove {
+      background: rgba(239, 68, 68, 0.1);
+      border: none;
+      color: #dc2626;
+      font-size: 20px;
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      line-height: 1;
+      padding: 0;
+      margin-left: 4px;
+      transition: all 0.2s;
+    }
+
+    .btn-remove:hover {
+      background: rgba(239, 68, 68, 0.2);
+      transform: scale(1.1);
+    }
+
+    .empty-message {
+      color: var(--text-muted);
+      font-style: italic;
+      padding: 16px;
+      text-align: center;
+    }
+
+    .add-skill-form {
+      padding: 16px;
+      background: var(--bg-hover);
+      border-radius: 8px;
+    }
+
+    .form-row {
+      display: grid;
+      grid-template-columns: 2fr 1fr 1fr auto;
+      gap: 12px;
+      align-items: center;
+    }
+
+    .form-select {
+      padding: 10px 14px;
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      background: var(--bg-card);
+      color: var(--text-primary);
+      font-size: 14px;
+      transition: all 0.2s;
+    }
+
+    .form-select:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+    }
+
+    .loading-spinner {
+      text-align: center;
+      padding: 20px;
+      color: var(--text-muted);
+    }
+
+    @media (max-width: 768px) {
+      .form-row {
+        grid-template-columns: 1fr;
+      }
+
+      .edit-skills-modal {
+        max-width: 95%;
+        margin: 20px;
+      }
+    }
   `]
 })
 export class EmployeesComponent implements OnInit {
@@ -746,12 +954,127 @@ export class EmployeesComponent implements OnInit {
 
   selectedEmployee = signal<Employee | null>(null);
 
+  // Edit Skills Modal signals
+  showEditSkillsModal = signal(false);
+  editingEmployee = signal<Employee | null>(null);
+  assignedSkills = signal<any[]>([]);
+  availableSkills = signal<any[]>([]);
+  selectedSkillId = signal<number | null>(null);
+  selectedSkillLevel = signal<string | null>(null);
+  selectedSkillGrade = signal<string | null>(null);
+  loadingSkills = signal(false);
+
   viewDetails(employee: Employee): void {
     this.selectedEmployee.set(employee);
   }
 
   closeDetails(): void {
     this.selectedEmployee.set(null);
+  }
+
+  // Edit Skills Methods
+  openEditSkillsModal(employee: Employee): void {
+    this.editingEmployee.set(employee);
+    this.showEditSkillsModal.set(true);
+    this.loadEmployeeSkills(employee.id);
+    this.loadAvailableSkills(employee.id);
+  }
+
+  closeEditSkillsModal(): void {
+    this.showEditSkillsModal.set(false);
+    this.editingEmployee.set(null);
+    this.assignedSkills.set([]);
+    this.availableSkills.set([]);
+    this.selectedSkillId.set(null);
+    this.selectedSkillLevel.set(null);
+    this.selectedSkillGrade.set(null);
+  }
+
+  loadEmployeeSkills(employeeId: number): void {
+    this.loadingSkills.set(true);
+    this.apiService.getEmployeeSkills(employeeId)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (skills) => {
+          this.assignedSkills.set(skills);
+          this.loadingSkills.set(false);
+        },
+        error: (err) => {
+          console.error('Error loading employee skills:', err);
+          this.loadingSkills.set(false);
+        }
+      });
+  }
+
+  loadAvailableSkills(employeeId: number): void {
+    this.apiService.getAvailableSkills(employeeId)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (skills) => {
+          this.availableSkills.set(skills);
+        },
+        error: (err) => {
+          console.error('Error loading available skills:', err);
+        }
+      });
+  }
+
+  addSkillToEmployee(): void {
+    const skillId = this.selectedSkillId();
+    const skillLevel = this.selectedSkillLevel();
+    const skillGrade = this.selectedSkillGrade();
+    const employeeId = this.editingEmployee()?.id;
+
+    if (!skillId || !skillLevel || !skillGrade || !employeeId) {
+      return;
+    }
+
+    const request = {
+      skillId,
+      skillLevel: skillLevel as 'PRIMARY' | 'SECONDARY',
+      skillGrade: skillGrade as 'ADVANCED' | 'INTERMEDIATE' | 'BEGINNER'
+    };
+
+    this.apiService.addSkillToEmployee(employeeId, request)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: () => {
+          // Reset selections
+          this.selectedSkillId.set(null);
+          this.selectedSkillLevel.set(null);
+          this.selectedSkillGrade.set(null);
+          // Reload skills
+          this.loadEmployeeSkills(employeeId);
+          this.loadAvailableSkills(employeeId);
+        },
+        error: (err) => {
+          console.error('Error adding skill:', err);
+          alert('Failed to add skill: ' + (err.error?.message || 'Unknown error'));
+        }
+      });
+  }
+
+  removeSkillFromEmployee(skillId: number): void {
+    const employeeId = this.editingEmployee()?.id;
+    if (!employeeId) return;
+
+    if (!confirm('Are you sure you want to remove this skill?')) {
+      return;
+    }
+
+    this.apiService.removeSkillFromEmployee(employeeId, skillId)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: () => {
+          // Reload skills
+          this.loadEmployeeSkills(employeeId);
+          this.loadAvailableSkills(employeeId);
+        },
+        error: (err) => {
+          console.error('Error removing skill:', err);
+          alert('Failed to remove skill: ' + (err.error?.message || 'Unknown error'));
+        }
+      });
   }
 
 

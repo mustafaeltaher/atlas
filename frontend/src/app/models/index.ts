@@ -42,6 +42,27 @@ export interface EmployeeSkill {
     skillGrade: 'ADVANCED' | 'INTERMEDIATE' | 'BEGINNER';
 }
 
+// Employee Skills Management DTOs (matching backend API contracts)
+export interface EmployeeSkillDTO {
+    id: number;
+    skillId: number;
+    skillDescription: string;
+    skillLevel: 'PRIMARY' | 'SECONDARY' | null;
+    skillGrade: 'ADVANCED' | 'INTERMEDIATE' | 'BEGINNER' | null;
+}
+
+export interface SkillDTO {
+    id: number;
+    description: string;
+    towerDescription: string | null;
+}
+
+export interface AddSkillRequest {
+    skillId: number;
+    skillLevel: 'PRIMARY' | 'SECONDARY';
+    skillGrade: 'ADVANCED' | 'INTERMEDIATE' | 'BEGINNER';
+}
+
 export interface Employee {
     id: number;
     oracleId: number;

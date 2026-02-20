@@ -129,6 +129,60 @@ Before merging any query code, verify:
 - [ ] LOWER() used for case-insensitive string comparisons
 - [ ] For BENCH/ACTIVE filters, uses direct Employee table queries
 
+### Testing Standards (NON-NEGOTIABLE)
+
+**Backend unit tests are MANDATORY for all new features:**
+
+**Requirements**:
+- Every new service class MUST have a corresponding test class (e.g., `FooService` → `FooServiceTest`)
+- Minimum coverage for service methods:
+  - Happy path (successful operation)
+  - ABAC access denied scenario
+  - Not found scenarios (employee, entity, etc.)
+  - Validation failures (duplicate detection, invalid input)
+  - Edge cases (null handling, empty lists)
+- Use Mockito for mocking dependencies (`@Mock`, `@InjectMocks`)
+- Use JUnit 5 with `@ExtendWith(MockitoExtension.class)`
+- Test naming: `methodName_scenario_expectedResult` (e.g., `addSkill_duplicateSkill_throwsException`)
+
+**What to test**:
+- ✅ Service layer: Business logic, ABAC validation, error handling
+- ✅ Repository custom queries: Complex JPQL/native SQL queries
+- ⚠️ Controller layer: Optional (integration tests preferred)
+- ❌ Frontend: Optional (not standard practice for this project)
+
+**Rationale**: Backend services contain critical business logic (ABAC, validation, data integrity). Unit tests provide regression protection and document expected behavior.
+
+**Test Quality Standards**:
+- Tests must be deterministic (no flaky tests)
+- Use `@BeforeEach` for test fixture setup
+- Mock external dependencies (repositories, other services)
+- Verify method calls with `verify()` when testing side effects
+- Use `assertThat()` from AssertJ for readable assertions
+
+**Example Test Structure**:
+```java
+@ExtendWith(MockitoExtension.class)
+class FooServiceTest {
+    @Mock private FooRepository fooRepository;
+    @Mock private EmployeeService employeeService;
+    @InjectMocks private FooService fooService;
+
+    @BeforeEach
+    void setUp() {
+        // Setup test fixtures
+    }
+
+    @Test
+    @DisplayName("methodName - should succeed when conditions met")
+    void methodName_validInput_succeeds() {
+        // Arrange: Setup mocks
+        // Act: Call method
+        // Assert: Verify behavior
+    }
+}
+```
+
 ## Development Workflow
 
 ### Feature Development Process
@@ -139,12 +193,16 @@ Before merging any query code, verify:
 4. **Analysis** (optional): Use `/speckit.analyze` to verify cross-artifact consistency
 5. **Tasks**: Use `/speckit.tasks` to break down into actionable items
 6. **Implementation**: Use `/speckit.implement` with adherence to constitution
-7. **Testing**: Verify against acceptance criteria and constitution compliance
+7. **Backend Testing (MANDATORY)**: Write unit tests for all service classes covering happy path, ABAC, validation, and edge cases
+8. **Manual Testing**: Verify against acceptance criteria and constitution compliance
 
 ### Code Review Requirements
 
 Every PR must verify:
 - Constitution compliance (especially ABAC, DB-first, NULL-safety)
+- **Unit tests exist for all new/modified service classes** (NON-NEGOTIABLE)
+- **All tests pass** (`./mvnw test` must succeed)
+- Test coverage includes: happy path, ABAC, validation failures, edge cases
 - No in-memory filtering on large datasets
 - Proper faceted search if adding filters
 - Query safety checklist passed
@@ -173,4 +231,22 @@ Every PR must verify:
 
 **Complexity Budget**: Start simple. Additional complexity requires clear justification demonstrating value beyond YAGNI principles.
 
-**Version**: 1.0.0 | **Ratified**: 2026-02-17 | **Last Amended**: 2026-02-17
+---
+
+## Amendment Log
+
+### v1.1.0 (2026-02-20)
+**Added**: Mandatory backend unit testing standards
+
+**Rationale**: Backend services contain critical business logic (ABAC, validation, data integrity). Without mandatory tests, features could be shipped with untested code paths, leading to production bugs and security issues.
+
+**Impact**: All new backend features must include unit tests. Existing code is grandfathered in but should be tested when modified.
+
+**Migration Plan**:
+- New features: Include unit tests in initial implementation
+- Bug fixes: Add tests reproducing the bug before fixing
+- Refactoring: Add tests for existing code being modified
+
+---
+
+**Version**: 1.1.0 | **Ratified**: 2026-02-17 | **Last Amended**: 2026-02-20
