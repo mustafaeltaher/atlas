@@ -332,7 +332,7 @@ import { Project } from '../../models';
               </div>
 
               <div class="modal-actions">
-                <button class="btn btn-primary" (click)="closeDetails()">Close</button>
+                <button class="btn btn-secondary" (click)="closeDetails()">Close</button>
               </div>
             </div>
           </div>
@@ -518,19 +518,60 @@ import { Project } from '../../models';
       background: var(--bg-card);
       border: 1px solid var(--border-color);
       border-radius: 12px;
-      padding: 24px;
+      padding: 0;
       width: 100%;
       max-width: 480px;
+      overflow: hidden;
     }
 
     .modal h2 {
-      margin-bottom: 8px;
+      margin: 0 0 8px 0;
+      padding: 24px 24px 0 24px;
+    }
+
+    .modal form {
+      padding: 0 24px;
     }
 
     .edit-project-name {
       color: var(--text-muted);
       font-size: 14px;
       margin-bottom: 20px;
+      padding: 0 24px;
+    }
+
+    .modal .detail-section {
+      padding: 0 24px 24px 24px;
+    }
+
+    .detail-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 20px;
+    }
+
+    .detail-item {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .detail-item label {
+      font-size: 12px;
+      color: var(--text-muted);
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .detail-item span {
+      font-size: 14px;
+      color: var(--text-primary);
+    }
+
+    .modal form .modal-actions {
+      margin-left: -24px;
+      margin-right: -24px;
     }
 
     .modal-actions {
@@ -610,9 +651,9 @@ import { Project } from '../../models';
     }
 
     .btn-secondary {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      color: var(--text);
+      background: #475569;
+      border: none;
+      color: white;
       padding: 8px 16px;
       border-radius: 6px;
       cursor: pointer;
@@ -620,7 +661,8 @@ import { Project } from '../../models';
     }
 
     .btn-secondary:hover:not(:disabled) {
-      background: var(--surface-hover);
+      background: #334155;
+      transform: translateY(-1px);
     }
 
     .btn-secondary:disabled {

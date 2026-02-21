@@ -318,7 +318,7 @@ import { Employee, Manager } from '../../models';
 
               </div>
               <div class="modal-actions">
-                <button class="btn btn-primary" (click)="closeDetails()">Close</button>
+                <button class="btn btn-secondary" (click)="closeDetails()">Close</button>
               </div>
             </div>
           </div>
@@ -420,7 +420,7 @@ import { Employee, Manager } from '../../models';
 
     .search-input {
       flex: 1;
-      max-width: 400px;
+      min-width: 200px;
     }
 
     .filter-select {
@@ -594,9 +594,9 @@ import { Employee, Manager } from '../../models';
     }
 
     .btn-secondary {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      color: var(--text);
+      background: #475569;
+      border: none;
+      color: white;
       padding: 8px 16px;
       border-radius: 6px;
       cursor: pointer;
@@ -604,7 +604,8 @@ import { Employee, Manager } from '../../models';
     }
 
     .btn-secondary:hover:not(:disabled) {
-      background: var(--surface-hover);
+      background: #334155;
+      transform: translateY(-1px);
     }
 
     .btn-secondary:disabled {

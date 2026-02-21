@@ -141,13 +141,14 @@ a:hover {
 }
 
 .btn-secondary {
-  background: var(--bg-hover);
-  color: var(--text-primary);
-  border: 1px solid var(--border-color);
+  background: #475569;
+  color: white;
+  border: none;
 }
 
 .btn-secondary:hover {
-  background: var(--border-color);
+  background: #334155;
+  transform: translateY(-1px);
 }
 
 /* Cards */

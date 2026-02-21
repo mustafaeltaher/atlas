@@ -357,7 +357,7 @@ import { Allocation, EmployeeAllocationSummary, Employee, Project, Manager } fro
               </table>
 
               <div class="modal-actions">
-                <button class="btn btn-primary" (click)="showDetailModal = false">Close</button>
+                <button class="btn btn-secondary" (click)="showDetailModal = false">Close</button>
               </div>
             </div>
           </div>
@@ -564,7 +564,7 @@ import { Allocation, EmployeeAllocationSummary, Employee, Project, Manager } fro
 
               </div>
               <div class="modal-actions">
-                <button class="btn btn-primary" (click)="closeEmployeeDetails()">Close</button>
+                <button class="btn btn-secondary" (click)="closeEmployeeDetails()">Close</button>
               </div>
             </div>
           </div>
@@ -732,19 +732,26 @@ import { Allocation, EmployeeAllocationSummary, Employee, Project, Manager } fro
       background: var(--bg-card);
       border: 1px solid var(--border-color);
       border-radius: 12px;
-      padding: 24px;
+      padding: 0;
       width: 100%;
       max-width: 480px;
+      overflow: hidden;
     }
 
     .modal-wide {
       max-width: 800px;
       max-height: 80vh;
       overflow-y: auto;
+      padding: 24px;
     }
 
     .modal h2 {
-      margin-bottom: 8px;
+      margin: 0 0 8px 0;
+      padding: 24px 24px 0 24px;
+    }
+
+    .modal form {
+      padding: 0 24px;
     }
 
     .edit-info {
@@ -762,6 +769,12 @@ import { Allocation, EmployeeAllocationSummary, Employee, Project, Manager } fro
 
     .detail-header h2 {
       margin-bottom: 4px;
+      padding: 0;
+    }
+
+    .modal-wide .edit-info {
+      padding: 0;
+      margin-bottom: 20px;
     }
 
     .detail-table {
@@ -815,6 +828,17 @@ import { Allocation, EmployeeAllocationSummary, Employee, Project, Manager } fro
       padding: 4px 8px;
       font-size: 13px;
       min-width: 100px;
+    }
+
+    .modal form .modal-actions {
+      margin-left: -24px;
+      margin-right: -24px;
+    }
+
+    .modal-wide .modal-actions {
+      margin-left: -24px;
+      margin-right: -24px;
+      margin-bottom: -24px;
     }
 
     .modal-actions {
@@ -875,9 +899,9 @@ import { Allocation, EmployeeAllocationSummary, Employee, Project, Manager } fro
     }
 
     .btn-secondary {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      color: var(--text);
+      background: #475569;
+      border: none;
+      color: white;
       padding: 8px 16px;
       border-radius: 6px;
       cursor: pointer;
@@ -885,7 +909,8 @@ import { Allocation, EmployeeAllocationSummary, Employee, Project, Manager } fro
     }
 
     .btn-secondary:hover:not(:disabled) {
-      background: var(--surface-hover);
+      background: #334155;
+      transform: translateY(-1px);
     }
 
     .btn-secondary:disabled {
