@@ -193,18 +193,29 @@ class FooServiceTest {
 - `hotfix/XXX-description` - Critical production fixes
 - `release/vX.Y.Z` - Release preparation branches
 
+**Branch Structure**:
+- `main` - Production-ready code only (protected, no direct commits)
+- `develop` - Integration branch for features (protected, no direct commits)
+- `feature/*` - New features (branched from `develop`)
+- `bugfix/*` - Bug fixes (branched from `develop`)
+- `hotfix/*` - Critical production fixes (branched from `main`)
+- `release/*` - Release preparation (branched from `develop`)
+
 **Branching Rules (NON-NEGOTIABLE)**:
-- ✅ All work must be done in feature/bugfix/hotfix branches
-- ❌ **NO direct commits to `main` branch** (push will be rejected)
-- ✅ Feature branches created from `main`
-- ✅ Merge back to `main` via Pull Request only
-- ✅ Delete feature branch after successful merge
+- ✅ All work must be done in feature/bugfix/hotfix/release branches
+- ❌ **NO direct commits to `main` or `develop`** (push will be rejected)
+- ✅ Feature/bugfix branches created from `develop`
+- ✅ Hotfix branches created from `main`
+- ✅ Feature/bugfix merge to `develop` via Pull Request
+- ✅ Hotfix merges to both `main` AND `develop`
+- ✅ `develop` merges to `main` only for releases
+- ✅ Delete feature/bugfix branch after successful merge
 
 **Pre-Merge Requirements**:
 - ✅ **All tests MUST pass** (`./mvnw test` exits 0)
 - ✅ Pull Request created with descriptive title and summary
 - ✅ Constitution compliance verified
-- ✅ No merge conflicts with `main`
+- ✅ No merge conflicts with target branch (`develop` or `main`)
 - ✅ Frontend builds successfully (`npx ng build` exits 0)
 
 **Commit Guidelines**:
@@ -212,24 +223,80 @@ class FooServiceTest {
 - Include co-authorship when assisted: `Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>`
 - Commit message format is optional (may be added in future amendment)
 
-**Workflow Example**:
+**Workflow Examples**:
+
+**Feature Development**:
 ```bash
-# Create feature branch
-git checkout -b feature/123-add-feature main
+# Create feature branch from develop
+git checkout develop
+git pull origin develop
+git checkout -b feature/123-add-feature
 
 # Work and commit
 git add .
-git commit -m "feat: add new feature"
+git commit -m "feat: add new feature
 
-# Push and create PR
+Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>"
+
+# Push and create PR to develop
 git push -u origin feature/123-add-feature
-gh pr create --title "Add new feature" --body "Description..."
+gh pr create --base develop --title "Add new feature" --body "Description..."
 
-# After PR approval and tests pass: merge via GitHub UI
-# GitHub will delete branch automatically if configured
+# After PR approval and tests pass: merge to develop via GitHub UI
+# Delete branch after merge
 ```
 
-**Rationale**: Git flow provides structured development workflow, prevents accidental main branch corruption, ensures code review, and maintains test coverage through CI/CD integration.
+**Hotfix for Production**:
+```bash
+# Create hotfix branch from main
+git checkout main
+git pull origin main
+git checkout -b hotfix/urgent-fix
+
+# Fix and commit
+git add .
+git commit -m "hotfix: fix critical issue"
+
+# Push and create PR to main
+git push -u origin hotfix/urgent-fix
+gh pr create --base main --title "Hotfix: critical issue" --body "Description..."
+
+# After merge to main, also merge to develop
+git checkout develop
+git merge hotfix/urgent-fix
+git push origin develop
+```
+
+**Release to Production**:
+```bash
+# Create release branch from develop
+git checkout develop
+git pull origin develop
+git checkout -b release/v1.3.0
+
+# Final testing, version bumps, changelog
+# Create PR to main
+gh pr create --base main --title "Release v1.3.0" --body "Release notes..."
+
+# After merge to main, tag the release
+git checkout main
+git pull origin main
+git tag -a v1.3.0 -m "Release v1.3.0"
+git push origin v1.3.0
+
+# Merge release back to develop
+git checkout develop
+git merge release/v1.3.0
+git push origin develop
+```
+
+**Rationale**: Git flow with develop branch provides:
+- **Stability**: `main` always contains production-ready code
+- **Integration**: `develop` serves as integration branch for testing feature combinations
+- **Isolation**: Features developed in isolation without affecting stable branches
+- **Code Review**: All changes require PR approval before merge
+- **Quality Gates**: Tests must pass before merge, preventing broken builds
+- **Traceability**: Clear history of what went into each release
 
 ## Development Workflow
 
@@ -285,17 +352,24 @@ Every PR must verify:
 ## Amendment Log
 
 ### v1.2.0 (2026-02-22)
-**Added**: Git Flow branching standards and pre-merge requirements
+**Added**: Git Flow branching standards with develop branch and pre-merge requirements
 
-**Rationale**: Structured branching workflow prevents accidental corruption of main branch, ensures code review, maintains test coverage, and provides clear development lifecycle. All tests passing before merge prevents broken builds in main branch.
+**Rationale**: Structured branching workflow with develop branch provides stable production code in main, integration testing in develop, isolated feature development, mandatory code review, and quality gates. All tests passing before merge prevents broken builds.
 
-**Impact**: All development must follow feature/bugfix/hotfix branch naming. Direct commits to main are prohibited. PRs require all tests to pass before merge.
+**Impact**:
+- Created `develop` branch as integration branch
+- All development must follow feature/bugfix/hotfix/release branch naming
+- Direct commits to `main` and `develop` are prohibited
+- Features/bugfixes merge to `develop`, then `develop` merges to `main` for releases
+- Hotfixes merge to both `main` and `develop`
+- PRs require all tests to pass before merge
 
 **Migration Plan**:
-- Current work: Continue on existing branches (e.g., `001-edit-employee-skills`)
-- New work: Use proper branch prefixes (e.g., `feature/002-description`)
-- Configure GitHub branch protection rules to enforce main branch protection
-- Existing branches may be merged with current naming but future branches must comply
+- ✅ Created `develop` branch from current `main` state
+- Current feature branches (e.g., `001-edit-employee-skills`): Complete and merge to `main`, then sync `develop` with `main`
+- New work: Create from `develop` with proper prefixes (e.g., `feature/003-description`)
+- Configure GitHub branch protection rules for both `main` and `develop`
+- First release after migration: Ensure `develop` and `main` are synchronized
 
 ### v1.1.0 (2026-02-20)
 **Added**: Mandatory backend unit testing standards
