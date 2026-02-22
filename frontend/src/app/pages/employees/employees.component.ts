@@ -614,21 +614,22 @@ import { Employee, Manager } from '../../models';
     }
 
     .btn-icon {
-      background: none;
-      border: none;
-      cursor: pointer;
-      color: var(--text-muted);
-      padding: 4px;
-      border-radius: 4px;
-      transition: all 0.2s;
+      width: 32px;
+      height: 32px;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      color: var(--text-secondary);
       display: flex;
       align-items: center;
       justify-content: center;
+      cursor: pointer;
+      transition: all 0.2s;
     }
 
     .btn-icon:hover {
+      background: var(--surface-hover);
       color: var(--primary);
-      background: rgba(37, 99, 235, 0.1);
     }
 
     .action-group {
