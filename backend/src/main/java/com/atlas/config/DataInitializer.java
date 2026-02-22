@@ -2,14 +2,20 @@ package com.atlas.config;
 
 import com.atlas.entity.*;
 import com.atlas.repository.*;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import lombok.Data;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
 
+import java.io.InputStream;
 import java.time.LocalDate;
 import java.util.*;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Component
@@ -20,194 +26,352 @@ public class DataInitializer implements CommandLineRunner {
         private final EmployeeRepository employeeRepository;
         private final ProjectRepository projectRepository;
         private final AllocationRepository allocationRepository;
+        private final TechTowerRepository techTowerRepository;
+        private final SkillRepository skillRepository;
+        private final EmployeeSkillRepository employeeSkillRepository;
         private final PasswordEncoder passwordEncoder;
 
+        private final ObjectMapper objectMapper = new ObjectMapper();
         private final Random random = new Random(42);
-        private int employeeCounter = 1000; // Sequential counter for unique oracle IDs
 
-        private final String[] FIRST_NAMES = { "Ahmed", "Mohamed", "Omar", "Ali", "Hassan", "Mahmoud", "Youssef",
-                        "Khaled",
-                        "Sara", "Marwa", "Nour", "Fatma", "Aisha", "Layla", "Hana", "Dina", "Reem", "Mona" };
-        private final String[] LAST_NAMES = { "Ibrahim", "Hassan", "Ali", "Mohamed", "Ahmed", "Mahmoud", "Abdel",
-                        "El-Sayed", "Mostafa", "Salem", "Rashad", "Farouk", "Nasser", "Kamal" };
-        private final String[] SKILLS = { "Java", "Python", "Angular", "React", "Cloud Services", "DevOps",
-                        "Data Engineering",
-                        "Machine Learning", "Cybersecurity", "Network Engineering", "Project Management", "Agile",
-                        "Testing",
-                        "Business Analysis" };
-        private final String[] PARENT_TOWERS = { "EPIS", "Application", "Data&Agility", "OT" };
-        private final String[][] TOWERS = {
+        private final String[] PARENT_TOWER_NAMES = { "EPIS", "Application", "Data&Agility", "OT" };
+        private final String[][] TOWER_NAMES = {
                         { "Cloud & Core Infrastructure Services", "Network, Cybersecurity & Collaboration" },
                         { "Testing", "Development", "Quality Assurance" },
                         { "Agility", "Data Engineering", "Analytics" },
                         { "Automation and Control", "Industrial Systems" }
         };
-        private final String[] LOCATIONS = { "Egypt", "KSA", "UAE" };
         private final String[] GRADES = { "3", "4", "5", "6", "7", "C" };
+        private final String[] REGIONS = { "MEA", "Europe", "Asia", "Americas" };
+        private final String[] VERTICALS = { "Energy", "Telecom", "Banking", "Healthcare", "Government" };
+
+        // Skills per child tower
+        private final String[][] TOWER_SKILLS = {
+                        { "AWS", "Azure", "GCP", "Docker", "Kubernetes", "Terraform", "Linux" },
+                        { "Cisco Networking", "Firewall Management", "SIEM", "Penetration Testing", "IAM",
+                                        "Endpoint Security" },
+                        { "Selenium", "JUnit", "Cypress", "Performance Testing", "API Testing", "Test Automation" },
+                        { "Java", "Spring Boot", "Angular", "React", "Python", "Node.js", "TypeScript" },
+                        { "ISTQB", "Test Planning", "Regression Testing", "UAT", "BDD", "Defect Management" },
+                        { "Scrum", "SAFe", "Kanban", "Jira", "Agile Coaching", "Product Ownership" },
+                        { "Spark", "Kafka", "Airflow", "Snowflake", "dbt", "SQL", "ETL" },
+                        { "Power BI", "Tableau", "Python Analytics", "R", "Machine Learning", "Statistics" },
+                        { "PLC Programming", "SCADA", "DCS", "HMI Design", "Industrial IoT", "Modbus" },
+                        { "MES", "Historian", "OPC UA", "Safety Systems", "Control Valves", "Instrumentation" }
+        };
+
+        private final Map<String, TechTower> towerMap = new HashMap<>();
+        private final Map<String, List<Skill>> skillsByTower = new HashMap<>();
 
         @Override
         public void run(String... args) {
-                if (userRepository.count() > 0) {
-                        log.info("Data already initialized, skipping...");
+                if (employeeRepository.count() > 0) {
+                        log.info("Data already initialized, skipping creation...");
                         return;
                 }
 
-                log.info("Initializing sample data...");
+                log.info("Initializing data from JSON...");
 
-                // Create managers first (10 total across N1-N4)
-                List<Employee> managers = createManagers();
+                createTechTowers();
 
-                // Create regular employees (190)
-                List<Employee> employees = createEmployees(managers);
-
-                // Create projects (15)
-                List<Project> projects = createProjects(managers);
-
-                // Create allocations
-                createAllocations(employees, projects);
-
-                // Create users for managers and admin
-                createUsers(managers);
-
-                log.info("Sample data initialization complete!");
-                log.info("Created {} managers, {} employees, {} projects", managers.size(), employees.size(),
-                                projects.size());
-        }
-
-        private List<Employee> createManagers() {
-                List<Employee> managers = new ArrayList<>();
-
-                // N1 - Executive (1)
-                Employee n1 = createEmployee("Ahmed", "El-Sayed", "N1", "Executive", "Chief Technology Officer",
-                                PARENT_TOWERS[0], TOWERS[0][0], null);
-                managers.add(n1);
-
-                // N2 - Heads (2)
-                Employee n2_1 = createEmployee("Mohamed", "Hassan", "N2", "Head", "VP of Engineering",
-                                PARENT_TOWERS[0], TOWERS[0][0], n1);
-                Employee n2_2 = createEmployee("Sara", "Ibrahim", "N2", "Head", "VP of Applications",
-                                PARENT_TOWERS[1], TOWERS[1][0], n1);
-                managers.add(n2_1);
-                managers.add(n2_2);
-
-                // N3 - Department Managers (3)
-                Employee n3_1 = createEmployee("Omar", "Mohamed", "N3", "Department Manager", "Engineering Manager",
-                                PARENT_TOWERS[0], TOWERS[0][0], n2_1);
-                Employee n3_2 = createEmployee("Marwa", "Ali", "N3", "Department Manager", "Development Manager",
-                                PARENT_TOWERS[1], TOWERS[1][0], n2_2);
-                Employee n3_3 = createEmployee("Khaled", "Mahmoud", "N3", "Department Manager", "Data Manager",
-                                PARENT_TOWERS[2], TOWERS[2][0], n2_1);
-                managers.add(n3_1);
-                managers.add(n3_2);
-                managers.add(n3_3);
-
-                // N4 - Team Leads (4)
-                Employee n4_1 = createEmployee("Youssef", "Rashad", "N4", "Team Lead", "Cloud Team Lead",
-                                PARENT_TOWERS[0], TOWERS[0][0], n3_1);
-                Employee n4_2 = createEmployee("Nour", "Salem", "N4", "Team Lead", "Testing Team Lead",
-                                PARENT_TOWERS[1], TOWERS[1][0], n3_2);
-                Employee n4_3 = createEmployee("Ali", "Hassan", "N4", "Team Lead", "DevOps Team Lead",
-                                PARENT_TOWERS[0], TOWERS[0][1], n3_1);
-                Employee n4_4 = createEmployee("Fatma", "Kamal", "N4", "Team Lead", "Analytics Team Lead",
-                                PARENT_TOWERS[2], TOWERS[2][1], n3_3);
-                managers.add(n4_1);
-                managers.add(n4_2);
-                managers.add(n4_3);
-                managers.add(n4_4);
-
-                return managers;
-        }
-
-        private List<Employee> createEmployees(List<Employee> managers) {
-                List<Employee> employees = new ArrayList<>();
-
-                for (int i = 0; i < 190; i++) {
-                        String firstName = FIRST_NAMES[random.nextInt(FIRST_NAMES.length)];
-                        String lastName = LAST_NAMES[random.nextInt(LAST_NAMES.length)];
-                        String grade = GRADES[random.nextInt(GRADES.length)];
-                        int parentTowerIdx = random.nextInt(PARENT_TOWERS.length);
-                        String parentTower = PARENT_TOWERS[parentTowerIdx];
-                        String tower = TOWERS[parentTowerIdx][random.nextInt(TOWERS[parentTowerIdx].length)];
-
-                        Employee manager = managers.get(3 + random.nextInt(managers.size() - 3)); // Skip N1
-
-                        Employee emp = createEmployee(firstName, lastName, grade, "Specialist",
-                                        SKILLS[random.nextInt(SKILLS.length)] + " Engineer",
-                                        parentTower, tower, manager);
-                        employees.add(emp);
+                try {
+                        importEmployeesFromJson();
+                } catch (Exception e) {
+                        log.error("Failed to import employees from JSON", e);
+                        throw new RuntimeException(e);
                 }
 
-                return employees;
+                List<Employee> allEmployees = employeeRepository.findAll();
+
+                // Find managers for project creation (anyone who has reports)
+                List<Employee> managers = allEmployees.stream()
+                                .filter(e -> employeeRepository.countByManager(e) > 0)
+                                .collect(Collectors.toList());
+
+                if (managers.isEmpty()) {
+                        log.warn("No managers found after import! Using random employees for project management.");
+                        // Fallback: Pick random top 10%
+                        Collections.shuffle(allEmployees);
+                        managers = allEmployees.subList(0, Math.max(1, allEmployees.size() / 10));
+                }
+
+                assignTowersHierarchically(allEmployees);
+
+                // Refresh list to get updated towers
+                allEmployees = employeeRepository.findAllWithTower();
+
+                List<Project> projects = createProjects(managers);
+                createAllocations(allEmployees, projects);
+                createEmployeeSkills(allEmployees);
+                createUsersForManagers(managers);
+
+                fixData();
+
+                log.info("Data initialization complete!");
+                log.info("Imported {} employees", allEmployees.size());
         }
 
-        private Employee createEmployee(String firstName, String lastName, String grade, String jobLevel,
-                        String title, String parentTower, String tower, Employee manager) {
-                String name = firstName + " " + lastName;
-                String email = (firstName.toLowerCase() + "." + lastName.toLowerCase() + random.nextInt(1000)
-                                + "@company.com")
-                                .replace(" ", "");
+        private void assignTowersHierarchically(List<Employee> allEmployees) {
+                List<TechTower> availableTowers = new ArrayList<>(towerMap.values());
+                if (availableTowers.isEmpty())
+                        return;
 
-                Employee employee = Employee.builder()
-                                .oracleId(String.valueOf(employeeCounter++))
-                                .name(name)
-                                .gender(Arrays
-                                                .asList("Sara", "Marwa", "Nour", "Fatma", "Aisha", "Layla", "Hana",
-                                                                "Dina", "Reem", "Mona")
-                                                .contains(firstName) ? "Female" : "Male")
-                                .grade(grade)
-                                .jobLevel(jobLevel)
-                                .title(title)
-                                .primarySkill(SKILLS[random.nextInt(SKILLS.length)])
-                                .secondarySkill(SKILLS[random.nextInt(SKILLS.length)])
-                                .hiringType("On-Payroll")
-                                .location(LOCATIONS[random.nextInt(LOCATIONS.length)])
-                                .legalEntity("GS")
-                                .nationality("Egyptian")
-                                .hireDate(LocalDate.now().minusDays(random.nextInt(2000)))
-                                .email(email)
-                                .parentTower(parentTower)
-                                .tower(tower)
-                                .manager(manager)
-                                .isActive(true)
-                                .build();
+                // 1. Identify Group CEO (Root) - Level 0
+                List<Employee> roots = allEmployees.stream()
+                                .filter(e -> e.getManager() == null)
+                                .collect(Collectors.toList());
 
-                return employeeRepository.save(employee);
+                for (Employee root : roots) {
+                        // Root has NO tower (sees all)
+                        root.setTower(null);
+                        employeeRepository.save(root);
+
+                        // 2. Direct reports to CEO (Level 1) - e.g. Rasha
+                        List<Employee> level1 = employeeRepository.findByManager(root);
+                        for (Employee l1 : level1) {
+                                // Level 1 has NO tower (sees all)
+                                l1.setTower(null);
+                                employeeRepository.save(l1);
+
+                                // 3. Direct reports to Level 1 (Level 2) - Department/Vertical Managers
+                                List<Employee> level2 = employeeRepository.findByManager(l1);
+
+                                // Distribute towers round-robin among Level 2 managers
+                                int towerIndex = 0;
+                                for (Employee l2 : level2) {
+                                        TechTower assignedTower = availableTowers
+                                                        .get(towerIndex % availableTowers.size());
+                                        towerIndex++;
+
+                                        l2.setTower(assignedTower);
+                                        employeeRepository.save(l2);
+
+                                        // 4. Propagate to their subordinates recursively
+                                        propagateTower(l2, assignedTower);
+                                }
+                        }
+                }
+                log.info("Assigned towers hierarchically (skipped Root & Level 1, distributed at Level 2)");
+        }
+
+        private void propagateTower(Employee manager, TechTower tower) {
+                List<Employee> reports = employeeRepository.findByManager(manager);
+                for (Employee report : reports) {
+                        report.setTower(tower);
+                        employeeRepository.save(report);
+                        propagateTower(report, tower);
+                }
+        }
+
+        private void importEmployeesFromJson() throws Exception {
+                // Try loading from file system first (root of project) or resource
+                InputStream inputStream = null;
+                java.io.File file = new java.io.File("GDC_org_structure.json");
+                if (file.exists()) {
+                        inputStream = new java.io.FileInputStream(file);
+                } else {
+                        inputStream = getClass().getResourceAsStream("/GDC_org_structure.json");
+                }
+
+                if (inputStream == null) {
+                        throw new RuntimeException("GDC_org_structure.json not found in filesystem or classpath");
+                }
+
+                EmployeeJsonDTO[] dtos = objectMapper.readValue(inputStream, EmployeeJsonDTO[].class);
+                log.info("Loaded {} records from JSON", dtos.length);
+
+                // Import all employees without filtering
+                List<EmployeeJsonDTO> allEmployeesList = Arrays.asList(dtos);
+
+                log.info("Importing {} employees (no filtering)", allEmployeesList.size());
+
+                Map<String, Employee> emailToEmployeeMap = new HashMap<>();
+                Map<String, String> employeeEmailToManagerEmailMap = new HashMap<>();
+
+                // Phase 1: Create Employee entities
+                int oracleIdCounter = 1000;
+                for (EmployeeJsonDTO dto : allEmployeesList) {
+                        // Normalize email
+                        String email = dto.getEmail();
+                        if (email == null || email.trim().isEmpty())
+                                continue;
+                        email = email.trim();
+
+                        Employee employee = Employee.builder()
+                                        .oracleId(oracleIdCounter++)
+                                        .name(dto.displayName)
+                                        .email(email)
+                                        .title(dto.jobTitle)
+                                        .grade(GRADES[random.nextInt(GRADES.length)]) // Assign random grade as it is
+                                                                                      // missing in JSON
+                                        .jobLevel(determineJobLevel(dto.jobTitle))
+                                        .hiringType(Employee.HiringType.FULL_TIME)
+                                        .location(dto.officeLocation != null ? dto.officeLocation : "Cairo")
+                                        .legalEntity("GS")
+                                        .nationality("Egyptian")
+                                        .hireDate(LocalDate.now().minusDays(random.nextInt(2000))) // Random hire date
+                                        .gender(guessGender(dto.givenName))
+                                        .build();
+
+                        Employee saved = employeeRepository.save(employee);
+                        emailToEmployeeMap.put(email.toLowerCase(), saved);
+
+                        if (dto.managerEmail != null && !dto.managerEmail.trim().isEmpty()
+                                        && !"N/A".equalsIgnoreCase(dto.managerEmail)) {
+                                employeeEmailToManagerEmailMap.put(email.toLowerCase(),
+                                                dto.managerEmail.trim().toLowerCase());
+                        }
+                }
+
+                // Phase 2: Link Managers
+                for (Map.Entry<String, String> entry : employeeEmailToManagerEmailMap.entrySet()) {
+                        String empEmail = entry.getKey();
+                        String mgrEmail = entry.getValue();
+
+                        Employee employee = emailToEmployeeMap.get(empEmail);
+                        Employee manager = emailToEmployeeMap.get(mgrEmail);
+
+                        if (employee != null && manager != null) {
+                                employee.setManager(manager);
+                                employeeRepository.save(employee);
+                        }
+                }
+        }
+
+        private Employee.JobLevel determineJobLevel(String title) {
+                if (title == null)
+                        return Employee.JobLevel.ENTRY_LEVEL;
+                String lower = title.toLowerCase();
+                if (lower.contains("chief") || lower.contains("head")
+                                || lower.contains("ceo"))
+                        return Employee.JobLevel.EXECUTIVE_LEVEL;
+                if (lower.contains("manager") || lower.contains("lead") || lower.contains("director"))
+                        return Employee.JobLevel.ADVANCED_MANAGER_LEVEL;
+                if (lower.contains("senior") || lower.contains("expert"))
+                        return Employee.JobLevel.MID_LEVEL;
+                return Employee.JobLevel.ENTRY_LEVEL;
+        }
+
+        private Employee.Gender guessGender(String firstName) {
+                // Simple heuristic list, fallback to MALE
+                List<String> femaleNames = Arrays.asList("Sara", "Marwa", "Nour", "Fatma", "Aisha", "Layla", "Hana",
+                                "Dina", "Reem", "Mona", "Niveen", "Esraa", "Dalia", "Rasha", "Violet", "Heba", "Soha",
+                                "Yasmine", "Salma", "Maha");
+                if (firstName != null && femaleNames.contains(firstName))
+                        return Employee.Gender.FEMALE;
+                return Employee.Gender.MALE;
+        }
+
+        private void createUsersForManagers(List<Employee> managers) {
+                for (Employee manager : managers) {
+                        // Check if user already exists
+                        if (userRepository.findByUsername(manager.getEmail()).isPresent())
+                                continue;
+
+                        User user = User.builder()
+                                        .username(manager.getEmail()) // Use email as username
+                                        .password(passwordEncoder.encode("password123"))
+                                        .email(manager.getEmail())
+                                        .employee(manager)
+                                        .build();
+                        userRepository.save(user);
+                }
+                log.info("Created users for {} managers", managers.size());
+        }
+
+        // --- REUSED/ADAPTED METHODS FROM ORIGINAL ---
+
+        private void createTechTowers() {
+                if (techTowerRepository.count() > 0)
+                        return;
+                log.info("Creating TechTower seed data...");
+
+                int skillIdx = 0;
+                for (int i = 0; i < PARENT_TOWER_NAMES.length; i++) {
+                        TechTower parentTower = TechTower.builder()
+                                        .description(PARENT_TOWER_NAMES[i])
+                                        .parentTower(null)
+                                        .build();
+                        parentTower = techTowerRepository.save(parentTower);
+                        towerMap.put(PARENT_TOWER_NAMES[i], parentTower);
+
+                        for (String childName : TOWER_NAMES[i]) {
+                                TechTower childTower = TechTower.builder()
+                                                .description(childName)
+                                                .parentTower(parentTower)
+                                                .build();
+                                childTower = techTowerRepository.save(childTower);
+                                towerMap.put(childName, childTower);
+
+                                List<Skill> towerSkills = new ArrayList<>();
+                                if (skillIdx < TOWER_SKILLS.length) {
+                                        for (String skillName : TOWER_SKILLS[skillIdx]) {
+                                                Skill skill = Skill.builder()
+                                                                .description(skillName)
+                                                                .tower(childTower)
+                                                                .build();
+                                                towerSkills.add(skillRepository.save(skill));
+                                        }
+                                }
+                                skillsByTower.put(childName, towerSkills);
+                                skillIdx++;
+                        }
+                }
         }
 
         private List<Project> createProjects(List<Employee> managers) {
                 List<Project> projects = new ArrayList<>();
-                String[] projectNames = {
-                                "Cloud Migration", "Digital Transformation", "Smart Meters", "MOFA Portal",
-                                "Ethrai Platform", "MEP System", "Network Security", "Data Lake",
-                                "Mobile App", "DevOps Pipeline", "AI Platform", "ERP Integration",
-                                "Customer Portal", "IoT Platform", "Analytics Dashboard"
+                String[][] projectsByArea = {
+                                { "Cloud Migration", "Network Security", "Infrastructure Upgrade",
+                                                "Cybersecurity Platform" },
+                                { "Digital Transformation", "Mobile App", "Customer Portal", "ERP Integration" },
+                                { "Data Lake", "AI Platform", "Analytics Dashboard", "ML Pipeline" },
+                                { "Smart Meters", "IoT Platform", "SCADA Modernization", "Industrial Automation" }
                 };
 
-                for (int i = 0; i < 15; i++) {
-                        int parentTowerIdx = i % PARENT_TOWERS.length;
-                        Project project = Project.builder()
-                                        .projectId("PRJ-" + (1000 + i))
-                                        .name(projectNames[i])
-                                        .description("Project for " + projectNames[i])
-                                        .parentTower(PARENT_TOWERS[parentTowerIdx])
-                                        .tower(TOWERS[parentTowerIdx][i % TOWERS[parentTowerIdx].length])
-                                        .startDate(LocalDate.now().minusMonths(random.nextInt(12)))
-                                        .endDate(LocalDate.now().plusMonths(random.nextInt(12)))
-                                        .status(Project.ProjectStatus.ACTIVE)
-                                        .manager(managers.get(3 + random.nextInt(managers.size() - 3)))
-                                        .build();
+                int projectCounter = 1000;
+                Random rnd = new Random();
 
-                        projects.add(projectRepository.save(project));
+                // Ensure we have at least one manager to assign
+                if (managers.isEmpty())
+                        return projects;
+
+                for (int areaIdx = 0; areaIdx < PARENT_TOWER_NAMES.length; areaIdx++) {
+                        String[] areaProjects = projectsByArea[areaIdx];
+                        for (String projectName : areaProjects) {
+                                Employee projectManager = managers.get(rnd.nextInt(managers.size()));
+
+                                Project project = Project.builder()
+                                                .projectId("PRJ-" + projectCounter++)
+                                                .description(projectName)
+                                                .projectType(rnd.nextBoolean() ? Project.ProjectType.PROJECT
+                                                                : Project.ProjectType.OPPORTUNITY)
+                                                .region(REGIONS[areaIdx % REGIONS.length])
+                                                .vertical(VERTICALS[areaIdx % VERTICALS.length])
+                                                .startDate(LocalDate.now().minusMonths(rnd.nextInt(12)))
+                                                .endDate(LocalDate.now().plusMonths(rnd.nextInt(12)))
+                                                .status(Project.ProjectStatus.ACTIVE)
+                                                .manager(projectManager)
+                                                .build();
+
+                                projects.add(projectRepository.save(project));
+                        }
                 }
-
                 return projects;
         }
 
         private void createAllocations(List<Employee> employees, List<Project> projects) {
-                String[] allocValues = { "1", "0.5", "0.25", "B", "P" };
+                if (projects.isEmpty())
+                        return;
+                Integer[] allocValues = { 100, 75, 50, 25 };
+                int currentYear = LocalDate.now().getYear();
 
                 for (Employee employee : employees) {
-                        // Each employee gets 1-2 allocations
+                        // 20% Bench (no allocations)
+                        if (random.nextDouble() < 0.2) {
+                                continue;
+                        }
+
                         int numAllocations = 1 + random.nextInt(2);
                         Set<Long> usedProjects = new HashSet<>();
 
@@ -217,62 +381,88 @@ public class DataInitializer implements CommandLineRunner {
                                         continue;
                                 usedProjects.add(project.getId());
 
+                                // 10% Prospect
+                                Allocation.AllocationType type = (random.nextDouble() < 0.1)
+                                                ? Allocation.AllocationType.PROSPECT
+                                                : Allocation.AllocationType.PROJECT;
+
                                 Allocation allocation = Allocation.builder()
                                                 .employee(employee)
                                                 .project(project)
-                                                .confirmedAssignment(project.getName())
                                                 .startDate(LocalDate.now().minusMonths(random.nextInt(6)))
                                                 .endDate(LocalDate.now().plusMonths(random.nextInt(6)))
-                                                .status(Allocation.AllocationStatus.ACTIVE)
+                                                .allocationType(type)
                                                 .build();
 
-                                // Set allocation for each month
-                                for (int month = 1; month <= 12; month++) {
-                                        String alloc = allocValues[random.nextInt(allocValues.length)];
-                                        allocation.setAllocationForMonth(month, alloc);
-                                }
+                                allocation = allocationRepository.save(allocation);
 
+                                if (type == Allocation.AllocationType.PROJECT) {
+                                        for (int month = 1; month <= 12; month++) {
+                                                Integer alloc = allocValues[random.nextInt(allocValues.length)];
+                                                allocation.setAllocationForYearMonth(currentYear, month, alloc);
+                                        }
+                                }
                                 allocationRepository.save(allocation);
                         }
                 }
         }
 
-        private void createUsers(List<Employee> managers) {
-                // Create admin user
-                User admin = User.builder()
-                                .username("admin")
-                                .password(passwordEncoder.encode("admin123"))
-                                .email("admin@company.com")
-                                .role(User.Role.SYSTEM_ADMIN)
-                                .managerLevel(0)
-                                .isActive(true)
-                                .build();
-                userRepository.save(admin);
+        private void createEmployeeSkills(List<Employee> allEmployees) {
+                EmployeeSkill.SkillGrade[] grades = EmployeeSkill.SkillGrade.values();
 
-                // Create user for each manager
-                User.Role[] roles = { User.Role.EXECUTIVE, User.Role.HEAD, User.Role.HEAD,
-                                User.Role.DEPARTMENT_MANAGER, User.Role.DEPARTMENT_MANAGER,
-                                User.Role.DEPARTMENT_MANAGER,
-                                User.Role.TEAM_LEAD, User.Role.TEAM_LEAD, User.Role.TEAM_LEAD, User.Role.TEAM_LEAD };
+                for (Employee emp : allEmployees) {
+                        TechTower tower = emp.getTower();
+                        if (tower == null)
+                                continue;
 
-                for (int i = 0; i < managers.size(); i++) {
-                        Employee manager = managers.get(i);
-                        User user = User.builder()
-                                        .username(manager.getName().toLowerCase().replace(" ", "."))
-                                        .password(passwordEncoder.encode("password123"))
-                                        .email(manager.getEmail())
-                                        .role(roles[i])
-                                        .managerLevel(roles[i].getLevel())
-                                        .employee(manager)
-                                        .isActive(true)
-                                        .build();
-                        userRepository.save(user);
+                        List<Skill> towerSkills = skillsByTower.get(tower.getDescription());
+                        if (towerSkills == null || towerSkills.isEmpty())
+                                continue;
+
+                        int numSkills = 1 + random.nextInt(Math.min(3, towerSkills.size()));
+                        List<Skill> shuffled = new ArrayList<>(towerSkills);
+                        Collections.shuffle(shuffled, random);
+
+                        for (int i = 0; i < numSkills; i++) {
+                                EmployeeSkill.SkillLevel level = (i == 0) ? EmployeeSkill.SkillLevel.PRIMARY
+                                                : EmployeeSkill.SkillLevel.SECONDARY;
+                                EmployeeSkill es = EmployeeSkill.builder()
+                                                .employee(emp)
+                                                .skill(shuffled.get(i))
+                                                .skillLevel(level)
+                                                .skillGrade(grades[random.nextInt(grades.length)])
+                                                .build();
+                                employeeSkillRepository.save(es);
+                        }
                 }
+        }
 
-                log.info("Created admin user and {} manager users", managers.size());
-                log.info("Login credentials:");
-                log.info("  Admin: admin / admin123");
-                log.info("  N1 Manager: ahmed.el-sayed / password123");
-                log.info("  N2 Manager: mohamed.hassan / password123");
+        @Transactional
+        public void fixData() {
+                // Reuse existing fixData logic if strictly required, simplified here for
+                // brevity as initial generation is better now
+        }
+
+        @Data
+        @JsonIgnoreProperties(ignoreUnknown = true)
+        public static class EmployeeJsonDTO {
+                public String displayName;
+                public String givenName;
+                public String surname;
+                public String mail;
+                public String userPrincipalName; // fallback for email
+                public String jobTitle; // maps to title
+                public String department;
+                public String officeLocation;
+                public String managerEmail; // Important: now using email for manager link
+
+                // Helper to get best email
+                public String getEmail() {
+                        if (mail != null && !mail.trim().isEmpty())
+                                return mail.trim();
+                        if (userPrincipalName != null && !userPrincipalName.trim().isEmpty())
+                                return userPrincipalName.trim();
+                        return null;
+                }
         }
 }

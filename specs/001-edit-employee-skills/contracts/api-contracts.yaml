@@ -1,0 +1,470 @@
+openapi: 3.0.3
+info:
+  title: Employee Skills Management API
+  description: |
+    REST API endpoints for managing employee skills. Allows authorized users to add and remove
+    skills from employee profiles within their ABAC access hierarchy.
+  version: 1.0.0
+  contact:
+    name: Atlas Development Team
+
+servers:
+  - url: http://localhost:8080
+    description: Local development server
+  - url: https://api.atlas.example.com
+    description: Production server
+
+tags:
+  - name: Employee Skills
+    description: Operations for managing employee skill associations
+
+paths:
+  /api/employees/{employeeId}/skills:
+    get:
+      tags:
+        - Employee Skills
+      summary: Get current skills for an employee
+      description: |
+        Returns all skills currently assigned to the specified employee.
+        User must have ABAC access to the employee (within manager hierarchy).
+      operationId: getEmployeeSkills
+      parameters:
+        - name: employeeId
+          in: path
+          required: true
+          description: Unique identifier of the employee
+          schema:
+            type: integer
+            format: int64
+            example: 123
+      responses:
+        '200':
+          description: Successfully retrieved employee skills
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/EmployeeSkillDTO'
+              examples:
+                withSkills:
+                  summary: Employee with multiple skills
+                  value:
+                    - id: 1
+                      skillId: 42
+                      skillDescription: Java Programming
+                      skillLevel: PRIMARY
+                      skillGrade: ADVANCED
+                    - id: 2
+                      skillId: 58
+                      skillDescription: AWS Cloud
+                      skillLevel: SECONDARY
+                      skillGrade: INTERMEDIATE
+                noSkills:
+                  summary: Employee with no skills
+                  value: []
+        '403':
+          description: Forbidden - User lacks access to employee (ABAC violation)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                timestamp: '2026-02-20T10:30:00Z'
+                status: 403
+                error: Forbidden
+                message: 'Access denied to employee 123'
+                path: '/api/employees/123/skills'
+        '404':
+          description: Not Found - Employee does not exist
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                timestamp: '2026-02-20T10:30:00Z'
+                status: 404
+                error: Not Found
+                message: 'Employee not found: 123'
+                path: '/api/employees/123/skills'
+
+    post:
+      tags:
+        - Employee Skills
+      summary: Add a skill to an employee
+      description: |
+        Creates a new skill association for the specified employee.
+        Validates that:
+        - User has ABAC access to the employee
+        - Skill exists in the system
+        - Skill is not already assigned to the employee
+      operationId: addSkillToEmployee
+      parameters:
+        - name: employeeId
+          in: path
+          required: true
+          description: Unique identifier of the employee
+          schema:
+            type: integer
+            format: int64
+            example: 123
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AddSkillRequest'
+            examples:
+              primaryAdvanced:
+                summary: Add primary skill with advanced proficiency
+                value:
+                  skillId: 42
+                  skillLevel: PRIMARY
+                  skillGrade: ADVANCED
+              secondaryIntermediate:
+                summary: Add secondary skill with intermediate proficiency
+                value:
+                  skillId: 58
+                  skillLevel: SECONDARY
+                  skillGrade: INTERMEDIATE
+      responses:
+        '201':
+          description: Successfully added skill to employee
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EmployeeSkillDTO'
+              example:
+                id: 123
+                skillId: 42
+                skillDescription: Java Programming
+                skillLevel: SECONDARY
+                skillGrade: INTERMEDIATE
+          headers:
+            Location:
+              description: URL of the created skill association
+              schema:
+                type: string
+                example: '/api/employees/123/skills/42'
+        '400':
+          description: Bad Request - Invalid input or duplicate skill
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                duplicateSkill:
+                  summary: Skill already assigned
+                  value:
+                    timestamp: '2026-02-20T10:30:00Z'
+                    status: 400
+                    error: Bad Request
+                    message: 'Skill 42 is already assigned to employee 123'
+                    path: '/api/employees/123/skills'
+                invalidSkillLevel:
+                  summary: Invalid skill level enum value
+                  value:
+                    timestamp: '2026-02-20T10:30:00Z'
+                    status: 400
+                    error: Bad Request
+                    message: 'Invalid skillLevel: EXPERT. Must be PRIMARY or SECONDARY.'
+                    path: '/api/employees/123/skills'
+        '403':
+          description: Forbidden - User lacks access to employee
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Not Found - Employee or Skill does not exist
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                employeeNotFound:
+                  summary: Employee not found
+                  value:
+                    timestamp: '2026-02-20T10:30:00Z'
+                    status: 404
+                    error: Not Found
+                    message: 'Employee not found: 123'
+                    path: '/api/employees/123/skills'
+                skillNotFound:
+                  summary: Skill not found
+                  value:
+                    timestamp: '2026-02-20T10:30:00Z'
+                    status: 404
+                    error: Not Found
+                    message: 'Skill not found: 42'
+                    path: '/api/employees/123/skills'
+
+  /api/employees/{employeeId}/skills/available:
+    get:
+      tags:
+        - Employee Skills
+      summary: Get available skills for an employee
+      description: |
+        Returns all skills that are NOT currently assigned to the specified employee.
+        Used to populate the "add skill" dropdown. User must have ABAC access.
+      operationId: getAvailableSkills
+      parameters:
+        - name: employeeId
+          in: path
+          required: true
+          description: Unique identifier of the employee
+          schema:
+            type: integer
+            format: int64
+            example: 123
+      responses:
+        '200':
+          description: Successfully retrieved available skills
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/SkillDTO'
+              examples:
+                multipleAvailable:
+                  summary: Multiple skills available
+                  value:
+                    - id: 10
+                      description: Python Programming
+                      towerDescription: Backend Development
+                    - id: 20
+                      description: React.js
+                      towerDescription: Frontend Development
+                    - id: 30
+                      description: Docker
+                      towerDescription: DevOps
+                allAssigned:
+                  summary: All skills already assigned
+                  value: []
+        '403':
+          description: Forbidden - User lacks access to employee
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Not Found - Employee does not exist
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/employees/{employeeId}/skills/{skillId}:
+    delete:
+      tags:
+        - Employee Skills
+      summary: Remove a skill from an employee
+      description: |
+        Deletes the skill association for the specified employee and skill.
+        The skill itself remains in the system; only the association is deleted.
+        User must have ABAC access to the employee.
+      operationId: removeSkillFromEmployee
+      parameters:
+        - name: employeeId
+          in: path
+          required: true
+          description: Unique identifier of the employee
+          schema:
+            type: integer
+            format: int64
+            example: 123
+        - name: skillId
+          in: path
+          required: true
+          description: Unique identifier of the skill to remove
+          schema:
+            type: integer
+            format: int32
+            example: 42
+      responses:
+        '204':
+          description: Successfully removed skill from employee (no content returned)
+        '403':
+          description: Forbidden - User lacks access to employee
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Not Found - Employee or skill association does not exist
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                employeeNotFound:
+                  summary: Employee not found
+                  value:
+                    timestamp: '2026-02-20T10:30:00Z'
+                    status: 404
+                    error: Not Found
+                    message: 'Employee not found: 123'
+                    path: '/api/employees/123/skills/42'
+                associationNotFound:
+                  summary: Skill not assigned to employee
+                  value:
+                    timestamp: '2026-02-20T10:30:00Z'
+                    status: 404
+                    error: Not Found
+                    message: 'Skill 42 is not assigned to employee 123'
+                    path: '/api/employees/123/skills/42'
+
+components:
+  schemas:
+    SkillDTO:
+      type: object
+      description: Represents a skill available in the system
+      required:
+        - id
+        - description
+      properties:
+        id:
+          type: integer
+          format: int32
+          description: Unique skill identifier
+          example: 42
+        description:
+          type: string
+          description: Skill name or description
+          example: Java Programming
+        towerDescription:
+          type: string
+          nullable: true
+          description: Associated tech tower/domain name
+          example: Backend Development
+
+    EmployeeSkillDTO:
+      type: object
+      description: Represents a skill assignment to an employee
+      required:
+        - id
+        - skillId
+        - skillDescription
+      properties:
+        id:
+          type: integer
+          format: int32
+          description: Unique identifier for the employee-skill association
+          example: 123
+        skillId:
+          type: integer
+          format: int32
+          description: ID of the assigned skill
+          example: 42
+        skillDescription:
+          type: string
+          description: Name of the assigned skill (for display)
+          example: Java Programming
+        skillLevel:
+          type: string
+          nullable: true
+          enum:
+            - PRIMARY
+            - SECONDARY
+          description: |
+            Skill importance level.
+            - PRIMARY: Core skill for the employee's role
+            - SECONDARY: Supporting or supplementary skill
+            - null: Level not specified (legacy data only)
+          example: PRIMARY
+        skillGrade:
+          type: string
+          nullable: true
+          enum:
+            - ADVANCED
+            - INTERMEDIATE
+            - BEGINNER
+          description: |
+            Proficiency level.
+            - ADVANCED: Expert-level proficiency
+            - INTERMEDIATE: Working proficiency
+            - BEGINNER: Learning or basic proficiency
+            - null: Grade not specified (legacy data only)
+          example: ADVANCED
+
+    AddSkillRequest:
+      type: object
+      description: Request body for adding a skill to an employee
+      required:
+        - skillId
+        - skillLevel
+        - skillGrade
+      properties:
+        skillId:
+          type: integer
+          format: int32
+          description: ID of the skill to assign
+          example: 42
+        skillLevel:
+          type: string
+          enum:
+            - PRIMARY
+            - SECONDARY
+          description: |
+            Required skill importance level.
+            - PRIMARY: Core skill for the employee's role
+            - SECONDARY: Supporting or supplementary skill
+          example: SECONDARY
+        skillGrade:
+          type: string
+          enum:
+            - ADVANCED
+            - INTERMEDIATE
+            - BEGINNER
+          description: |
+            Required proficiency level.
+            - ADVANCED: Expert-level proficiency
+            - INTERMEDIATE: Working proficiency
+            - BEGINNER: Learning or basic proficiency
+          example: INTERMEDIATE
+
+    ErrorResponse:
+      type: object
+      description: Standard error response format
+      required:
+        - timestamp
+        - status
+        - error
+        - message
+        - path
+      properties:
+        timestamp:
+          type: string
+          format: date-time
+          description: When the error occurred
+          example: '2026-02-20T10:30:00Z'
+        status:
+          type: integer
+          format: int32
+          description: HTTP status code
+          example: 400
+        error:
+          type: string
+          description: HTTP status text
+          example: Bad Request
+        message:
+          type: string
+          description: Detailed error message
+          example: 'Skill 42 is already assigned to employee 123'
+        path:
+          type: string
+          description: Request path that caused the error
+          example: '/api/employees/123/skills'
+
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: |
+        JWT token obtained from login. Token contains user information
+        for ABAC access control checks.
+
+security:
+  - bearerAuth: []

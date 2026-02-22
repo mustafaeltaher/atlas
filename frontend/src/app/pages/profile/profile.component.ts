@@ -1,12 +1,16 @@
-import { Component, OnInit, signal } from '@angular/core';
+import { Component, OnInit, signal, DestroyRef, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { Subject, of } from 'rxjs';
+import { debounceTime, distinctUntilChanged, switchMap, catchError } from 'rxjs/operators';
 import { ThemeService } from '../../services/theme.service';
 import { AuthService } from '../../services/auth.service';
 import { ApiService } from '../../services/api.service';
+import { DelegateService } from '../../services/delegate.service';
 import { SidebarComponent } from '../../components/sidebar/sidebar.component';
 import { HeaderComponent } from '../../components/header/header.component';
-import { Employee } from '../../models';
+import { Employee, DelegateResponse } from '../../models';
 
 @Component({
   selector: 'app-profile',
@@ -25,7 +29,7 @@ import { Employee } from '../../models';
         <div class="profile-info">
           <h1 class="profile-name">{{ profile()?.name || authService.currentUser()?.username }}</h1>
           <p class="profile-title">{{ profile()?.title || 'N/A' }}</p>
-          <span class="profile-badge">{{ authService.currentUser()?.role }}</span>
+          <span class="profile-badge">{{ authService.currentUser()?.isTopLevel ? 'Top Level' : 'Manager' }}</span>
         </div>
       </div>
 
@@ -59,11 +63,11 @@ import { Employee } from '../../models';
           <div class="info-grid">
             <div class="info-item">
               <span class="info-label">Parent Tower</span>
-              <span class="info-value">{{ profile()?.parentTower || 'N/A' }}</span>
+              <span class="info-value">{{ profile()?.parentTowerName || 'N/A' }}</span>
             </div>
             <div class="info-item">
               <span class="info-label">Tower</span>
-              <span class="info-value">{{ profile()?.tower || 'N/A' }}</span>
+              <span class="info-value">{{ profile()?.towerName || 'N/A' }}</span>
             </div>
             <div class="info-item">
               <span class="info-label">Manager</span>
@@ -71,23 +75,83 @@ import { Employee } from '../../models';
             </div>
             <div class="info-item">
               <span class="info-label">Allocation</span>
-              <span class="info-value allocation">{{ profile()?.currentAllocation || 0 }}%</span>
+              <span class="info-value allocation">{{ profile()?.totalAllocation || 0 }}%</span>
             </div>
           </div>
         </div>
 
-        <!-- Skills -->
+        <!-- Managers I a Support (Impersonation available) -->
+        @if (managersISupport().length > 0) {
+          <div class="card fade-in">
+            <h3 class="section-title">Managers I Support</h3>
+            <p class="section-desc">You have been granted access to manage these accounts.</p>
+            <div class="delegates-list">
+              @for (manager of managersISupport(); track manager.id) {
+                <div class="delegate-item">
+                  <div class="delegate-info">
+                    <span class="delegate-name">{{ manager.delegatorName || manager.delegatorUsername }}</span>
+                    <span class="delegate-date">Granted on {{ manager.createdAt | date }}</span>
+                  </div>
+                  <span class="status-badge active">Active</span>
+                </div>
+              }
+            </div>
+          </div>
+        }
+
+        <!-- My Delegates (Granting Access) -->
         <div class="card fade-in">
-          <h3 class="section-title">Skills</h3>
-          <div class="info-grid">
-            <div class="info-item">
-              <span class="info-label">Primary Skill</span>
-              <span class="info-value">{{ profile()?.primarySkill || 'N/A' }}</span>
+          <h3 class="section-title">My Delegates</h3>
+          <p class="section-desc">Grant other users permission to access your account.</p>
+          
+          <div class="delegate-form-container">
+            <div class="delegate-input-group">
+              <input 
+                type="text" 
+                [ngModel]="newDelegateUsername" 
+                (input)="onSearch($event)"
+                (focus)="onFocus()"
+                (blur)="closeDropdown()"
+                placeholder="Search by name or username..."
+                class="form-input"
+                autocomplete="off">
+              
+              @if (showDropdown() && potentialDelegates().length > 0) {
+                <div class="dropdown-list">
+                  @for (delegate of potentialDelegates(); track delegate.id) {
+                    <button class="dropdown-option" (mousedown)="selectDelegate(delegate)">
+                      <div class="option-name">{{ delegate.name }}</div>
+                      <div class="option-details">{{ delegate.title }} • {{ delegate.jobLevel }}</div>
+                    </button>
+                  }
+                </div>
+              }
             </div>
-            <div class="info-item">
-              <span class="info-label">Secondary Skill</span>
-              <span class="info-value">{{ profile()?.secondarySkill || 'N/A' }}</span>
-            </div>
+            
+            <button class="btn-primary btn-sm" (click)="grantAccess()" [disabled]="!newDelegateUsername">
+              Grant Access
+            </button>
+          </div>
+
+          <div class="delegates-list">
+            @if (myDelegates().length === 0) {
+              <div class="empty-state">No delegates assigned.</div>
+            } @else {
+              @for (delegate of myDelegates(); track delegate.id) {
+                <div class="delegate-item">
+                  <div class="delegate-info">
+                    <span class="delegate-name">{{ delegate.delegateName || delegate.delegateUsername }}</span>
+                    <span class="delegate-date">Granted on {{ delegate.createdAt | date }}</span>
+                  </div>
+                  <button class="btn-icon danger" (click)="revokeAccess(delegate.id)" title="Revoke Access">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
+                      <path d="M3 6h18"></path>
+                      <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                    </svg>
+                  </button>
+                </div>
+              }
+            }
           </div>
         </div>
 
@@ -234,6 +298,12 @@ import { Employee } from '../../models';
       padding-bottom: 12px;
       border-bottom: 1px solid var(--border-color);
     }
+    
+    .section-desc {
+      font-size: 13px;
+      color: var(--text-secondary);
+      margin-bottom: 16px;
+    }
 
     .info-grid {
       display: grid;
@@ -351,6 +421,11 @@ import { Employee } from '../../models';
       transition: all 0.2s;
     }
 
+    .btn-primary.btn-sm {
+        padding: 8px 16px;
+        font-size: 13px;
+    }
+
     .btn-primary:hover:not(:disabled) {
       opacity: 0.9;
     }
@@ -358,6 +433,19 @@ import { Employee } from '../../models';
     .btn-primary:disabled {
       opacity: 0.6;
       cursor: not-allowed;
+    }
+    
+    .btn-icon.danger {
+        color: var(--danger);
+        background: transparent;
+        border: none;
+        cursor: pointer;
+        padding: 4px;
+        border-radius: 4px;
+    }
+    
+    .btn-icon.danger:hover {
+        background: rgba(239, 68, 68, 0.1);
     }
 
     .error-message {
@@ -375,10 +463,148 @@ import { Employee } from '../../models';
       background: rgba(16, 185, 129, 0.1);
       border-radius: var(--border-radius);
     }
+
+    .delegate-form {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 16px;
+    }
+    
+    .delegate-form .form-input {
+        flex: 1;
+    }
+
+    .delegates-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .delegate-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px;
+      background: var(--bg-secondary);
+      border-radius: var(--border-radius);
+      border: 1px solid var(--border-color);
+    }
+
+    .delegate-info {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+    }
+
+    .delegate-name {
+        font-weight: 500;
+        color: var(--text-primary);
+    }
+
+    .delegate-date {
+        font-size: 11px;
+        color: var(--text-secondary);
+    }
+
+    .empty-state {
+        color: var(--text-secondary);
+        font-size: 13px;
+        padding: 12px;
+        text-align: center;
+        background: var(--bg-secondary);
+        border-radius: var(--border-radius);
+        border: 1px dashed var(--border-color);
+    }
+
+    .delegate-form-container {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 16px;
+      position: relative;
+    }
+
+    .delegate-input-group {
+      flex: 1;
+      position: relative;
+    }
+
+    .delegate-input-group .form-input {
+      width: 100%;
+    }
+
+    .dropdown-list {
+      position: absolute;
+      top: 100%;
+      left: 0;
+      right: 0;
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: var(--border-radius);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+      z-index: 1000;
+      max-height: 200px;
+      overflow-y: auto;
+      margin-top: 4px;
+    }
+
+    .dropdown-option {
+      width: 100%;
+      text-align: left;
+      padding: 8px 12px;
+      background: none;
+      border: none;
+      cursor: pointer;
+      border-bottom: 1px solid var(--border-color);
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .dropdown-option:last-child {
+      border-bottom: none;
+    }
+
+    .dropdown-option:hover {
+      background: var(--bg-secondary);
+    }
+
+    .option-name {
+      font-weight: 500;
+      color: var(--text-primary);
+      font-size: 14px;
+    }
+
+    .option-details {
+      font-size: 11px;
+      color: var(--text-secondary);
+    }
+    
+    .status-badge {
+      font-size: 11px;
+      padding: 2px 8px;
+      border-radius: 12px;
+      font-weight: 600;
+    }
+    
+    .status-badge.active {
+      background: rgba(16, 185, 129, 0.1);
+      color: var(--success);
+    }
   `]
 })
 export class ProfileComponent implements OnInit {
+  private destroyRef = inject(DestroyRef);
+
   profile = signal<Employee | null>(null);
+  myDelegates = signal<DelegateResponse[]>([]);
+  managersISupport = signal<DelegateResponse[]>([]);
+
+  // Search & Dropdown
+  newDelegateUsername = '';
+  potentialDelegates = signal<any[]>([]);
+  showDropdown = signal<boolean>(false);
+  private searchSubject = new Subject<string>();
+
   currentPassword = '';
   newPassword = '';
   confirmPassword = '';
@@ -389,21 +615,99 @@ export class ProfileComponent implements OnInit {
   constructor(
     public themeService: ThemeService,
     public authService: AuthService,
-    private apiService: ApiService
+    private apiService: ApiService,
+    private delegateService: DelegateService
   ) { }
 
   ngOnInit(): void {
     this.loadProfile();
+    this.loadDelegates();
+    this.loadManagersISupport();
+    this.setupSearch();
+  }
+
+  setupSearch(): void {
+    this.searchSubject.pipe(
+      debounceTime(300),
+      // distinctUntilChanged(), // Removed to allow re-triggering on focus with same term
+      switchMap(term => {
+        return this.delegateService.getPotentialDelegates(term).pipe(
+          catchError(() => of([]))
+        );
+      }),
+      takeUntilDestroyed(this.destroyRef)
+    ).subscribe(results => {
+      this.potentialDelegates.set(results);
+      this.showDropdown.set(results.length > 0);
+    });
+  }
+
+  loadManagersISupport(): void {
+    this.delegateService.getAvailableAccounts().pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: (data) => this.managersISupport.set(data),
+      error: (err: any) => console.error('Failed to load managers I support', err)
+    });
+  }
+
+  onSearch(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    this.newDelegateUsername = input.value;
+    this.searchSubject.next(this.newDelegateUsername);
+  }
+
+  onFocus(): void {
+    this.searchSubject.next(this.newDelegateUsername);
+  }
+
+  selectDelegate(delegate: any): void {
+    this.newDelegateUsername = delegate.username;
+    this.showDropdown.set(false);
+  }
+
+  closeDropdown(): void {
+    // Delay to allow click event to register
+    setTimeout(() => this.showDropdown.set(false), 200);
   }
 
   loadProfile(): void {
     const employeeId = this.authService.currentUser()?.employeeId;
     if (employeeId) {
-      this.apiService.get<Employee>(`/employees/${employeeId}`).subscribe({
+      this.apiService.get<Employee>(`/employees/${employeeId}`).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
         next: (data) => this.profile.set(data),
-        error: (err) => console.error('Failed to load profile', err)
+        error: (err: any) => console.error('Failed to load profile', err)
       });
     }
+  }
+
+  loadDelegates(): void {
+    this.delegateService.getMyDelegates().pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: (data) => this.myDelegates.set(data),
+      error: (err: any) => console.error('Failed to load delegates', err)
+    });
+  }
+
+  grantAccess(): void {
+    if (!this.newDelegateUsername) return;
+
+    this.delegateService.grantAccess({ delegateUsername: this.newDelegateUsername }).subscribe({
+      next: (delegate) => {
+        this.myDelegates.update(list => [...list, delegate]);
+        this.newDelegateUsername = '';
+        alert('Access granted successfully');
+      },
+      error: (err: any) => alert(err.error?.message || 'Failed to grant access')
+    });
+  }
+
+  revokeAccess(id: number): void {
+    if (!confirm('Are you sure you want to revoke access?')) return;
+
+    this.delegateService.revokeAccess(id).subscribe({
+      next: () => {
+        this.myDelegates.update(list => list.filter(d => d.id !== id));
+      },
+      error: (err: any) => alert('Failed to revoke access')
+    });
   }
 
   getInitials(): string {
@@ -438,7 +742,7 @@ export class ProfileComponent implements OnInit {
     this.apiService.post('/auth/change-password', {
       currentPassword: this.currentPassword,
       newPassword: this.newPassword
-    }).subscribe({
+    }).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: () => {
         this.passwordSuccess.set('Password changed successfully');
         this.currentPassword = '';
@@ -446,7 +750,7 @@ export class ProfileComponent implements OnInit {
         this.confirmPassword = '';
         this.isChangingPassword.set(false);
       },
-      error: (err) => {
+      error: (err: any) => {
         this.passwordError.set(err.error?.message || 'Failed to change password');
         this.isChangingPassword.set(false);
       }

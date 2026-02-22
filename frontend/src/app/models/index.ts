@@ -1,71 +1,150 @@
 export interface User {
     username: string;
     email: string;
-    role: 'SYSTEM_ADMIN' | 'EXECUTIVE' | 'HEAD' | 'DEPARTMENT_MANAGER' | 'TEAM_LEAD';
-    managerLevel: number;
+    isTopLevel: boolean;
+    employeeName: string;
     employeeId?: number;
+    isImpersonating?: boolean;
+    impersonatorUsername?: string;
 }
 
 export interface LoginResponse {
     token: string;
     username: string;
     email: string;
-    role: string;
-    managerLevel: number;
+    isTopLevel: boolean;
+    employeeName: string;
     employeeId?: number;
+    isImpersonating?: boolean;
+    impersonatorUsername?: string;
+}
+
+export interface DelegateResponse {
+    id: number;
+    delegatorName: string;
+    delegatorUsername: string;
+    delegateName: string;
+    delegateUsername: string;
+    createdAt: string;
+}
+
+export interface DelegateRequest {
+    delegateUsername: string;
+}
+
+export interface ImpersonateRequest {
+    targetUsername: string;
+}
+
+export interface EmployeeSkill {
+    skillName: string;
+    skillLevel: 'PRIMARY' | 'SECONDARY';
+    skillGrade: 'ADVANCED' | 'INTERMEDIATE' | 'BEGINNER';
+}
+
+// Employee Skills Management DTOs (matching backend API contracts)
+export interface EmployeeSkillDTO {
+    id: number;
+    skillId: number;
+    skillDescription: string;
+    skillLevel: 'PRIMARY' | 'SECONDARY' | null;
+    skillGrade: 'ADVANCED' | 'INTERMEDIATE' | 'BEGINNER' | null;
+}
+
+export interface SkillDTO {
+    id: number;
+    description: string;
+    towerDescription: string | null;
+}
+
+export interface AddSkillRequest {
+    skillId: number;
+    skillLevel: 'PRIMARY' | 'SECONDARY';
+    skillGrade: 'ADVANCED' | 'INTERMEDIATE' | 'BEGINNER';
 }
 
 export interface Employee {
     id: number;
-    oracleId: string;
+    oracleId: number;
     name: string;
     gender: string;
     grade: string;
     jobLevel: string;
     title: string;
-    primarySkill: string;
-    secondarySkill: string;
     hiringType: string;
     location: string;
     legalEntity: string;
+    costCenter: string;
     nationality: string;
     hireDate: string;
+    resignationDate?: string;
+    reasonOfLeave?: string;
     email: string;
-    parentTower: string;
-    tower: string;
+    towerId?: number;
+    towerName: string;
+    parentTowerName: string;
+    managerId?: number;
     managerName?: string;
-    isActive: boolean;
-    currentAllocation: number;
-    allocationStatus: 'ACTIVE' | 'BENCH' | 'PROSPECT';
+    skills: EmployeeSkill[];
+    status: 'ACTIVE' | 'MATERNITY' | 'VACATION' | 'RESIGNED';
+    totalAllocation: number;
+    allocationStatus: 'ACTIVE' | 'BENCH' | 'PROSPECT' | null;
 }
 
 export interface Project {
     id: number;
     projectId: string;
-    name: string;
     description: string;
-    parentTower: string;
-    tower: string;
+    projectType: 'PROJECT' | 'OPPORTUNITY';
+    region: string;
+    vertical: string;
     startDate: string;
     endDate: string;
-    status: 'ACTIVE' | 'PENDING' | 'COMPLETED' | 'ON_HOLD';
+    status: 'ACTIVE' | 'COMPLETED' | 'ON_HOLD';
+    managerId?: number;
     managerName?: string;
     allocatedEmployees: number;
     averageAllocation: number;
+}
+
+export interface MonthlyAllocation {
+    id?: number;
+    allocationId?: number;
+    year: number;
+    month: number;
+    percentage: number;
 }
 
 export interface Allocation {
     id: number;
     employeeId: number;
     employeeName: string;
-    projectId: number;
-    projectName: string;
-    confirmedAssignment: string;
+    employeeOracleId: string;
+    projectId: number | null;
+    projectName: string | null;
     startDate: string;
     endDate: string;
-    status: 'ACTIVE' | 'PENDING' | 'COMPLETED';
-    currentMonthAllocation: string;
+    allocationType: 'PROJECT' | 'PROSPECT' | 'VACATION' | 'MATERNITY';
+    currentMonthAllocation: number | null;
     allocationPercentage: number;
+    year?: number;
+    monthlyAllocations?: MonthlyAllocation[];
+}
+
+export interface EmployeeAllocationSummary {
+    employeeId: number;
+    employeeName: string;
+    employeeEmail: string;
+    employeeOracleId: string;
+    totalAllocationPercentage: number;
+    projectCount: number;
+    allocations: Allocation[];
+}
+
+export interface Manager {
+    id: number;
+    name: string;
+    oracleId?: string;
 }
 
 export interface DashboardStats {
@@ -75,9 +154,20 @@ export interface DashboardStats {
     benchCount: number;
     prospectCount: number;
     activeProjects: number;
-    pendingProjects: number;
+    completedProjects: number;
+    onHoldProjects: number;
     employeeTrend: number;
     allocationTrend: number;
     benchTrend: number;
     projectTrend: number;
+}
+
+export interface Page<T> {
+    content: T[];
+    totalElements: number;
+    totalPages: number;
+    number: number;
+    size: number;
+    first: boolean;
+    last: boolean;
 }

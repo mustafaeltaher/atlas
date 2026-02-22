@@ -1,6 +1,7 @@
 package com.atlas.dto;
 
 import com.atlas.entity.Project;
+import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -14,11 +15,15 @@ import java.time.LocalDate;
 @AllArgsConstructor
 public class ProjectDTO {
     private Long id;
+
     private String projectId;
-    private String name;
+
+    @Size(max = 1000, message = "Description must not exceed 1000 characters")
     private String description;
-    private String parentTower;
-    private String tower;
+
+    private Project.ProjectType projectType;
+    private String region;
+    private String vertical;
     private LocalDate startDate;
     private LocalDate endDate;
     private Project.ProjectStatus status;

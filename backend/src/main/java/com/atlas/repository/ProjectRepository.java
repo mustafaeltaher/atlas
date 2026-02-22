@@ -1,5 +1,6 @@
 package com.atlas.repository;
 
+import com.atlas.entity.Allocation;
 import com.atlas.entity.Employee;
 import com.atlas.entity.Project;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -10,40 +11,82 @@ import org.springframework.stereotype.Repository;
 import java.util.List;
 import java.util.Optional;
 
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
+
 @Repository
-public interface ProjectRepository extends JpaRepository<Project, Long> {
+public interface ProjectRepository extends JpaSpecificationExecutor<Project>, JpaRepository<Project, Long>, ProjectRepositoryCustom {
 
-    Optional<Project> findByProjectId(String projectId);
+        Optional<Project> findByProjectId(String projectId);
 
-    List<Project> findByStatus(Project.ProjectStatus status);
+        List<Project> findByStatus(Project.ProjectStatus status);
 
-    List<Project> findByParentTower(String parentTower);
+        long countByStatus(Project.ProjectStatus status);
 
-    List<Project> findByTower(String tower);
+        default List<Project> findActiveProjects() {
+                return findByStatus(Project.ProjectStatus.ACTIVE);
+        }
 
-    @Query("SELECT p FROM Project p WHERE p.status = 'ACTIVE'")
-    List<Project> findActiveProjects();
+        default long countActiveProjects() {
+                return countByStatus(Project.ProjectStatus.ACTIVE);
+        }
 
-    @Query("SELECT p FROM Project p WHERE p.parentTower = :parentTower AND p.status = 'ACTIVE'")
-    List<Project> findActiveByParentTower(@Param("parentTower") String parentTower);
+        @Query("SELECT DISTINCT a.project FROM Allocation a WHERE a.employee IN :employees AND a.allocationType = :allocationType AND a.project.status = :projectStatus")
+        List<Project> findActiveProjectsByEmployeesWithParams(
+                        @Param("employees") List<Employee> employees,
+                        @Param("allocationType") Allocation.AllocationType allocationType,
+                        @Param("projectStatus") Project.ProjectStatus projectStatus);
 
-    @Query("SELECT p FROM Project p WHERE p.tower = :tower AND p.status = 'ACTIVE'")
-    List<Project> findActiveByTower(@Param("tower") String tower);
+        default List<Project> findActiveProjectsByEmployees(List<Employee> employees) {
+                return findActiveProjectsByEmployeesWithParams(employees,
+                                Allocation.AllocationType.PROJECT, Project.ProjectStatus.ACTIVE);
+        }
 
-    @Query("SELECT COUNT(p) FROM Project p WHERE p.status = 'ACTIVE'")
-    long countActiveProjects();
+        @Query("SELECT DISTINCT a.project FROM Allocation a WHERE a.employee IN :employees AND a.allocationType = :allocationType")
+        List<Project> findProjectsByEmployeesWithParams(
+                        @Param("employees") List<Employee> employees,
+                        @Param("allocationType") Allocation.AllocationType allocationType);
 
-    @Query("SELECT COUNT(p) FROM Project p WHERE p.parentTower = :parentTower AND p.status = 'ACTIVE'")
-    long countActiveByParentTower(@Param("parentTower") String parentTower);
+        default List<Project> findProjectsByEmployees(List<Employee> employees) {
+                return findProjectsByEmployeesWithParams(employees,
+                                Allocation.AllocationType.PROJECT);
+        }
 
-    @Query("SELECT COUNT(p) FROM Project p WHERE p.tower = :tower AND p.status = 'ACTIVE'")
-    long countActiveByTower(@Param("tower") String tower);
+        @Query("SELECT COUNT(DISTINCT a.project) FROM Allocation a WHERE a.employee IN :employees AND a.allocationType = :allocationType AND a.project.status = :projectStatus")
+        long countActiveProjectsByEmployeesWithParams(
+                        @Param("employees") List<Employee> employees,
+                        @Param("allocationType") Allocation.AllocationType allocationType,
+                        @Param("projectStatus") Project.ProjectStatus projectStatus);
 
-    @Query("SELECT DISTINCT a.project FROM Allocation a WHERE a.employee IN :employees AND a.status = 'ACTIVE' AND a.project.status = 'ACTIVE'")
-    List<Project> findActiveProjectsByEmployees(@Param("employees") List<Employee> employees);
+        default long countActiveProjectsByEmployees(List<Employee> employees) {
+                return countActiveProjectsByEmployeesWithParams(employees,
+                                Allocation.AllocationType.PROJECT, Project.ProjectStatus.ACTIVE);
+        }
 
-    @Query("SELECT COUNT(DISTINCT a.project) FROM Allocation a WHERE a.employee IN :employees AND a.status = 'ACTIVE' AND a.project.status = 'ACTIVE'")
-    long countActiveProjectsByEmployees(@Param("employees") List<Employee> employees);
+        @Query(value = "SELECT COUNT(DISTINCT a.project_id) FROM allocations a " +
+                        "JOIN projects p ON p.id = a.project_id " +
+                        "WHERE a.employee_id IN :employeeIds " +
+                        "AND CAST(a.allocation_type AS text) = 'PROJECT' " +
+                        "AND CAST(p.status AS text) = 'ACTIVE'", nativeQuery = true)
+        long countActiveProjectsByEmployeeIds(@Param("employeeIds") List<Long> employeeIds);
 
-    boolean existsByProjectId(String projectId);
+        boolean existsByProjectId(String projectId);
+
+        // Faceted Search - Statuses
+        @Query("SELECT DISTINCT p.status FROM Project p " +
+                        "WHERE (:region IS NULL OR p.region = :region) " +
+                        "AND (:search IS NULL OR LOWER(p.description) LIKE :search OR LOWER(p.projectId) LIKE :search) "
+                        +
+                        "ORDER BY p.status")
+        List<Project.ProjectStatus> findDistinctStatuses(@Param("region") String region,
+                        @Param("search") String search);
+
+        @Query("SELECT DISTINCT p.status FROM Project p " +
+                        "WHERE p.id IN :ids " +
+                        "AND (:region IS NULL OR p.region = :region) " +
+                        "AND (:search IS NULL OR LOWER(p.description) LIKE :search OR LOWER(p.projectId) LIKE :search) "
+                        +
+                        "ORDER BY p.status")
+        List<Project.ProjectStatus> findDistinctStatusesByIds(@Param("ids") List<Long> ids,
+                        @Param("region") String region,
+                        @Param("search") String search);
 }

@@ -19,18 +19,27 @@ public class Project {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "project_id", unique = true, nullable = false)
-    private String projectId;
-
-    @Column(nullable = false)
-    private String name;
-
     private String description;
 
-    @Column(name = "parent_tower")
-    private String parentTower;
+    @Enumerated(EnumType.STRING)
+    @Column(name = "project_type")
+    @Builder.Default
+    private ProjectType projectType = ProjectType.PROJECT;
 
-    private String tower;
+    @Column(name = "project_id", unique = true)
+    private String projectId;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "manager_id")
+    private Employee manager;
+
+    private String region;
+
+    private String vertical;
+
+    @Enumerated(EnumType.STRING)
+    @Builder.Default
+    private ProjectStatus status = ProjectStatus.ACTIVE;
 
     @Column(name = "start_date")
     private LocalDate startDate;
@@ -38,15 +47,11 @@ public class Project {
     @Column(name = "end_date")
     private LocalDate endDate;
 
-    @Enumerated(EnumType.STRING)
-    @Builder.Default
-    private ProjectStatus status = ProjectStatus.ACTIVE;
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "manager_id")
-    private Employee manager;
+    public enum ProjectType {
+        PROJECT, OPPORTUNITY
+    }
 
     public enum ProjectStatus {
-        ACTIVE, PENDING, COMPLETED, ON_HOLD
+        ACTIVE, COMPLETED, ON_HOLD
     }
 }

@@ -4,12 +4,23 @@ import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
+import lombok.ToString;
 
 import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
 @Table(name = "allocations")
+@NamedEntityGraph(
+    name = "Allocation.withDetails",
+    attributeNodes = {
+        @NamedAttributeNode("employee"),
+        @NamedAttributeNode("project")
+    }
+)
 @Data
 @Builder
 @NoArgsConstructor
@@ -21,17 +32,20 @@ public class Allocation {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "employee_id", nullable = false)
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
     private Employee employee;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "project_id", nullable = false)
+    @JoinColumn(name = "project_id")
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
     private Project project;
 
-    @Column(name = "confirmed_assignment")
-    private String confirmedAssignment;
-
-    @Column(name = "prospect_assignment")
-    private String prospectAssignment;
+    @Enumerated(EnumType.STRING)
+    @Column(name = "allocation_type")
+    @Builder.Default
+    private AllocationType allocationType = AllocationType.PROJECT;
 
     @Column(name = "start_date")
     private LocalDate startDate;
@@ -39,85 +53,42 @@ public class Allocation {
     @Column(name = "end_date")
     private LocalDate endDate;
 
-    // Monthly allocation values: 1, 0.5, 0.25, "B" (Bench), "P" (Prospect)
-    @Column(name = "jan_alloc")
-    private String janAllocation;
-
-    @Column(name = "feb_alloc")
-    private String febAllocation;
-
-    @Column(name = "mar_alloc")
-    private String marAllocation;
-
-    @Column(name = "apr_alloc")
-    private String aprAllocation;
-
-    @Column(name = "may_alloc")
-    private String mayAllocation;
-
-    @Column(name = "jun_alloc")
-    private String junAllocation;
-
-    @Column(name = "jul_alloc")
-    private String julAllocation;
-
-    @Column(name = "aug_alloc")
-    private String augAllocation;
-
-    @Column(name = "sep_alloc")
-    private String sepAllocation;
-
-    @Column(name = "oct_alloc")
-    private String octAllocation;
-
-    @Column(name = "nov_alloc")
-    private String novAllocation;
-
-    @Column(name = "dec_alloc")
-    private String decAllocation;
-
-    @Enumerated(EnumType.STRING)
+    @OneToMany(mappedBy = "allocation", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     @Builder.Default
-    private AllocationStatus status = AllocationStatus.ACTIVE;
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
+    private List<MonthlyAllocation> monthlyAllocations = new ArrayList<>();
 
-    public enum AllocationStatus {
-        ACTIVE, PENDING, COMPLETED
+    public enum AllocationType {
+        PROJECT, PROSPECT, VACATION, MATERNITY
     }
 
-    // Helper method to get allocation for a specific month (1-12)
-    public String getAllocationForMonth(int month) {
-        return switch (month) {
-            case 1 -> janAllocation;
-            case 2 -> febAllocation;
-            case 3 -> marAllocation;
-            case 4 -> aprAllocation;
-            case 5 -> mayAllocation;
-            case 6 -> junAllocation;
-            case 7 -> julAllocation;
-            case 8 -> augAllocation;
-            case 9 -> sepAllocation;
-            case 10 -> octAllocation;
-            case 11 -> novAllocation;
-            case 12 -> decAllocation;
-            default -> null;
-        };
+    // Helper method to get allocation for a specific year and month
+    public Integer getAllocationForYearMonth(int year, int month) {
+        return monthlyAllocations.stream()
+                .filter(ma -> ma.getYear() == year && ma.getMonth() == month)
+                .map(MonthlyAllocation::getPercentage)
+                .findFirst()
+                .orElse(null);
     }
 
-    // Helper method to set allocation for a specific month (1-12)
-    public void setAllocationForMonth(int month, String value) {
-        switch (month) {
-            case 1 -> janAllocation = value;
-            case 2 -> febAllocation = value;
-            case 3 -> marAllocation = value;
-            case 4 -> aprAllocation = value;
-            case 5 -> mayAllocation = value;
-            case 6 -> junAllocation = value;
-            case 7 -> julAllocation = value;
-            case 8 -> augAllocation = value;
-            case 9 -> sepAllocation = value;
-            case 10 -> octAllocation = value;
-            case 11 -> novAllocation = value;
-            case 12 -> decAllocation = value;
+    // Helper method to set allocation for a specific year and month
+    public void setAllocationForYearMonth(int year, int month, Integer percentage) {
+        MonthlyAllocation existing = monthlyAllocations.stream()
+                .filter(ma -> ma.getYear() == year && ma.getMonth() == month)
+                .findFirst()
+                .orElse(null);
+
+        if (existing != null) {
+            existing.setPercentage(percentage);
+        } else {
+            MonthlyAllocation newAllocation = MonthlyAllocation.builder()
+                    .allocation(this)
+                    .year(year)
+                    .month(month)
+                    .percentage(percentage)
+                    .build();
+            monthlyAllocations.add(newAllocation);
         }
     }
 }

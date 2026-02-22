@@ -2,50 +2,86 @@ package com.atlas.repository;
 
 import com.atlas.entity.Allocation;
 import com.atlas.entity.Employee;
-import com.atlas.entity.Project;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Optional;
 
 @Repository
-public interface AllocationRepository extends JpaRepository<Allocation, Long> {
+public interface AllocationRepository extends JpaRepository<Allocation, Long>, JpaSpecificationExecutor<Allocation>, AllocationRepositoryCustom {
 
-    List<Allocation> findByEmployee(Employee employee);
+        @Query("SELECT a FROM Allocation a JOIN FETCH a.employee LEFT JOIN FETCH a.project WHERE a.project.id = :projectId AND a.allocationType = :allocationType")
+        List<Allocation> findAllocationsByProjectIdAndType(
+                        @Param("projectId") Long projectId,
+                        @Param("allocationType") Allocation.AllocationType allocationType);
 
-    List<Allocation> findByProject(Project project);
+        default List<Allocation> findProjectAllocationsByProjectId(Long projectId) {
+                return findAllocationsByProjectIdAndType(projectId, Allocation.AllocationType.PROJECT);
+        }
 
-    List<Allocation> findByEmployeeId(Long employeeId);
+        @Query("SELECT a FROM Allocation a JOIN FETCH a.employee LEFT JOIN FETCH a.project WHERE a.employee IN :employees")
+        List<Allocation> findAllocationsByEmployees(@Param("employees") List<Employee> employees);
 
-    List<Allocation> findByProjectId(Long projectId);
+        @Query("SELECT a FROM Allocation a WHERE a.project.id IN :projectIds AND a.allocationType = :allocationType")
+        List<Allocation> findAllocationsByProjectIdsAndType(
+                        @Param("projectIds") List<Long> projectIds,
+                        @Param("allocationType") Allocation.AllocationType allocationType);
 
-    List<Allocation> findByStatus(Allocation.AllocationStatus status);
+        default List<Allocation> findProjectAllocationsByProjectIds(List<Long> projectIds) {
+                return findAllocationsByProjectIdsAndType(projectIds, Allocation.AllocationType.PROJECT);
+        }
 
-    @Query("SELECT a FROM Allocation a WHERE a.employee.id = :employeeId AND a.status = 'ACTIVE'")
-    List<Allocation> findActiveByEmployeeId(@Param("employeeId") Long employeeId);
+        // Refactored to use @EntityGraph instead of explicit JOIN FETCH
+        // EntityGraph provides cleaner, more maintainable fetch strategy
+        @EntityGraph("Allocation.withDetails")
+        @Override
+        List<Allocation> findAll();
 
-    @Query("SELECT a FROM Allocation a WHERE a.project.id = :projectId AND a.status = 'ACTIVE'")
-    List<Allocation> findActiveByProjectId(@Param("projectId") Long projectId);
+        // Keep method name for backward compatibility
+        default List<Allocation> findAllWithEmployeeAndProject() {
+                return findAll();
+        }
 
-    @Query("SELECT a FROM Allocation a WHERE a.project.parentTower = :parentTower")
-    List<Allocation> findByParentTower(@Param("parentTower") String parentTower);
+        @EntityGraph("Allocation.withDetails")
+        List<Allocation> findByEmployeeId(Long employeeId);
 
-    @Query("SELECT a FROM Allocation a WHERE a.project.tower = :tower")
-    List<Allocation> findByTower(@Param("tower") String tower);
+        // Keep method name for backward compatibility
+        default List<Allocation> findByEmployeeIdWithDetails(Long employeeId) {
+                return findByEmployeeId(employeeId);
+        }
 
-    @Query("SELECT a FROM Allocation a JOIN a.project p WHERE p.id IN :projectIds")
-    List<Allocation> findByProjectIdIn(@Param("projectIds") List<Long> projectIds);
+        @EntityGraph("Allocation.withDetails")
+        List<Allocation> findByProjectId(Long projectId);
 
-    @Query("SELECT a FROM Allocation a WHERE a.employee.parentTower = :parentTower AND a.status = 'ACTIVE'")
-    List<Allocation> findActiveByParentTower(@Param("parentTower") String parentTower);
+        // Keep method name for backward compatibility
+        default List<Allocation> findByProjectIdWithDetails(Long projectId) {
+                return findByProjectId(projectId);
+        }
 
-    @Query("SELECT a FROM Allocation a WHERE a.employee.tower = :tower AND a.status = 'ACTIVE'")
-    List<Allocation> findActiveByTower(@Param("tower") String tower);
+        @EntityGraph("Allocation.withDetails")
+        @Override
+        Optional<Allocation> findById(Long id);
 
-    @Query("SELECT a FROM Allocation a WHERE a.employee IN :employees AND a.status = 'ACTIVE'")
-    List<Allocation> findActiveByEmployees(@Param("employees") List<Employee> employees);
+        // Keep method name for backward compatibility
+        default Optional<Allocation> findByIdWithDetails(Long id) {
+                return findById(id);
+        }
 
-    boolean existsByEmployeeAndProject(Employee employee, Project project);
+        @EntityGraph("Allocation.withDetails")
+        List<Allocation> findByEmployeeIdIn(List<Long> employeeIds);
+
+        // Keep method name for backward compatibility
+        default List<Allocation> findByEmployeeIdsWithDetails(List<Long> employeeIds) {
+                return findByEmployeeIdIn(employeeIds);
+        }
+
+        // Distinct values for facets
+        @Query("SELECT DISTINCT a.allocationType FROM Allocation a JOIN a.employee e WHERE " +
+                        "(:managerId IS NULL OR e.manager.id = :managerId)")
+        List<Allocation.AllocationType> findDistinctAllocationTypesByManager(@Param("managerId") Long managerId);
 }

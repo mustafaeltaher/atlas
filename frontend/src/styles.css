@@ -45,6 +45,7 @@ body.light-theme {
   --text-muted: #9CA3AF;
 
   --border-color: #E5E7EB;
+  --progress-bar-bg: #CBD5E1;
 
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
   --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.1);
@@ -140,13 +141,14 @@ a:hover {
 }
 
 .btn-secondary {
-  background: var(--bg-hover);
-  color: var(--text-primary);
-  border: 1px solid var(--border-color);
+  background: #475569;
+  color: white;
+  border: none;
 }
 
 .btn-secondary:hover {
-  background: var(--border-color);
+  background: #334155;
+  transform: translateY(-1px);
 }
 
 /* Cards */
@@ -233,7 +235,7 @@ a:hover {
 /* Progress Bar */
 .progress-bar {
   height: 8px;
-  background: var(--bg-hover);
+  background: var(--progress-bar-bg, var(--border-color));
   border-radius: 4px;
   overflow: hidden;
 }
