@@ -183,6 +183,54 @@ class FooServiceTest {
 }
 ```
 
+### Git Flow Standards (NON-NEGOTIABLE)
+
+**All development MUST follow git flow branching model:**
+
+**Branch Naming Conventions**:
+- `feature/XXX-description` - New features (e.g., `feature/001-edit-employee-skills`)
+- `bugfix/XXX-description` - Bug fixes (e.g., `bugfix/042-fix-allocation-filter`)
+- `hotfix/XXX-description` - Critical production fixes
+- `release/vX.Y.Z` - Release preparation branches
+
+**Branching Rules (NON-NEGOTIABLE)**:
+- ✅ All work must be done in feature/bugfix/hotfix branches
+- ❌ **NO direct commits to `main` branch** (push will be rejected)
+- ✅ Feature branches created from `main`
+- ✅ Merge back to `main` via Pull Request only
+- ✅ Delete feature branch after successful merge
+
+**Pre-Merge Requirements**:
+- ✅ **All tests MUST pass** (`./mvnw test` exits 0)
+- ✅ Pull Request created with descriptive title and summary
+- ✅ Constitution compliance verified
+- ✅ No merge conflicts with `main`
+- ✅ Frontend builds successfully (`npx ng build` exits 0)
+
+**Commit Guidelines**:
+- Commits should be logical, focused units of work
+- Include co-authorship when assisted: `Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>`
+- Commit message format is optional (may be added in future amendment)
+
+**Workflow Example**:
+```bash
+# Create feature branch
+git checkout -b feature/123-add-feature main
+
+# Work and commit
+git add .
+git commit -m "feat: add new feature"
+
+# Push and create PR
+git push -u origin feature/123-add-feature
+gh pr create --title "Add new feature" --body "Description..."
+
+# After PR approval and tests pass: merge via GitHub UI
+# GitHub will delete branch automatically if configured
+```
+
+**Rationale**: Git flow provides structured development workflow, prevents accidental main branch corruption, ensures code review, and maintains test coverage through CI/CD integration.
+
 ## Development Workflow
 
 ### Feature Development Process
@@ -199,9 +247,10 @@ class FooServiceTest {
 ### Code Review Requirements
 
 Every PR must verify:
+- **Git flow compliance**: Proper branch naming, no direct main commits (NON-NEGOTIABLE)
+- **All tests pass**: Backend (`./mvnw test`) and frontend (`npx ng build`) must succeed (NON-NEGOTIABLE)
 - Constitution compliance (especially ABAC, DB-first, NULL-safety)
 - **Unit tests exist for all new/modified service classes** (NON-NEGOTIABLE)
-- **All tests pass** (`./mvnw test` must succeed)
 - Test coverage includes: happy path, ABAC, validation failures, edge cases
 - No in-memory filtering on large datasets
 - Proper faceted search if adding filters
@@ -235,6 +284,19 @@ Every PR must verify:
 
 ## Amendment Log
 
+### v1.2.0 (2026-02-22)
+**Added**: Git Flow branching standards and pre-merge requirements
+
+**Rationale**: Structured branching workflow prevents accidental corruption of main branch, ensures code review, maintains test coverage, and provides clear development lifecycle. All tests passing before merge prevents broken builds in main branch.
+
+**Impact**: All development must follow feature/bugfix/hotfix branch naming. Direct commits to main are prohibited. PRs require all tests to pass before merge.
+
+**Migration Plan**:
+- Current work: Continue on existing branches (e.g., `001-edit-employee-skills`)
+- New work: Use proper branch prefixes (e.g., `feature/002-description`)
+- Configure GitHub branch protection rules to enforce main branch protection
+- Existing branches may be merged with current naming but future branches must comply
+
 ### v1.1.0 (2026-02-20)
 **Added**: Mandatory backend unit testing standards
 
@@ -249,4 +311,4 @@ Every PR must verify:
 
 ---
 
-**Version**: 1.1.0 | **Ratified**: 2026-02-17 | **Last Amended**: 2026-02-20
+**Version**: 1.2.0 | **Ratified**: 2026-02-17 | **Last Amended**: 2026-02-22
