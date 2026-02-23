@@ -1,0 +1,472 @@
+openapi: 3.0.3
+info:
+  title: Allocation Month/Year Filter API
+  description: |
+    REST API endpoints for filtering allocations by month/year time dimension.
+    Extends existing allocation endpoints with temporal filtering while maintaining
+    faceted search integration and ABAC access control.
+  version: 1.0.0
+  contact:
+    name: Atlas Development Team
+
+servers:
+  - url: http://localhost:8080
+    description: Local development server
+  - url: https://api.atlas.example.com
+    description: Production server
+
+tags:
+  - name: Allocations
+    description: Operations for managing and filtering allocations with time dimension
+
+paths:
+  /api/allocations/grouped:
+    get:
+      tags:
+        - Allocations
+      summary: Get grouped allocations with month/year filter
+      description: |
+        Returns employee allocation summaries for the specified month/year.
+        Filters allocations active in the selected time period using date range overlap logic.
+        BENCH employees (no allocations) are included regardless of selected month.
+        Supports faceted search: all filters affect each other.
+      operationId: getGroupedAllocations
+      parameters:
+        - name: page
+          in: query
+          required: false
+          description: Page number (zero-indexed)
+          schema:
+            type: integer
+            format: int32
+            default: 0
+            minimum: 0
+            example: 0
+        - name: size
+          in: query
+          required: false
+          description: Page size (max 100)
+          schema:
+            type: integer
+            format: int32
+            default: 10
+            minimum: 1
+            maximum: 100
+            example: 10
+        - name: search
+          in: query
+          required: false
+          description: Search term for employee name or email
+          schema:
+            type: string
+            example: "John Smith"
+        - name: allocationType
+          in: query
+          required: false
+          description: Filter by allocation type (PROJECT, PROSPECT, VACATION, MATERNITY, BENCH)
+          schema:
+            type: string
+            enum: [PROJECT, PROSPECT, VACATION, MATERNITY, BENCH]
+            example: "PROJECT"
+        - name: managerId
+          in: query
+          required: false
+          description: Filter by manager ID
+          schema:
+            type: integer
+            format: int64
+            example: 42
+        - name: year
+          in: query
+          required: false
+          description: |
+            Filter year (defaults to current year if not provided).
+            Allocations active in this year/month are returned.
+          schema:
+            type: integer
+            format: int32
+            minimum: 2020
+            maximum: 2050
+            example: 2026
+        - name: month
+          in: query
+          required: false
+          description: |
+            Filter month (1-12, defaults to current month if not provided).
+            Allocations active in this year/month are returned.
+          schema:
+            type: integer
+            format: int32
+            minimum: 1
+            maximum: 12
+            example: 2
+      responses:
+        '200':
+          description: Successfully retrieved allocation summaries for the specified month
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PageEmployeeAllocationSummary'
+              examples:
+                februaryAllocations:
+                  summary: February 2026 allocations
+                  value:
+                    content:
+                      - employeeId: 123
+                        employeeName: "John Smith"
+                        employeeEmail: "john.smith@company.com"
+                        employeeOracleId: "EMP001"
+                        projectCount: 2
+                        totalAllocationPercentage: 75
+                        allocations:
+                          - id: 1
+                            projectName: "Project Alpha"
+                            allocationType: "PROJECT"
+                            allocationPercentage: 50
+                            currentMonthAllocation: 50
+                            startDate: "2026-01-01"
+                            endDate: "2026-06-30"
+                          - id: 2
+                            projectName: "Project Beta"
+                            allocationType: "PROJECT"
+                            allocationPercentage: 25
+                            currentMonthAllocation: 25
+                            startDate: "2026-02-01"
+                            endDate: null
+                      - employeeId: 456
+                        employeeName: "Jane Doe"
+                        employeeEmail: "jane.doe@company.com"
+                        employeeOracleId: "EMP002"
+                        projectCount: 0
+                        totalAllocationPercentage: 0
+                        allocations: []
+                    pageable:
+                      pageNumber: 0
+                      pageSize: 10
+                    totalElements: 125
+                    totalPages: 13
+                    last: false
+        '400':
+          description: Bad Request - Invalid month or year parameter
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                timestamp: '2026-02-23T10:30:00Z'
+                status: 400
+                error: Bad Request
+                message: 'Invalid month: must be between 1 and 12'
+                path: '/api/allocations/grouped'
+        '401':
+          description: Unauthorized - Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/allocations/managers:
+    get:
+      tags:
+        - Allocations
+      summary: Get distinct managers with month/year faceting
+      description: |
+        Returns list of distinct managers who have employees with allocations
+        in the specified month/year (faceted by other active filters).
+        Used to populate the manager dropdown with context-aware options.
+      operationId: getAllocationManagers
+      parameters:
+        - name: allocationType
+          in: query
+          required: false
+          description: Filter by allocation type
+          schema:
+            type: string
+            enum: [PROJECT, PROSPECT, VACATION, MATERNITY, BENCH]
+        - name: search
+          in: query
+          required: false
+          description: Global search term (employee name/email)
+          schema:
+            type: string
+        - name: managerSearch
+          in: query
+          required: false
+          description: Search term for manager name
+          schema:
+            type: string
+        - name: year
+          in: query
+          required: false
+          description: Filter year for faceted search
+          schema:
+            type: integer
+            format: int32
+            example: 2026
+        - name: month
+          in: query
+          required: false
+          description: Filter month for faceted search (1-12)
+          schema:
+            type: integer
+            format: int32
+            minimum: 1
+            maximum: 12
+            example: 2
+      responses:
+        '200':
+          description: List of distinct managers
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Manager'
+              example:
+                - id: 42
+                  name: "Alice Manager"
+                - id: 58
+                  name: "Bob Director"
+
+  /api/allocations/allocation-types:
+    get:
+      tags:
+        - Allocations
+      summary: Get distinct allocation types with month/year faceting
+      description: |
+        Returns list of distinct allocation types for employees
+        in the specified month/year (faceted by other active filters).
+        Used to populate the allocation type dropdown.
+      operationId: getAllocationTypes
+      parameters:
+        - name: managerId
+          in: query
+          required: false
+          description: Filter by manager ID
+          schema:
+            type: integer
+            format: int64
+        - name: search
+          in: query
+          required: false
+          description: Search term for employee name/email
+          schema:
+            type: string
+        - name: year
+          in: query
+          required: false
+          description: Filter year for faceted search
+          schema:
+            type: integer
+            format: int32
+        - name: month
+          in: query
+          required: false
+          description: Filter month for faceted search
+          schema:
+            type: integer
+            format: int32
+            minimum: 1
+            maximum: 12
+      responses:
+        '200':
+          description: List of distinct allocation types
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: string
+                  enum: [PROJECT, PROSPECT, VACATION, MATERNITY]
+              example:
+                - "PROJECT"
+                - "PROSPECT"
+                - "VACATION"
+
+  /api/allocations/available-months:
+    get:
+      tags:
+        - Allocations
+      summary: Get months with available allocations (P3 - Future)
+      description: |
+        [P3 ONLY - Not included in MVP]
+        Returns list of months that contain allocations matching current filters.
+        Used to indicate which months have data (enabled) vs empty (dimmed) in month picker.
+      operationId: getAvailableMonths
+      parameters:
+        - name: allocationType
+          in: query
+          required: false
+          description: Filter by allocation type (typically PROJECT for this feature)
+          schema:
+            type: string
+            enum: [PROJECT, PROSPECT, VACATION, MATERNITY]
+        - name: managerId
+          in: query
+          required: false
+          description: Filter by manager ID
+          schema:
+            type: integer
+            format: int64
+        - name: search
+          in: query
+          required: false
+          description: Search term for employee name/email
+          schema:
+            type: string
+      responses:
+        '200':
+          description: List of available months with allocation counts
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/AvailableMonth'
+              example:
+                - year: 2026
+                  month: 1
+                  count: 15
+                - year: 2026
+                  month: 2
+                  count: 23
+                - year: 2026
+                  month: 3
+                  count: 18
+
+components:
+  schemas:
+    PageEmployeeAllocationSummary:
+      type: object
+      properties:
+        content:
+          type: array
+          items:
+            $ref: '#/components/schemas/EmployeeAllocationSummary'
+        pageable:
+          type: object
+          properties:
+            pageNumber:
+              type: integer
+            pageSize:
+              type: integer
+        totalElements:
+          type: integer
+          format: int64
+        totalPages:
+          type: integer
+        last:
+          type: boolean
+
+    EmployeeAllocationSummary:
+      type: object
+      properties:
+        employeeId:
+          type: integer
+          format: int64
+          description: Employee unique identifier
+        employeeName:
+          type: string
+          description: Employee full name
+        employeeEmail:
+          type: string
+          format: email
+          description: Employee email address
+        employeeOracleId:
+          type: string
+          nullable: true
+          description: Employee Oracle ID (may be null)
+        projectCount:
+          type: integer
+          description: Number of allocations for this employee
+        totalAllocationPercentage:
+          type: integer
+          description: Sum of all allocation percentages (can exceed 100%)
+        allocations:
+          type: array
+          items:
+            $ref: '#/components/schemas/AllocationDTO'
+
+    AllocationDTO:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        projectName:
+          type: string
+          nullable: true
+        allocationType:
+          type: string
+          enum: [PROJECT, PROSPECT, VACATION, MATERNITY]
+        allocationPercentage:
+          type: integer
+          description: Current month allocation percentage (0-100)
+        currentMonthAllocation:
+          type: integer
+          nullable: true
+          description: Allocation percentage for current/selected month
+        startDate:
+          type: string
+          format: date
+          description: Allocation start date (YYYY-MM-DD)
+        endDate:
+          type: string
+          format: date
+          nullable: true
+          description: Allocation end date (null = ongoing)
+
+    Manager:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        name:
+          type: string
+
+    AvailableMonth:
+      type: object
+      description: |
+        Represents a month that contains allocations (used for P3 month picker dimming)
+      properties:
+        year:
+          type: integer
+          format: int32
+          example: 2026
+        month:
+          type: integer
+          format: int32
+          description: Month number (1-12)
+          minimum: 1
+          maximum: 12
+          example: 2
+        count:
+          type: integer
+          format: int32
+          description: Number of allocations in this month
+          example: 15
+
+    ErrorResponse:
+      type: object
+      properties:
+        timestamp:
+          type: string
+          format: date-time
+        status:
+          type: integer
+        error:
+          type: string
+        message:
+          type: string
+        path:
+          type: string
+
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+security:
+  - bearerAuth: []

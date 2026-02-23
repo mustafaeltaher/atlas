@@ -317,8 +317,9 @@ public class EmployeeService {
 
         // Use custom repository method for DB-level distinct manager selection
         // This avoids in-memory filtering and sorting of large result sets
+        // Pass null for year/month to default to current month (employee page context)
         List<Employee> managers = employeeRepository.findDistinctManagersByEmployeeSpec(
-                searchParam, towerParam, null, statusParam, accessibleIds, managerSearchParam);
+                searchParam, towerParam, null, statusParam, accessibleIds, managerSearchParam, null, null);
 
         return managers.stream()
                 .map(m -> EmployeeDTO.builder()

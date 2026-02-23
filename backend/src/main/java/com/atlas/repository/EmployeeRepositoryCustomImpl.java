@@ -32,7 +32,9 @@ public class EmployeeRepositoryCustomImpl implements EmployeeRepositoryCustom {
             Long managerId,
             String status,
             List<Long> accessibleIds,
-            String managerName) {
+            String managerName,
+            Integer year,
+            Integer month) {
 
         CriteriaBuilder cb = entityManager.getCriteriaBuilder();
         CriteriaQuery<Employee> query = cb.createQuery(Employee.class);
@@ -42,8 +44,9 @@ public class EmployeeRepositoryCustomImpl implements EmployeeRepositoryCustom {
         Join<Employee, Employee> managerJoin = root.join("manager", JoinType.INNER);
 
         // Build specification with all employee filters (these apply to subordinates)
+        // Pass year/month so status checks (PROSPECT, ACTIVE, BENCH) use the selected month
         Specification<Employee> spec = EmployeeSpecification.withFilters(
-                search, tower, managerId, status, accessibleIds, managerName);
+                search, tower, managerId, status, accessibleIds, managerName, year, month);
 
         // Apply specification predicates to subordinates
         Predicate specPredicate = spec.toPredicate(root, query, cb);

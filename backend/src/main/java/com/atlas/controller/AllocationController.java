@@ -33,12 +33,14 @@ public class AllocationController {
             @RequestParam(defaultValue = "10") int size,
             @RequestParam(required = false) String search,
             @RequestParam(required = false) String allocationType,
-            @RequestParam(required = false) Long managerId) {
+            @RequestParam(required = false) Long managerId,
+            @RequestParam(required = false) Integer year,
+            @RequestParam(required = false) Integer month) {
         page = Math.max(0, page);
         size = Math.max(1, Math.min(size, MAX_PAGE_SIZE));
         User currentUser = userDetailsService.getUserByUsername(authentication.getName());
         return ResponseEntity.ok(allocationService.getAllAllocations(currentUser,
-                org.springframework.data.domain.PageRequest.of(page, size), search, allocationType, managerId));
+                org.springframework.data.domain.PageRequest.of(page, size), search, allocationType, managerId, year, month));
     }
 
     @GetMapping("/grouped")
@@ -48,12 +50,14 @@ public class AllocationController {
             @RequestParam(defaultValue = "10") int size,
             @RequestParam(required = false) String search,
             @RequestParam(required = false) String allocationType,
-            @RequestParam(required = false) Long managerId) {
+            @RequestParam(required = false) Long managerId,
+            @RequestParam(required = false) Integer year,
+            @RequestParam(required = false) Integer month) {
         page = Math.max(0, page);
         size = Math.max(1, Math.min(size, MAX_PAGE_SIZE));
         User currentUser = userDetailsService.getUserByUsername(authentication.getName());
         return ResponseEntity.ok(allocationService.getGroupedAllocations(currentUser,
-                PageRequest.of(page, size), search, allocationType, managerId));
+                PageRequest.of(page, size), search, allocationType, managerId, year, month));
     }
 
     @GetMapping("/managers")
@@ -61,10 +65,12 @@ public class AllocationController {
             Authentication authentication,
             @RequestParam(required = false) String allocationType,
             @RequestParam(required = false) String search,
-            @RequestParam(required = false) String managerSearch) {
+            @RequestParam(required = false) String managerSearch,
+            @RequestParam(required = false) Integer year,
+            @RequestParam(required = false) Integer month) {
         User currentUser = userDetailsService.getUserByUsername(authentication.getName());
         return ResponseEntity
-                .ok(allocationService.getManagersForAllocations(currentUser, allocationType, search, managerSearch));
+                .ok(allocationService.getManagersForAllocations(currentUser, allocationType, search, managerSearch, year, month));
     }
 
     @GetMapping("/allocation-types")
@@ -72,9 +78,21 @@ public class AllocationController {
             Authentication authentication,
             @RequestParam(required = false) Long managerId,
             @RequestParam(required = false) String search,
-            @RequestParam(required = false) String allocationType) {
+            @RequestParam(required = false) String allocationType,
+            @RequestParam(required = false) Integer year,
+            @RequestParam(required = false) Integer month) {
         User currentUser = userDetailsService.getUserByUsername(authentication.getName());
-        return ResponseEntity.ok(allocationService.getDistinctAllocationTypes(currentUser, managerId, search, allocationType));
+        return ResponseEntity.ok(allocationService.getDistinctAllocationTypes(currentUser, managerId, search, allocationType, year, month));
+    }
+
+    @GetMapping("/available-months")
+    public ResponseEntity<List<String>> getAvailableMonths(
+            Authentication authentication,
+            @RequestParam(required = false) String allocationType,
+            @RequestParam(required = false) Long managerId,
+            @RequestParam(required = false) String search) {
+        User currentUser = userDetailsService.getUserByUsername(authentication.getName());
+        return ResponseEntity.ok(allocationService.getAvailableMonths(currentUser, allocationType, managerId, search));
     }
 
     @GetMapping("/{id}")
