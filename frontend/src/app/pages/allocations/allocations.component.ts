@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { SidebarComponent } from '../../components/sidebar/sidebar.component';
 import { HeaderComponent } from '../../components/header/header.component';
+import { MonthPickerComponent } from '../../components/month-picker/month-picker.component';
 import { ApiService } from '../../services/api.service';
 
 import { Allocation, EmployeeAllocationSummary, Employee, Project, Manager } from '../../models';
@@ -11,7 +12,13 @@ import { Allocation, EmployeeAllocationSummary, Employee, Project, Manager } fro
 @Component({
   selector: 'app-allocations',
   standalone: true,
-  imports: [CommonModule, SidebarComponent, HeaderComponent, FormsModule],
+  imports: [
+    CommonModule,
+    SidebarComponent,
+    HeaderComponent,
+    FormsModule,
+    MonthPickerComponent
+  ],
   template: `
     <div class="layout">
       <app-sidebar></app-sidebar>
@@ -44,6 +51,15 @@ import { Allocation, EmployeeAllocationSummary, Employee, Project, Manager } fro
             </svg>
             <input type="text" placeholder="Search by name or email..." [(ngModel)]="searchTerm" (input)="onSearch()">
           </div>
+
+          <!-- Custom Month Picker -->
+          <app-month-picker
+            [selectedYear]="selectedYear()"
+            [selectedMonth]="selectedMonth()"
+            [availableMonths]="availableMonths()"
+            (monthChange)="onMonthChange($event)">
+          </app-month-picker>
+
           <select class="filter-select" [(ngModel)]="allocationTypeFilter" (change)="onFilter()">
             <option value="">All Types</option>
             @for (type of allocationTypes(); track type) {
@@ -88,6 +104,7 @@ import { Allocation, EmployeeAllocationSummary, Employee, Project, Manager } fro
                   <th>Oracle ID</th>
                   <th>Projects</th>
                   <th>Total Allocation</th>
+                  <th>Manager</th>
                   <th>Actions</th>
                 </tr>
               </thead>
@@ -103,7 +120,7 @@ import { Allocation, EmployeeAllocationSummary, Employee, Project, Manager } fro
                         </div>
                       </div>
                     </td>
-                    <td class="text-muted">{{ summary.employeeOracleId || '-' }}</td>
+                    <td>{{ summary.employeeOracleId || '-' }}</td>
                     <td>
                       <span class="project-count">{{ summary.projectCount }}</span>
                     </td>
@@ -124,6 +141,7 @@ import { Allocation, EmployeeAllocationSummary, Employee, Project, Manager } fro
                         }
                       </div>
                     </td>
+                    <td>{{ summary.managerName || '-' }}</td>
                     <td>
                       <div class="action-group">
                         <button class="btn-icon" (click)="viewEmployeeDetails(summary); $event.stopPropagation()" title="View Profile">
@@ -143,7 +161,7 @@ import { Allocation, EmployeeAllocationSummary, Employee, Project, Manager } fro
                   </tr>
                 } @empty {
                   <tr>
-                    <td colspan="5" class="empty-state">No allocations found</td>
+                    <td colspan="6" class="empty-state">No allocations found</td>
                   </tr>
                 }
               </tbody>
@@ -350,7 +368,7 @@ import { Allocation, EmployeeAllocationSummary, Employee, Project, Manager } fro
                     </tr>
                   } @empty {
                     <tr>
-                      <td colspan="6" class="empty-state">No assignments for this employee</td>
+                      <td colspan="7" class="empty-state">No assignments for this employee</td>
                     </tr>
                   }
                 </tbody>
@@ -504,6 +522,7 @@ import { Allocation, EmployeeAllocationSummary, Employee, Project, Manager } fro
                           <th>Project</th>
                           <th>Type</th>
                           <th>Allocation</th>
+                          <th>Start Date</th>
                           <th>End Date</th>
                         </tr>
                       </thead>
@@ -537,6 +556,7 @@ import { Allocation, EmployeeAllocationSummary, Employee, Project, Manager } fro
                                 <span class="text-muted">-</span>
                               }
                             </td>
+                            <td>{{ alloc.startDate | date:'mediumDate' }}</td>
                             <td>{{ alloc.endDate | date:'mediumDate' }}</td>
                           </tr>
                         }
@@ -781,6 +801,10 @@ import { Allocation, EmployeeAllocationSummary, Employee, Project, Manager } fro
       font-size: 14px;
     }
 
+    .modal-wide .detail-table {
+      margin-bottom: 20px;
+    }
+
     .add-assignment-form {
       background: var(--surface);
       border: 1px solid var(--border);
@@ -839,6 +863,17 @@ import { Allocation, EmployeeAllocationSummary, Employee, Project, Manager } fro
       margin-left: -24px;
       margin-right: -24px;
       margin-bottom: -24px;
+      position: relative;
+    }
+
+    .modal-wide .modal-actions::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -24px;
+      right: -24px;
+      height: 1px;
+      background: var(--border);
     }
 
     .modal-actions {
@@ -1150,6 +1185,33 @@ import { Allocation, EmployeeAllocationSummary, Employee, Project, Manager } fro
     .dropdown-item.disabled:hover {
       background: transparent;
     }
+
+    /* Native Month Picker Styling */
+    .month-picker {
+      min-width: 160px;
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .month-picker::-webkit-calendar-picker-indicator {
+      cursor: pointer;
+      filter: var(--calendar-icon-filter, none);
+    }
+
+    .month-picker:hover {
+      border-color: var(--primary);
+    }
+
+    .month-picker:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(62, 146, 204, 0.1);
+    }
+
+    .month-picker[readonly] {
+      background-color: var(--bg-card);
+      cursor: pointer;
+    }
   `]
 })
 export class AllocationsComponent implements OnInit {
@@ -1170,6 +1232,11 @@ export class AllocationsComponent implements OnInit {
   managerSearchText = '';
   showManagerDropdown = false;
   private managerSearchTimeout: any;
+
+  // Month/Year filter state
+  selectedYear = signal<number>(new Date().getFullYear());
+  selectedMonth = signal<number>(new Date().getMonth() + 1); // 1-indexed for backend
+  availableMonths = signal<string[]>([]); // Format: "YYYY-MM"
 
   // Create modal (from master page)
   showCreateModal = false;
@@ -1208,16 +1275,42 @@ export class AllocationsComponent implements OnInit {
   ) { }
 
   ngOnInit(): void {
+    this.loadAvailableMonths();
     this.loadManagers();
     this.loadAllocationTypes();
     this.loadAllocations();
+  }
+
+  // Month/Year picker methods
+  onMonthChange(event: { year: number; month: number }): void {
+    this.selectedYear.set(event.year);
+    this.selectedMonth.set(event.month);
+    this.currentPage.set(0); // Reset pagination
+    this.loadAllocations();
+    this.loadManagers();
+    this.loadAllocationTypes();
+  }
+
+  loadAvailableMonths(): void {
+    const allocationType = this.allocationTypeFilter || undefined;
+    const managerId = this.managerFilter ? Number(this.managerFilter) : undefined;
+    const search = this.searchTerm || undefined;
+
+    this.apiService.getAvailableMonths(allocationType, managerId, search)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (months) => this.availableMonths.set(months),
+        error: () => this.availableMonths.set([])
+      });
   }
 
   loadManagers(managerNameSearch?: string): void {
     const allocationType = this.allocationTypeFilter || undefined;
     const globalSearch = this.searchTerm || undefined;
     const managerSearch = managerNameSearch || undefined;
-    this.apiService.getAllocationManagers(allocationType, globalSearch, managerSearch).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+    const year = this.selectedYear();
+    const month = this.selectedMonth();
+    this.apiService.getAllocationManagers(allocationType, globalSearch, managerSearch, year, month).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: (managers) => this.managers.set(managers),
       error: () => { }
     });
@@ -1255,7 +1348,9 @@ export class AllocationsComponent implements OnInit {
   loadAllocationTypes(): void {
     const managerId = this.managerFilter ? Number(this.managerFilter) : undefined;
     const search = this.searchTerm || undefined;
-    this.apiService.getAllocationTypes(managerId, search).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+    const year = this.selectedYear();
+    const month = this.selectedMonth();
+    this.apiService.getAllocationTypes(managerId, search, year, month).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: (types) => this.allocationTypes.set(types),
       error: () => { }
     });
@@ -1266,8 +1361,10 @@ export class AllocationsComponent implements OnInit {
     const search = this.searchTerm || undefined;
     const allocationType = this.allocationTypeFilter || undefined;
     const managerId = this.managerFilter ? Number(this.managerFilter) : undefined;
+    const year = this.selectedYear();
+    const month = this.selectedMonth();
 
-    this.apiService.getGroupedAllocations(this.currentPage(), this.pageSize(), search, allocationType, managerId)
+    this.apiService.getGroupedAllocations(this.currentPage(), this.pageSize(), search, allocationType, managerId, year, month)
       .pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
         next: (page) => {
           this.employeeSummaries.set(page.content);
@@ -1300,6 +1397,7 @@ export class AllocationsComponent implements OnInit {
 
   onSearch(): void {
     this.currentPage.set(0);
+    this.loadAvailableMonths();
     this.loadAllocations();
     this.loadManagers();
     this.loadAllocationTypes();
@@ -1307,6 +1405,7 @@ export class AllocationsComponent implements OnInit {
 
   onFilter(): void {
     this.currentPage.set(0);
+    this.loadAvailableMonths();
     this.loadAllocations();
     this.loadManagers();
     this.loadAllocationTypes();

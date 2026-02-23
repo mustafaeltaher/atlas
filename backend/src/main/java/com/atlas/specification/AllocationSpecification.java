@@ -6,6 +6,7 @@ import com.atlas.entity.Project;
 import jakarta.persistence.criteria.*;
 import org.springframework.data.jpa.domain.Specification;
 
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -15,7 +16,9 @@ public class AllocationSpecification {
             Allocation.AllocationType allocationType,
             Long managerId,
             String search,
-            List<Long> accessibleEmployeeIds) {
+            List<Long> accessibleEmployeeIds,
+            Integer year,
+            Integer month) {
         return (root, query, cb) -> {
             List<Predicate> predicates = new ArrayList<>();
 
@@ -61,6 +64,20 @@ public class AllocationSpecification {
                 Predicate employeeNameLike = cb.like(cb.lower(employeeJoin.get("name")), searchLike);
                 Predicate employeeEmailLike = cb.like(cb.lower(employeeJoin.get("email")), searchLike);
                 predicates.add(cb.or(employeeNameLike, employeeEmailLike));
+            }
+
+            // Month/Year Filter (Date Range)
+            if (year != null && month != null) {
+                LocalDate firstDayOfMonth = LocalDate.of(year, month, 1);
+                LocalDate lastDayOfMonth = firstDayOfMonth.withDayOfMonth(firstDayOfMonth.lengthOfMonth());
+
+                // Allocation is active in month if:
+                // startDate <= lastDayOfMonth AND (endDate IS NULL OR endDate >= firstDayOfMonth)
+                Predicate startDateCheck = cb.lessThanOrEqualTo(root.get("startDate"), lastDayOfMonth);
+                Predicate endDateNull = cb.isNull(root.get("endDate"));
+                Predicate endDateCheck = cb.greaterThanOrEqualTo(root.get("endDate"), firstDayOfMonth);
+
+                predicates.add(cb.and(startDateCheck, cb.or(endDateNull, endDateCheck)));
             }
 
             // Order by? Typically handled by Pageable, but we can add default sorting if

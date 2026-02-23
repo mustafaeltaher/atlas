@@ -44,7 +44,16 @@ public class AllocationService {
 
     // Paginated version with search and filters - uses database-level pagination
     public Page<AllocationDTO> getAllAllocations(User currentUser,
-            Pageable pageable, String search, String allocationType, Long managerId) {
+            Pageable pageable, String search, String allocationType, Long managerId,
+            Integer year, Integer month) {
+
+        // Default to current month if not provided
+        if (year == null) {
+            year = LocalDate.now().getYear();
+        }
+        if (month == null) {
+            month = LocalDate.now().getMonthValue();
+        }
 
         Allocation.AllocationType allocationTypeEnum = null;
         if (allocationType != null && !allocationType.trim().isEmpty()) {
@@ -64,14 +73,23 @@ public class AllocationService {
         }
 
         org.springframework.data.jpa.domain.Specification<Allocation> spec = com.atlas.specification.AllocationSpecification
-                .withFilters(allocationTypeEnum, managerId, searchParam, accessibleIds);
+                .withFilters(allocationTypeEnum, managerId, searchParam, accessibleIds, year, month);
 
         Page<Allocation> allocationPage = allocationRepository.findAll(spec, pageable);
         return allocationPage.map(this::toDTO);
     }
 
     public Page<EmployeeAllocationSummaryDTO> getGroupedAllocations(User currentUser,
-            Pageable pageable, String search, String allocationType, Long managerId) {
+            Pageable pageable, String search, String allocationType, Long managerId,
+            Integer year, Integer month) {
+
+        // Default to current month if not provided
+        if (year == null) {
+            year = LocalDate.now().getYear();
+        }
+        if (month == null) {
+            month = LocalDate.now().getMonthValue();
+        }
 
         final boolean isBenchFilter = "BENCH".equalsIgnoreCase(allocationType);
 
@@ -86,18 +104,28 @@ public class AllocationService {
         final Allocation.AllocationType filterTypeEnum = temp;
 
         String searchParam = (search != null && !search.trim().isEmpty()) ? search.trim() : null;
-        int currentYear = LocalDate.now().getYear();
-        int currentMonth = LocalDate.now().getMonthValue();
+        int currentYear = year;
+        int currentMonth = month;
 
         List<Long> accessibleIds = employeeService.getAccessibleEmployeeIds(currentUser);
         if (accessibleIds != null && accessibleIds.isEmpty()) {
             return new PageImpl<>(List.of(), pageable, 0);
         }
 
+        // Map allocation TYPE to employee STATUS for EmployeeSpecification
+        // PROJECT type → ACTIVE status (employees with active PROJECT allocations)
+        // Other types (PROSPECT/MATERNITY/VACATION) stay the same
+        // BENCH stays BENCH
+        String employeeStatus = allocationType;
+        if ("PROJECT".equalsIgnoreCase(allocationType)) {
+            employeeStatus = "ACTIVE";  // ACTIVE employee status = has PROJECT allocations
+        }
+
         // Reuse EmployeeSpecification for consistent search behavior (name OR email)
+        // Pass year/month so status checks use the SELECTED month, not current month
         org.springframework.data.jpa.domain.Specification<Employee> spec =
             com.atlas.specification.EmployeeSpecification.withFilters(
-                searchParam, null, managerId, allocationType, accessibleIds, null);
+                searchParam, null, managerId, employeeStatus, accessibleIds, null, currentYear, currentMonth);
 
         Page<Employee> employeePage = employeeRepository.findAll(spec, pageable);
 
@@ -142,12 +170,19 @@ public class AllocationService {
                         // BENCH means no allocations, show empty list
                         filteredAllocations = List.of();
                     } else if (filterTypeEnum != null) {
-                        // Show allocations of the filtered type with valid monthly percentages
+                        // Show allocations of the filtered type
+                        // For PROJECT: check monthly percentage > 0
+                        // For PROSPECT/MATERNITY/VACATION: no monthly records, include all
                         filteredAllocations = empAllocations.stream()
                                 .filter(a -> a.getAllocationType() == filterTypeEnum)
                                 .filter(a -> {
-                                    Integer percentage = currentMonthAllocations.get(a.getId());
-                                    return percentage != null && percentage > 0;
+                                    // Only PROJECT allocations have MonthlyAllocation records
+                                    if (a.getAllocationType() == Allocation.AllocationType.PROJECT) {
+                                        Integer percentage = currentMonthAllocations.get(a.getId());
+                                        return percentage != null && percentage > 0;
+                                    }
+                                    // PROSPECT/MATERNITY/VACATION don't have monthly records, include them
+                                    return true;
                                 })
                                 .collect(Collectors.toList());
                     } else {
@@ -176,6 +211,7 @@ public class AllocationService {
                             .employeeName(emp.getName())
                             .employeeEmail(emp.getEmail())
                             .employeeOracleId(emp.getOracleId() != null ? String.valueOf(emp.getOracleId()) : null)
+                            .managerName(emp.getManager() != null ? emp.getManager().getName() : null)
                             .totalAllocationPercentage(totalPercentage)
                             .projectCount(filteredAllocations.size())
                             .allocations(allocationDTOs)
@@ -442,7 +478,15 @@ public class AllocationService {
     }
 
     public List<Map<String, Object>> getManagersForAllocations(User currentUser, String allocationType, String search,
-            String managerSearch) {
+            String managerSearch, Integer year, Integer month) {
+        // Default to current month if not provided
+        if (year == null) {
+            year = LocalDate.now().getYear();
+        }
+        if (month == null) {
+            month = LocalDate.now().getMonthValue();
+        }
+
         List<Long> accessibleIds = employeeService.getAccessibleEmployeeIds(currentUser);
 
         String searchTerm = (search != null && !search.trim().isEmpty()) ? search.trim() : null;
@@ -454,8 +498,10 @@ public class AllocationService {
         // statusParam can be BENCH or allocation type (PROJECT, PROSPECT, etc.)
         String statusParam = allocationType;
 
+        // Pass year/month so manager dropdown reflects the selected month
+        // This ensures managers shown have subordinates with allocations in the selected month
         List<Employee> distinctManagers = employeeRepository.findDistinctManagersByEmployeeSpec(
-                searchTerm, null, null, statusParam, accessibleIds, managerSearchTerm);
+                searchTerm, null, null, statusParam, accessibleIds, managerSearchTerm, year, month);
 
         return distinctManagers.stream()
                 .map(m -> {
@@ -467,31 +513,48 @@ public class AllocationService {
                 .collect(Collectors.toList());
     }
 
-    public List<String> getDistinctAllocationTypes(User currentUser, Long managerId, String search, String allocationType) {
+    public List<String> getDistinctAllocationTypes(User currentUser, Long managerId, String search, String allocationType,
+            Integer year, Integer month) {
+        // Default to current month if not provided
+        if (year == null) {
+            year = LocalDate.now().getYear();
+        }
+        if (month == null) {
+            month = LocalDate.now().getMonthValue();
+        }
+
         String searchParam = (search != null && !search.trim().isEmpty()) ? search.trim() : null;
+
+        // Get accessible employee IDs for ABAC filtering
+        List<Long> accessibleIds = employeeService.getAccessibleEmployeeIds(currentUser);
 
         // Use custom repository method for DB-level distinct allocation types
         // This avoids in-memory distinct operations on large result sets
         List<Allocation.AllocationType> types = allocationRepository.findDistinctAllocationTypesBySpec(
-                managerId, searchParam, null);
+                managerId, searchParam, accessibleIds, year, month);
 
         // Convert to list of strings (PROJECT, PROSPECT, VACATION, MATERNITY)
         List<String> typeNames = types.stream()
                 .map(Allocation.AllocationType::name)
                 .collect(Collectors.toList());
 
-        // Only add BENCH if there are bench employees matching current filters (faceted search)
-        List<Long> accessibleIds = employeeService.getAccessibleEmployeeIds(currentUser);
-        if (accessibleIds == null || !accessibleIds.isEmpty()) {
+        // Only add BENCH if:
+        // 1. No allocation type filter is selected (show all available types), OR
+        // 2. Current filter is BENCH (keep BENCH in dropdown when it's selected)
+        // Don't add BENCH when filtering by PROJECT/PROSPECT/etc. (faceted search)
+        boolean shouldIncludeBench = (allocationType == null || allocationType.trim().isEmpty()
+                || "BENCH".equalsIgnoreCase(allocationType));
+
+        if (shouldIncludeBench && (accessibleIds == null || !accessibleIds.isEmpty())) {
             String searchWithWildcards = (search != null && !search.trim().isEmpty())
                 ? "%" + search.trim().toLowerCase() + "%"
                 : null;
-            int currentYear = LocalDate.now().getYear();
-            int currentMonth = LocalDate.now().getMonthValue();
 
             // Use paginated query with page size 1 just to check if any bench employees exist
+            // Note: year/month parameters are accepted but BENCH employees should be visible
+            // across all months since they have no allocations (per constitution)
             Page<Employee> benchPage = employeeRepository.findBenchEmployeesFiltered(
-                accessibleIds, searchWithWildcards, managerId, currentYear, currentMonth,
+                accessibleIds, searchWithWildcards, managerId, year, month,
                 Pageable.ofSize(1));
 
             if (benchPage.getTotalElements() > 0) {
@@ -500,5 +563,64 @@ public class AllocationService {
         }
 
         return typeNames;
+    }
+
+    public List<String> getAvailableMonths(User currentUser, String allocationType, Long managerId, String search) {
+        List<Long> accessibleIds = employeeService.getAccessibleEmployeeIds(currentUser);
+
+        if (accessibleIds != null && accessibleIds.isEmpty()) {
+            return List.of();
+        }
+
+        // BENCH employees have no allocation records, so show unlimited months
+        // Generate 10 years back + 5 years forward = 180 months total
+        if (allocationType != null && "BENCH".equalsIgnoreCase(allocationType)) {
+            return generateAllMonths(120, 60);
+        }
+
+        // For PROJECT, PROSPECT, MATERNITY, VACATION - show only months with actual allocations
+        Allocation.AllocationType allocationTypeEnum = null;
+        if (allocationType != null && !allocationType.trim().isEmpty()) {
+            try {
+                allocationTypeEnum = Allocation.AllocationType.valueOf(allocationType.toUpperCase());
+            } catch (IllegalArgumentException e) {
+                // Invalid type, ignore
+            }
+        }
+
+        String searchParam = (search != null && !search.trim().isEmpty()) ? search.trim() : null;
+
+        // Get distinct year-month combinations from allocations matching filters
+        List<String> availableMonths = allocationRepository.findDistinctAvailableMonths(
+                allocationTypeEnum, managerId, searchParam, accessibleIds);
+
+        // If no specific allocation type filter, show unlimited months
+        // User can navigate to any time period - anyone without allocations appears as BENCH
+        if (allocationType == null || allocationType.trim().isEmpty()) {
+            // Same unlimited range as BENCH: 10 years back + 5 years forward
+            return generateAllMonths(120, 60);
+        }
+
+        return availableMonths;
+    }
+
+    /**
+     * Generates a list of year-month strings in "YYYY-MM" format.
+     *
+     * @param monthsBack Number of months before current month
+     * @param monthsForward Number of months after current month
+     * @return List of year-month strings
+     */
+    private List<String> generateAllMonths(int monthsBack, int monthsForward) {
+        List<String> months = new ArrayList<>();
+        LocalDate current = LocalDate.now().minusMonths(monthsBack);
+        LocalDate end = LocalDate.now().plusMonths(monthsForward);
+
+        while (!current.isAfter(end)) {
+            months.add(String.format("%04d-%02d", current.getYear(), current.getMonthValue()));
+            current = current.plusMonths(1);
+        }
+
+        return months;
     }
 }

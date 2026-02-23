@@ -58,19 +58,31 @@ export class ApiService {
         return this.http.get<string[]>(`${this.API_URL}/projects/statuses`, { params });
     }
 
-    getAllocationTypes(managerId?: number, search?: string): Observable<string[]> {
+    getAllocationTypes(managerId?: number, search?: string, year?: number, month?: number): Observable<string[]> {
         let params = new HttpParams();
         if (managerId) params = params.set('managerId', managerId.toString());
         if (search) params = params.set('search', search);
+        if (year) params = params.set('year', year.toString());
+        if (month) params = params.set('month', month.toString());
         return this.http.get<string[]>(`${this.API_URL}/allocations/allocation-types`, { params });
     }
 
-    getAllocationManagers(allocationType?: string, search?: string, managerSearch?: string): Observable<Manager[]> {
+    getAllocationManagers(allocationType?: string, search?: string, managerSearch?: string, year?: number, month?: number): Observable<Manager[]> {
         let params = new HttpParams();
         if (allocationType) params = params.set('allocationType', allocationType);
         if (search) params = params.set('search', search);
         if (managerSearch) params = params.set('managerSearch', managerSearch);
+        if (year) params = params.set('year', year.toString());
+        if (month) params = params.set('month', month.toString());
         return this.http.get<Manager[]>(`${this.API_URL}/allocations/managers`, { params });
+    }
+
+    getAvailableMonths(allocationType?: string, managerId?: number, search?: string): Observable<string[]> {
+        let params = new HttpParams();
+        if (allocationType) params = params.set('allocationType', allocationType);
+        if (managerId) params = params.set('managerId', managerId.toString());
+        if (search) params = params.set('search', search);
+        return this.http.get<string[]>(`${this.API_URL}/allocations/available-months`, { params });
     }
 
     getEmployee(id: number): Observable<Employee> {
@@ -121,11 +133,13 @@ export class ApiService {
     }
 
     // Allocations
-    getGroupedAllocations(page: number = 0, size: number = 10, search?: string, allocationType?: string, managerId?: number): Observable<Page<EmployeeAllocationSummary>> {
+    getGroupedAllocations(page: number = 0, size: number = 10, search?: string, allocationType?: string, managerId?: number, year?: number, month?: number): Observable<Page<EmployeeAllocationSummary>> {
         let url = `${this.API_URL}/allocations/grouped?page=${page}&size=${size}`;
         if (search) url += `&search=${encodeURIComponent(search)}`;
         if (allocationType) url += `&allocationType=${encodeURIComponent(allocationType)}`;
         if (managerId) url += `&managerId=${managerId}`;
+        if (year) url += `&year=${year}`;
+        if (month) url += `&month=${month}`;
         return this.http.get<Page<EmployeeAllocationSummary>>(url);
     }
 

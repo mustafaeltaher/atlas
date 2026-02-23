@@ -16,6 +16,7 @@ public class EmployeeAllocationSummaryDTO {
     private String employeeName;
     private String employeeEmail;
     private String employeeOracleId;
+    private String managerName;
     private Double totalAllocationPercentage;
     private int projectCount;
     private List<AllocationDTO> allocations;

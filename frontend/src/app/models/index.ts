@@ -136,6 +136,7 @@ export interface EmployeeAllocationSummary {
     employeeName: string;
     employeeEmail: string;
     employeeOracleId: string;
+    managerName?: string;
     totalAllocationPercentage: number;
     projectCount: number;
     allocations: Allocation[];
