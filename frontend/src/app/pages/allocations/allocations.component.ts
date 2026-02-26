@@ -1706,13 +1706,9 @@ export class AllocationsComponent implements OnInit {
       .pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
         next: (allocations) => {
           this.detailAllocations.set(allocations);
-          // Recalculate summary totals
-          let total = 0;
-          for (const a of allocations) {
-            total += a.allocationPercentage || 0;
-          }
-          this.selectedSummary.totalAllocationPercentage = total;
-          this.selectedSummary.projectCount = allocations.length;
+          // Do NOT update selectedSummary.projectCount or totalAllocationPercentage here —
+          // getAllocationsByEmployee returns all allocations regardless of grid filters,
+          // and writing back those totals would corrupt the filtered counts in the main grid.
         },
         error: () => { }
       });

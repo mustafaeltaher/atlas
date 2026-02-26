@@ -12,6 +12,7 @@ import com.atlas.repository.AllocationRepository;
 import com.atlas.repository.EmployeeRepository;
 import com.atlas.repository.MonthlyAllocationRepository;
 import com.atlas.repository.ProjectRepository;
+import com.atlas.specification.AllocationSpecification;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
@@ -138,7 +139,17 @@ public class AllocationService {
         List<Long> employeeIds = employees.stream()
                 .map(Employee::getId)
                 .collect(Collectors.toList());
-        List<Allocation> allocations = allocationRepository.findByEmployeeIdsWithDetails(employeeIds);
+
+        // Use DB-level Specification to fetch strictly valid allocations for the month
+        org.springframework.data.jpa.domain.Specification<Allocation> allocationSpec;
+        if (isBenchFilter) {
+            allocationSpec = null; // Bench employees have no active allocations
+        } else {
+            allocationSpec = AllocationSpecification.withFilters(
+                    filterTypeEnum, null, null, employeeIds, currentYear, currentMonth);
+        }
+
+        List<Allocation> allocations = isBenchFilter ? List.of() : allocationRepository.findAll(allocationSpec);
 
         // Get allocation IDs for batch-fetching monthly allocations
         List<Long> allocationIds = allocations.stream()
@@ -146,67 +157,33 @@ public class AllocationService {
                 .collect(Collectors.toList());
 
         // Batch-fetch monthly allocations for current year/month
-        Map<Long, Integer> currentMonthAllocations = monthlyAllocationRepository
-                .findByAllocationIdsAndYearAndMonth(allocationIds, currentYear, currentMonth)
-                .stream()
-                .collect(Collectors.toMap(
-                        ma -> ma.getAllocation().getId(),
-                        MonthlyAllocation::getPercentage,
-                        (a, b) -> a));
+        Map<Long, Integer> currentMonthAllocations = allocationIds.isEmpty() ? java.util.Map.of()
+                : monthlyAllocationRepository
+                        .findByAllocationIdsAndYearAndMonth(allocationIds, currentYear, currentMonth)
+                        .stream()
+                        .collect(Collectors.toMap(
+                                ma -> ma.getAllocation().getId(),
+                                ma -> ma.getPercentage(),
+                                (a, b) -> a));
 
         // Group allocations by employee ID
         Map<Long, List<Allocation>> allocationsByEmployee = allocations.stream()
                 .collect(Collectors.groupingBy(a -> a.getEmployee().getId()));
 
+        // Fetch distinct project counts directly from the DB
+        Map<Long, Long> projectCountMap = monthlyAllocationRepository
+                .findDistinctProjectCountByEmployeeIdsAndYearMonth(employeeIds, currentYear, currentMonth)
+                .stream()
+                .collect(Collectors.toMap(
+                        row -> (Long) row[0],
+                        row -> (Long) row[1]));
+
         // Build summary DTOs for each employee on the page
         List<EmployeeAllocationSummaryDTO> summaries = employees.stream()
                 .map(emp -> {
-                    List<Allocation> empAllocations = allocationsByEmployee
+                    // Allocations are perfectly filtered from the DB mapping
+                    List<Allocation> filteredAllocations = allocationsByEmployee
                             .getOrDefault(emp.getId(), List.of());
-
-                    // Filter allocations based on the current filter type
-                    List<Allocation> filteredAllocations;
-                    if (isBenchFilter) {
-                        // BENCH means no allocations, show empty list
-                        filteredAllocations = List.of();
-                    } else if (filterTypeEnum != null) {
-                        // Show allocations of the filtered type
-                        // For PROJECT/PROSPECT: check monthly percentage > 0
-                        // For MATERNITY/VACATION: no monthly records, include all
-                        filteredAllocations = empAllocations.stream()
-                                .filter(a -> a.getAllocationType() == filterTypeEnum)
-                                .filter(a -> {
-                                    if (a.getAllocationType() == Allocation.AllocationType.PROJECT) {
-                                        Integer percentage = currentMonthAllocations.get(a.getId());
-                                        return percentage != null && percentage > 0;
-                                    } else if (a.getAllocationType() == Allocation.AllocationType.PROSPECT) {
-                                        Integer percentage = currentMonthAllocations.get(a.getId());
-                                        if (percentage != null)
-                                            return percentage > 0;
-                                        return isAllocationActiveInMonth(a, currentYear, currentMonth);
-                                    }
-                                    return isAllocationActiveInMonth(a, currentYear, currentMonth);
-                                })
-                                .collect(Collectors.toList());
-                    } else {
-                        // No filter: show all PROJECT and PROSPECT allocations with valid percentage
-                        filteredAllocations = empAllocations.stream()
-                                .filter(a -> a.getAllocationType() == Allocation.AllocationType.PROJECT ||
-                                        a.getAllocationType() == Allocation.AllocationType.PROSPECT)
-                                .filter(a -> {
-                                    if (a.getAllocationType() == Allocation.AllocationType.PROJECT) {
-                                        Integer percentage = currentMonthAllocations.get(a.getId());
-                                        return percentage != null && percentage > 0;
-                                    } else if (a.getAllocationType() == Allocation.AllocationType.PROSPECT) {
-                                        Integer percentage = currentMonthAllocations.get(a.getId());
-                                        if (percentage != null)
-                                            return percentage > 0;
-                                        return isAllocationActiveInMonth(a, currentYear, currentMonth);
-                                    }
-                                    return isAllocationActiveInMonth(a, currentYear, currentMonth);
-                                })
-                                .collect(Collectors.toList());
-                    }
 
                     List<AllocationDTO> allocationDTOs = filteredAllocations.stream()
                             .map(a -> toDTOWithCurrentMonth(a, currentYear, currentMonth, currentMonthAllocations))
@@ -225,23 +202,13 @@ public class AllocationService {
                             .employeeOracleId(emp.getOracleId() != null ? String.valueOf(emp.getOracleId()) : null)
                             .managerName(emp.getManager() != null ? emp.getManager().getName() : null)
                             .totalAllocationPercentage(totalPercentage)
-                            .projectCount(filteredAllocations.size())
+                            .projectCount(projectCountMap.getOrDefault(emp.getId(), 0L).intValue())
                             .allocations(allocationDTOs)
                             .build();
                 }).collect(Collectors.toList());
 
         return new PageImpl<>(summaries, pageable, employeePage.getTotalElements());
 
-    }
-
-    private boolean isAllocationActiveInMonth(Allocation allocation, int year, int month) {
-        LocalDate startOfMonth = LocalDate.of(year, month, 1);
-        LocalDate endOfMonth = startOfMonth.withDayOfMonth(startOfMonth.lengthOfMonth());
-        boolean startsBeforeEndOfMonth = (allocation.getStartDate() == null
-                || !allocation.getStartDate().isAfter(endOfMonth));
-        boolean endsAfterStartOfMonth = (allocation.getEndDate() == null
-                || !allocation.getEndDate().isBefore(startOfMonth));
-        return startsBeforeEndOfMonth && endsAfterStartOfMonth;
     }
 
     public AllocationDTO getAllocationById(Long id, User currentUser) {
@@ -271,13 +238,14 @@ public class AllocationService {
                 .map(Allocation::getId)
                 .collect(Collectors.toList());
 
-        Map<Long, Integer> currentMonthAllocations = monthlyAllocationRepository
-                .findByAllocationIdsAndYearAndMonth(allocationIds, targetYear, targetMonth)
-                .stream()
-                .collect(Collectors.toMap(
-                        ma -> ma.getAllocation().getId(),
-                        com.atlas.entity.MonthlyAllocation::getPercentage,
-                        (a, b) -> a));
+        Map<Long, Integer> currentMonthAllocations = allocationIds.isEmpty() ? java.util.Map.of()
+                : monthlyAllocationRepository
+                        .findByAllocationIdsAndYearAndMonth(allocationIds, targetYear, targetMonth)
+                        .stream()
+                        .collect(Collectors.toMap(
+                                ma -> ma.getAllocation().getId(),
+                                com.atlas.entity.MonthlyAllocation::getPercentage,
+                                (a, b) -> a));
 
         return allEmployeeAllocations.stream()
                 .map(a -> toDTOWithCurrentMonth(a, targetYear, targetMonth, currentMonthAllocations))
