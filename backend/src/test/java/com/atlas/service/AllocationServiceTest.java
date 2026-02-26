@@ -639,7 +639,7 @@ public class AllocationServiceTest {
                                 .monthlyAllocations(new ArrayList<>())
                                 .build();
 
-                when(allocationRepository.findByEmployeeIdsWithDetails(any()))
+                when(allocationRepository.findAll(any(org.springframework.data.jpa.domain.Specification.class)))
                                 .thenReturn(java.util.List.of(allocation));
 
                 when(monthlyAllocationRepository.findByAllocationIdsAndYearAndMonth(any(), eq(2026), eq(2)))
@@ -651,6 +651,10 @@ public class AllocationServiceTest {
                                                                 .month(2)
                                                                 .percentage(75)
                                                                 .build()));
+
+                when(monthlyAllocationRepository.findDistinctProjectCountByEmployeeIdsAndYearMonth(
+                                java.util.List.of(1L), 2026, 2, "PROJECT"))
+                                .thenReturn(java.util.Collections.emptyList());
 
                 // When: Get grouped allocations with PROJECT filter
                 org.springframework.data.domain.Pageable pageable = org.springframework.data.domain.PageRequest.of(0,
@@ -688,12 +692,10 @@ public class AllocationServiceTest {
                                 .thenReturn(new org.springframework.data.domain.PageImpl<>(
                                                 java.util.List.of(benchEmployee)));
 
-                // No allocations for BENCH employees
-                when(allocationRepository.findByEmployeeIdsWithDetails(any()))
-                                .thenReturn(java.util.List.of());
-
-                when(monthlyAllocationRepository.findByAllocationIdsAndYearAndMonth(any(), eq(2026), eq(2)))
-                                .thenReturn(java.util.List.of());
+                // Mock project count for BENCH (should be 0 projects)
+                when(monthlyAllocationRepository.findDistinctProjectCountByEmployeeIdsAndYearMonth(
+                                java.util.List.of(2L), 2026, 2, null))
+                                .thenReturn(java.util.Collections.emptyList());
 
                 // When: Get grouped allocations with BENCH filter
                 org.springframework.data.domain.Pageable pageable = org.springframework.data.domain.PageRequest.of(0,
@@ -740,7 +742,7 @@ public class AllocationServiceTest {
                                 .monthlyAllocations(new ArrayList<>())
                                 .build();
 
-                when(allocationRepository.findByEmployeeIdsWithDetails(any()))
+                when(allocationRepository.findAll(any(org.springframework.data.jpa.domain.Specification.class)))
                                 .thenReturn(java.util.List.of(prospectAllocation));
 
                 when(monthlyAllocationRepository.findByAllocationIdsAndYearAndMonth(any(), eq(2026), eq(2)))
@@ -752,6 +754,10 @@ public class AllocationServiceTest {
                                                                 .month(2)
                                                                 .percentage(100)
                                                                 .build()));
+
+                when(monthlyAllocationRepository.findDistinctProjectCountByEmployeeIdsAndYearMonth(
+                                java.util.List.of(3L), 2026, 2, "PROSPECT"))
+                                .thenReturn(java.util.Collections.emptyList());
 
                 // When: Get grouped allocations with PROSPECT filter
                 org.springframework.data.domain.Pageable pageable = org.springframework.data.domain.PageRequest.of(0,
@@ -800,7 +806,7 @@ public class AllocationServiceTest {
                                 .monthlyAllocations(new ArrayList<>())
                                 .build();
 
-                when(allocationRepository.findByEmployeeIdsWithDetails(any()))
+                when(allocationRepository.findAll(any(org.springframework.data.jpa.domain.Specification.class)))
                                 .thenReturn(java.util.List.of(maternityAllocation));
 
                 when(monthlyAllocationRepository.findByAllocationIdsAndYearAndMonth(any(), eq(2026), eq(2)))
@@ -812,6 +818,10 @@ public class AllocationServiceTest {
                                                                 .month(2)
                                                                 .percentage(100)
                                                                 .build()));
+
+                when(monthlyAllocationRepository.findDistinctProjectCountByEmployeeIdsAndYearMonth(
+                                java.util.List.of(4L), 2026, 2, "MATERNITY"))
+                                .thenReturn(java.util.Collections.emptyList());
 
                 // When: Get grouped allocations with MATERNITY filter
                 org.springframework.data.domain.Pageable pageable = org.springframework.data.domain.PageRequest.of(0,
@@ -860,7 +870,7 @@ public class AllocationServiceTest {
                                 .monthlyAllocations(new ArrayList<>())
                                 .build();
 
-                when(allocationRepository.findByEmployeeIdsWithDetails(any()))
+                when(allocationRepository.findAll(any(org.springframework.data.jpa.domain.Specification.class)))
                                 .thenReturn(java.util.List.of(vacationAllocation));
 
                 when(monthlyAllocationRepository.findByAllocationIdsAndYearAndMonth(any(), eq(2026), eq(2)))
@@ -872,6 +882,10 @@ public class AllocationServiceTest {
                                                                 .month(2)
                                                                 .percentage(100)
                                                                 .build()));
+
+                when(monthlyAllocationRepository.findDistinctProjectCountByEmployeeIdsAndYearMonth(
+                                java.util.List.of(5L), 2026, 2, "VACATION"))
+                                .thenReturn(java.util.Collections.emptyList());
 
                 // When: Get grouped allocations with VACATION filter
                 org.springframework.data.domain.Pageable pageable = org.springframework.data.domain.PageRequest.of(0,
@@ -938,7 +952,7 @@ public class AllocationServiceTest {
                                 .endDate(java.time.LocalDate.of(2026, 7, 31))
                                 .build();
 
-                when(allocationRepository.findByEmployeeIdsWithDetails(java.util.List.of(2L)))
+                when(allocationRepository.findAll(any(org.springframework.data.jpa.domain.Specification.class)))
                                 .thenReturn(java.util.List.of(prospectAllocation));
 
                 // No monthly allocations for PROSPECT (PROSPECT doesn't have MonthlyAllocation
@@ -946,6 +960,10 @@ public class AllocationServiceTest {
                 when(monthlyAllocationRepository.findByAllocationIdsAndYearAndMonth(
                                 java.util.List.of(200L), 2026, 7))
                                 .thenReturn(java.util.List.of());
+
+                when(monthlyAllocationRepository.findDistinctProjectCountByEmployeeIdsAndYearMonth(
+                                java.util.List.of(2L), 2026, 7, "PROSPECT"))
+                                .thenReturn(java.util.Collections.emptyList());
 
                 // When: Get grouped allocations for July 2026 with PROSPECT filter
                 org.springframework.data.domain.Pageable pageable = org.springframework.data.domain.PageRequest.of(0,
@@ -1007,13 +1025,17 @@ public class AllocationServiceTest {
                                 .endDate(java.time.LocalDate.of(2026, 8, 31))
                                 .build();
 
-                when(allocationRepository.findByEmployeeIdsWithDetails(java.util.List.of(2L)))
+                when(allocationRepository.findAll(any(org.springframework.data.jpa.domain.Specification.class)))
                                 .thenReturn(java.util.List.of(maternityAllocation));
 
                 // No monthly allocations for MATERNITY
                 when(monthlyAllocationRepository.findByAllocationIdsAndYearAndMonth(
                                 java.util.List.of(300L), 2026, 8))
                                 .thenReturn(java.util.List.of());
+
+                when(monthlyAllocationRepository.findDistinctProjectCountByEmployeeIdsAndYearMonth(
+                                java.util.List.of(2L), 2026, 8, "MATERNITY"))
+                                .thenReturn(java.util.Collections.emptyList());
 
                 // When: Get grouped allocations for August 2026 with MATERNITY filter
                 org.springframework.data.domain.Pageable pageable = org.springframework.data.domain.PageRequest.of(0,
@@ -1075,13 +1097,17 @@ public class AllocationServiceTest {
                                 .endDate(java.time.LocalDate.of(2026, 9, 30))
                                 .build();
 
-                when(allocationRepository.findByEmployeeIdsWithDetails(java.util.List.of(2L)))
+                when(allocationRepository.findAll(any(org.springframework.data.jpa.domain.Specification.class)))
                                 .thenReturn(java.util.List.of(vacationAllocation));
 
                 // No monthly allocations for VACATION
                 when(monthlyAllocationRepository.findByAllocationIdsAndYearAndMonth(
                                 java.util.List.of(400L), 2026, 9))
                                 .thenReturn(java.util.List.of());
+
+                when(monthlyAllocationRepository.findDistinctProjectCountByEmployeeIdsAndYearMonth(
+                                java.util.List.of(2L), 2026, 9, "VACATION"))
+                                .thenReturn(java.util.Collections.emptyList());
 
                 // When: Get grouped allocations for September 2026 with VACATION filter
                 org.springframework.data.domain.Pageable pageable = org.springframework.data.domain.PageRequest.of(0,
@@ -1131,12 +1157,16 @@ public class AllocationServiceTest {
                                 .endDate(java.time.LocalDate.of(2026, 8, 31))
                                 .build();
 
-                when(allocationRepository.findByEmployeeIdsWithDetails(java.util.List.of(1L)))
+                when(allocationRepository.findAll(any(org.springframework.data.jpa.domain.Specification.class)))
                                 .thenReturn(java.util.List.of(prospectAllocation));
 
                 when(monthlyAllocationRepository.findByAllocationIdsAndYearAndMonth(
                                 java.util.List.of(500L), 2026, 7))
                                 .thenReturn(java.util.List.of());
+
+                when(monthlyAllocationRepository.findDistinctProjectCountByEmployeeIdsAndYearMonth(
+                                java.util.List.of(1L), 2026, 7, "PROSPECT"))
+                                .thenReturn(java.util.Collections.emptyList());
 
                 // When: Get grouped allocations for July 2026 with PROSPECT filter
                 org.springframework.data.domain.Pageable pageable = org.springframework.data.domain.PageRequest.of(0,
@@ -1766,7 +1796,7 @@ public class AllocationServiceTest {
                                 .endDate(java.time.LocalDate.of(2026, 12, 31))
                                 .build();
 
-                when(allocationRepository.findByEmployeeIdsWithDetails(java.util.List.of(1L)))
+                when(allocationRepository.findAll(any(org.springframework.data.jpa.domain.Specification.class)))
                                 .thenReturn(java.util.List.of(prospectAllocation));
 
                 com.atlas.entity.MonthlyAllocation monthlyEntity = com.atlas.entity.MonthlyAllocation.builder()
@@ -1779,6 +1809,10 @@ public class AllocationServiceTest {
                 when(monthlyAllocationRepository.findByAllocationIdsAndYearAndMonth(
                                 java.util.List.of(600L), 2026, 7))
                                 .thenReturn(java.util.List.of(monthlyEntity));
+
+                when(monthlyAllocationRepository.findDistinctProjectCountByEmployeeIdsAndYearMonth(
+                                java.util.List.of(1L), 2026, 7, "PROSPECT"))
+                                .thenReturn(java.util.Collections.emptyList());
 
                 // When
                 org.springframework.data.domain.Pageable pageable = org.springframework.data.domain.PageRequest.of(0,
@@ -1793,5 +1827,297 @@ public class AllocationServiceTest {
                 assertThat(result.getContent().get(0).getAllocations()).hasSize(1);
                 assertThat(result.getContent().get(0).getAllocations().get(0).getAllocationType())
                                 .isEqualTo(Allocation.AllocationType.PROSPECT);
+        }
+
+        // ========== Project Count Filtering Tests ==========
+
+        @Test
+        @DisplayName("getGroupedAllocations - PROJECT filter should count only PROJECT allocations")
+        void getGroupedAllocations_projectFilter_shouldCountOnlyProjectAllocations() {
+                // Given: Employee with both PROJECT and PROSPECT allocations in the selected month
+                com.atlas.entity.User mockUser = new com.atlas.entity.User();
+                mockUser.setId(100L);
+                when(employeeService.getAccessibleEmployeeIds(mockUser)).thenReturn(null);
+
+                Employee emp = Employee.builder()
+                                .id(1L)
+                                .oracleId(1000)
+                                .name("Multi-Project Employee")
+                                .email("multi@atlas.com")
+                                .build();
+
+                // Employee spec should return this employee when filtered by ACTIVE status (PROJECT → ACTIVE mapping)
+                when(employeeRepository.findAll(any(org.springframework.data.jpa.domain.Specification.class),
+                                any(org.springframework.data.domain.Pageable.class)))
+                                .thenReturn(new org.springframework.data.domain.PageImpl<>(
+                                                java.util.List.of(emp)));
+
+                Project project1 = Project.builder().id(1L).description("Project 1").build();
+                Project project2 = Project.builder().id(2L).description("Project 2").build();
+                Project project3 = Project.builder().id(3L).description("Prospect Project").build();
+
+                Allocation projectAlloc1 = Allocation.builder()
+                                .id(100L)
+                                .employee(emp)
+                                .project(project1)
+                                .allocationType(Allocation.AllocationType.PROJECT)
+                                .build();
+
+                Allocation projectAlloc2 = Allocation.builder()
+                                .id(101L)
+                                .employee(emp)
+                                .project(project2)
+                                .allocationType(Allocation.AllocationType.PROJECT)
+                                .build();
+
+                // This should NOT be counted when filtering by PROJECT
+                Allocation prospectAlloc = Allocation.builder()
+                                .id(102L)
+                                .employee(emp)
+                                .project(project3)
+                                .allocationType(Allocation.AllocationType.PROSPECT)
+                                .build();
+
+                // AllocationSpec with PROJECT filter returns only PROJECT allocations
+                when(allocationRepository.findAll(any(org.springframework.data.jpa.domain.Specification.class)))
+                                .thenReturn(java.util.List.of(projectAlloc1, projectAlloc2));
+
+                when(monthlyAllocationRepository.findByAllocationIdsAndYearAndMonth(
+                                java.util.List.of(100L, 101L), 2026, 2))
+                                .thenReturn(java.util.List.of(
+                                                com.atlas.entity.MonthlyAllocation.builder()
+                                                                .allocation(projectAlloc1)
+                                                                .year(2026)
+                                                                .month(2)
+                                                                .percentage(50)
+                                                                .build(),
+                                                com.atlas.entity.MonthlyAllocation.builder()
+                                                                .allocation(projectAlloc2)
+                                                                .year(2026)
+                                                                .month(2)
+                                                                .percentage(30)
+                                                                .build()));
+
+                // Project count query should receive "PROJECT" as allocation type and return 2
+                when(monthlyAllocationRepository.findDistinctProjectCountByEmployeeIdsAndYearMonth(
+                                java.util.List.of(1L), 2026, 2, "PROJECT"))
+                                .thenReturn(java.util.Collections.singletonList(new Object[] { 1L, 2L }));
+
+                // When: Filter by PROJECT type
+                org.springframework.data.domain.Pageable pageable = org.springframework.data.domain.PageRequest.of(0,
+                                10);
+                org.springframework.data.domain.Page<com.atlas.dto.EmployeeAllocationSummaryDTO> result = allocationService
+                                .getGroupedAllocations(
+                                                mockUser, pageable, null, "PROJECT", null, 2026, 2);
+
+                // Then: Project count should be 2 (only PROJECT allocations counted)
+                assertThat(result.getContent()).hasSize(1);
+                assertThat(result.getContent().get(0).getProjectCount()).isEqualTo(2);
+                assertThat(result.getContent().get(0).getAllocations()).hasSize(2);
+        }
+
+        @Test
+        @DisplayName("getGroupedAllocations - PROSPECT filter should count only PROSPECT allocations")
+        void getGroupedAllocations_prospectFilter_shouldCountOnlyProspectAllocations() {
+                // Given: Employee with both PROJECT and PROSPECT allocations
+                com.atlas.entity.User mockUser = new com.atlas.entity.User();
+                mockUser.setId(101L);
+                when(employeeService.getAccessibleEmployeeIds(mockUser)).thenReturn(null);
+
+                Employee emp = Employee.builder()
+                                .id(2L)
+                                .oracleId(2000)
+                                .name("Prospect Employee")
+                                .email("prospect@atlas.com")
+                                .build();
+
+                when(employeeRepository.findAll(any(org.springframework.data.jpa.domain.Specification.class),
+                                any(org.springframework.data.domain.Pageable.class)))
+                                .thenReturn(new org.springframework.data.domain.PageImpl<>(
+                                                java.util.List.of(emp)));
+
+                Project prospect1 = Project.builder().id(10L).description("Prospect 1").build();
+                Project prospect2 = Project.builder().id(11L).description("Prospect 2").build();
+                Project prospect3 = Project.builder().id(12L).description("Prospect 3").build();
+
+                Allocation prospectAlloc1 = Allocation.builder()
+                                .id(200L)
+                                .employee(emp)
+                                .project(prospect1)
+                                .allocationType(Allocation.AllocationType.PROSPECT)
+                                .build();
+
+                Allocation prospectAlloc2 = Allocation.builder()
+                                .id(201L)
+                                .employee(emp)
+                                .project(prospect2)
+                                .allocationType(Allocation.AllocationType.PROSPECT)
+                                .build();
+
+                Allocation prospectAlloc3 = Allocation.builder()
+                                .id(202L)
+                                .employee(emp)
+                                .project(prospect3)
+                                .allocationType(Allocation.AllocationType.PROSPECT)
+                                .build();
+
+                // AllocationSpec with PROSPECT filter returns only PROSPECT allocations
+                when(allocationRepository.findAll(any(org.springframework.data.jpa.domain.Specification.class)))
+                                .thenReturn(java.util.List.of(prospectAlloc1, prospectAlloc2, prospectAlloc3));
+
+                when(monthlyAllocationRepository.findByAllocationIdsAndYearAndMonth(
+                                java.util.List.of(200L, 201L, 202L), 2026, 3))
+                                .thenReturn(java.util.List.of(
+                                                com.atlas.entity.MonthlyAllocation.builder()
+                                                                .allocation(prospectAlloc1)
+                                                                .year(2026)
+                                                                .month(3)
+                                                                .percentage(25)
+                                                                .build(),
+                                                com.atlas.entity.MonthlyAllocation.builder()
+                                                                .allocation(prospectAlloc2)
+                                                                .year(2026)
+                                                                .month(3)
+                                                                .percentage(25)
+                                                                .build(),
+                                                com.atlas.entity.MonthlyAllocation.builder()
+                                                                .allocation(prospectAlloc3)
+                                                                .year(2026)
+                                                                .month(3)
+                                                                .percentage(25)
+                                                                .build()));
+
+                // Project count query should receive "PROSPECT" as allocation type and return 3
+                when(monthlyAllocationRepository.findDistinctProjectCountByEmployeeIdsAndYearMonth(
+                                java.util.List.of(2L), 2026, 3, "PROSPECT"))
+                                .thenReturn(java.util.Collections.singletonList(new Object[] { 2L, 3L }));
+
+                // When: Filter by PROSPECT type
+                org.springframework.data.domain.Pageable pageable = org.springframework.data.domain.PageRequest.of(0,
+                                10);
+                org.springframework.data.domain.Page<com.atlas.dto.EmployeeAllocationSummaryDTO> result = allocationService
+                                .getGroupedAllocations(
+                                                mockUser, pageable, null, "PROSPECT", null, 2026, 3);
+
+                // Then: Project count should be 3 (only PROSPECT allocations counted)
+                assertThat(result.getContent()).hasSize(1);
+                assertThat(result.getContent().get(0).getProjectCount()).isEqualTo(3);
+                assertThat(result.getContent().get(0).getAllocations()).hasSize(3);
+        }
+
+        @Test
+        @DisplayName("getGroupedAllocations - BENCH filter should have zero project count")
+        void getGroupedAllocations_benchFilter_shouldHaveZeroProjectCount() {
+                // Given: BENCH employee (no allocations)
+                com.atlas.entity.User mockUser = new com.atlas.entity.User();
+                mockUser.setId(102L);
+                when(employeeService.getAccessibleEmployeeIds(mockUser)).thenReturn(null);
+
+                Employee benchEmp = Employee.builder()
+                                .id(3L)
+                                .oracleId(3000)
+                                .name("Bench Employee")
+                                .email("bench@atlas.com")
+                                .build();
+
+                when(employeeRepository.findAll(any(org.springframework.data.jpa.domain.Specification.class),
+                                any(org.springframework.data.domain.Pageable.class)))
+                                .thenReturn(new org.springframework.data.domain.PageImpl<>(
+                                                java.util.List.of(benchEmp)));
+
+                // BENCH filter means no allocations - query returns empty
+                // No need to mock allocationRepository.findAll as it's not called for BENCH
+
+                // Project count query should receive null as allocation type (BENCH has no type)
+                when(monthlyAllocationRepository.findDistinctProjectCountByEmployeeIdsAndYearMonth(
+                                java.util.List.of(3L), 2026, 4, null))
+                                .thenReturn(java.util.List.of());
+
+                // When: Filter by BENCH
+                org.springframework.data.domain.Pageable pageable = org.springframework.data.domain.PageRequest.of(0,
+                                10);
+                org.springframework.data.domain.Page<com.atlas.dto.EmployeeAllocationSummaryDTO> result = allocationService
+                                .getGroupedAllocations(
+                                                mockUser, pageable, null, "BENCH", null, 2026, 4);
+
+                // Then: Project count should be 0 (BENCH employees have no allocations)
+                assertThat(result.getContent()).hasSize(1);
+                assertThat(result.getContent().get(0).getProjectCount()).isEqualTo(0);
+                assertThat(result.getContent().get(0).getAllocations()).isEmpty();
+        }
+
+        @Test
+        @DisplayName("getGroupedAllocations - No allocation type filter should count all allocation types")
+        void getGroupedAllocations_noFilter_shouldCountAllAllocationTypes() {
+                // Given: Employee with mixed allocation types (PROJECT and PROSPECT)
+                com.atlas.entity.User mockUser = new com.atlas.entity.User();
+                mockUser.setId(103L);
+                when(employeeService.getAccessibleEmployeeIds(mockUser)).thenReturn(null);
+
+                Employee emp = Employee.builder()
+                                .id(4L)
+                                .oracleId(4000)
+                                .name("Mixed Allocations Employee")
+                                .email("mixed@atlas.com")
+                                .build();
+
+                when(employeeRepository.findAll(any(org.springframework.data.jpa.domain.Specification.class),
+                                any(org.springframework.data.domain.Pageable.class)))
+                                .thenReturn(new org.springframework.data.domain.PageImpl<>(
+                                                java.util.List.of(emp)));
+
+                Project project1 = Project.builder().id(20L).description("Project A").build();
+                Project project2 = Project.builder().id(21L).description("Prospect B").build();
+
+                Allocation projectAlloc = Allocation.builder()
+                                .id(300L)
+                                .employee(emp)
+                                .project(project1)
+                                .allocationType(Allocation.AllocationType.PROJECT)
+                                .build();
+
+                Allocation prospectAlloc = Allocation.builder()
+                                .id(301L)
+                                .employee(emp)
+                                .project(project2)
+                                .allocationType(Allocation.AllocationType.PROSPECT)
+                                .build();
+
+                // No allocation type filter - returns all allocations
+                when(allocationRepository.findAll(any(org.springframework.data.jpa.domain.Specification.class)))
+                                .thenReturn(java.util.List.of(projectAlloc, prospectAlloc));
+
+                when(monthlyAllocationRepository.findByAllocationIdsAndYearAndMonth(
+                                java.util.List.of(300L, 301L), 2026, 5))
+                                .thenReturn(java.util.List.of(
+                                                com.atlas.entity.MonthlyAllocation.builder()
+                                                                .allocation(projectAlloc)
+                                                                .year(2026)
+                                                                .month(5)
+                                                                .percentage(60)
+                                                                .build(),
+                                                com.atlas.entity.MonthlyAllocation.builder()
+                                                                .allocation(prospectAlloc)
+                                                                .year(2026)
+                                                                .month(5)
+                                                                .percentage(20)
+                                                                .build()));
+
+                // Project count query should receive null as allocation type (no filter) and count all types
+                when(monthlyAllocationRepository.findDistinctProjectCountByEmployeeIdsAndYearMonth(
+                                java.util.List.of(4L), 2026, 5, null))
+                                .thenReturn(java.util.Collections.singletonList(new Object[] { 4L, 2L }));
+
+                // When: No allocation type filter
+                org.springframework.data.domain.Pageable pageable = org.springframework.data.domain.PageRequest.of(0,
+                                10);
+                org.springframework.data.domain.Page<com.atlas.dto.EmployeeAllocationSummaryDTO> result = allocationService
+                                .getGroupedAllocations(
+                                                mockUser, pageable, null, null, null, 2026, 5);
+
+                // Then: Project count should be 2 (both PROJECT and PROSPECT counted)
+                assertThat(result.getContent()).hasSize(1);
+                assertThat(result.getContent().get(0).getProjectCount()).isEqualTo(2);
+                assertThat(result.getContent().get(0).getAllocations()).hasSize(2);
         }
 }

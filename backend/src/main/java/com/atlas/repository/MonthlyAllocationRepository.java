@@ -40,8 +40,14 @@ public interface MonthlyAllocationRepository extends JpaRepository<MonthlyAlloca
 
         /**
          * Counts the number of distinct active projects (percentage > 0) per employee
-         * for a given month.
+         * for a given month, optionally filtered by allocation type.
          * Returned array contains: [0] = Employee ID (Long), [1] = Project Count (Long)
+         *
+         * @param employeeIds     List of employee IDs to count projects for
+         * @param year            The year to filter by
+         * @param month           The month to filter by (1-12)
+         * @param allocationType  Optional allocation type filter (PROJECT, PROSPECT, etc.). If null, counts all types.
+         * @return List of Object arrays with [employeeId, projectCount]
          */
         @Query("SELECT ma.allocation.employee.id, COUNT(DISTINCT ma.allocation.project.id) " +
                         "FROM MonthlyAllocation ma " +
@@ -49,10 +55,11 @@ public interface MonthlyAllocationRepository extends JpaRepository<MonthlyAlloca
                         "AND ma.year = :year " +
                         "AND ma.month = :month " +
                         "AND ma.percentage > 0 " +
-                        "AND ma.allocation.allocationType = 'PROJECT' " +
+                        "AND (:allocationType IS NULL OR CAST(ma.allocation.allocationType AS string) = :allocationType) " +
                         "GROUP BY ma.allocation.employee.id")
         List<Object[]> findDistinctProjectCountByEmployeeIdsAndYearMonth(
                         @Param("employeeIds") List<Long> employeeIds,
                         @Param("year") Integer year,
-                        @Param("month") Integer month);
+                        @Param("month") Integer month,
+                        @Param("allocationType") String allocationType);
 }

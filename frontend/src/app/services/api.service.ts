@@ -58,10 +58,11 @@ export class ApiService {
         return this.http.get<string[]>(`${this.API_URL}/projects/statuses`, { params });
     }
 
-    getAllocationTypes(managerId?: number, search?: string, year?: number, month?: number): Observable<string[]> {
+    getAllocationTypes(managerId?: number, search?: string, allocationType?: string, year?: number, month?: number): Observable<string[]> {
         let params = new HttpParams();
         if (managerId) params = params.set('managerId', managerId.toString());
         if (search) params = params.set('search', search);
+        if (allocationType) params = params.set('allocationType', allocationType);
         if (year) params = params.set('year', year.toString());
         if (month) params = params.set('month', month.toString());
         return this.http.get<string[]>(`${this.API_URL}/allocations/allocation-types`, { params });
