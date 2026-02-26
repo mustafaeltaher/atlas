@@ -35,8 +35,8 @@ import { Allocation, EmployeeAllocationSummary, Employee, Project, Manager } fro
           <div class="header-actions">
             <button class="btn btn-primary" (click)="openCreateModal()">
               <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
-                <line x1="12" y1="5" x2="12" y2="19"></line>
-                <line x1="5" y1="12" x2="19" y2="12"></line>
+              <line x1="5" y1="12" x2="19" y2="12"></line>
+              <line x1="12" y1="5" x2="12" y2="19"></line>
               </svg>
               Create Allocation
             </button>
@@ -204,20 +204,11 @@ import { Allocation, EmployeeAllocationSummary, Employee, Project, Manager } fro
                   <h2>{{ selectedSummary.employeeName }}</h2>
                   <p class="edit-info">Oracle ID: {{ selectedSummary.employeeOracleId || 'N/A' }} &middot; Total: {{ selectedSummary.totalAllocationPercentage }}%</p>
                 </div>
-                @if (!showAddAssignment) {
-                  <button class="btn btn-primary btn-sm" (click)="openAddAssignmentForm()">
-                    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
-                      <line x1="12" y1="5" x2="12" y2="19"></line>
-                      <line x1="5" y1="12" x2="19" y2="12"></line>
-                    </svg>
-                    Create Allocation
-                  </button>
-                }
               </div>
 
-              <!-- Add assignment inline form -->
-              @if (showAddAssignment) {
-                <div class="add-assignment-form">
+              <!-- Add assignment inline form (always visible) -->
+              <h3>Add New Allocation</h3>
+              <div class="add-assignment-form" style="margin-top:8px; padding-top:0; border-top:none;">
                   <div class="form-row">
                     <div class="form-group flex-1">
                       <label class="form-label">Project</label>
@@ -247,7 +238,7 @@ import { Allocation, EmployeeAllocationSummary, Employee, Project, Manager } fro
                         }
                       </div>
                     </div>
-                    <div class="form-group">
+                    <div class="form-group" style="min-width: 140px;">
                       <label class="form-label">Type</label>
                       <select class="form-input" [(ngModel)]="newDetailAllocation.allocationType" name="detailAllocationType" (change)="onDetailStatusChange()">
                         <option value="PROJECT">Project</option>
@@ -299,12 +290,15 @@ import { Allocation, EmployeeAllocationSummary, Employee, Project, Manager } fro
                         }
                       </div>
                     }
-                    
+                    <div class="form-group form-actions-inline" style="margin-left:auto; align-self:flex-end;">
+                      <button class="btn btn-primary" style="width: 90px; flex-shrink: 0;" (click)="createDetailAllocation()" [disabled]="(newDetailAllocation.allocationType === 'PROJECT' || newDetailAllocation.allocationType === 'PROSPECT') && !newDetailAllocation.projectId">Add</button>
+                    </div>
                   </div>
                 </div>
-              }
 
               <!-- Detail allocation list -->
+              <hr style="margin-top: 24px; margin-bottom: 16px; border: 0; border-top: 1px solid var(--border-color);">
+              <h3 style="margin-top: 16px; margin-bottom: 8px;">Existing Allocations</h3>
               <table class="data-table detail-table">
                 <thead>
                   <tr>
@@ -432,10 +426,7 @@ import { Allocation, EmployeeAllocationSummary, Employee, Project, Manager } fro
               </table>
 
               <div class="modal-actions" style="display:flex; justify-content:flex-end; gap:8px;">
-                @if (showAddAssignment) {
-                  <button class="btn btn-primary" (click)="createDetailAllocation()" [disabled]="(newDetailAllocation.allocationType === 'PROJECT' || newDetailAllocation.allocationType === 'PROSPECT') && !newDetailAllocation.projectId">Save</button>
-                }
-                <button class="btn btn-secondary" (click)="handleDetailCancel()">Cancel</button>
+                <button class="btn btn-secondary" style="width: 90px;" (click)="closeDetailModal()">Close</button>
               </div>
             </div>
           </div>
@@ -1369,7 +1360,6 @@ export class AllocationsComponent implements OnInit {
   editMonthList = signal<Array<{ year: number, month: number, label: string, key: string, isPast: boolean }>>([]);
 
   // Add assignment within detail modal
-  showAddAssignment = false;
   newDetailAllocation: any = { allocationType: 'PROJECT', currentMonthAllocation: '100' };
   detailMonthByMonthMode = signal<boolean>(false);
   detailMonthlyPercentages = signal<Map<string, number>>(new Map());
@@ -1686,8 +1676,10 @@ export class AllocationsComponent implements OnInit {
     this.selectedSummary = summary;
     this.detailAllocations.set(summary.allocations || []);
     this.editingAllocationId = null;
-    this.showAddAssignment = false;
     this.showDetailModal = true;
+
+    // Reset add form on open
+    this.openAddAssignmentForm();
 
     // Immediately fetch all allocations to guarantee PROSPECT or other hidden types are consistently visible from load
     this.refreshDetailAllocations();
@@ -1695,14 +1687,11 @@ export class AllocationsComponent implements OnInit {
 
   closeDetailModal(): void {
     this.showDetailModal = false;
-    this.showAddAssignment = false;
     this.editingAllocationId = null;
   }
 
   handleDetailCancel(): void {
-    if (this.showAddAssignment) {
-      this.showAddAssignment = false;
-    } else if (this.editingAllocationId !== null) {
+    if (this.editingAllocationId !== null) {
       this.editingAllocationId = null;
     } else {
       this.closeDetailModal();
@@ -1901,7 +1890,6 @@ export class AllocationsComponent implements OnInit {
       next: (page) => this.projectsList.set(page.content),
       error: () => { }
     });
-    this.showAddAssignment = true;
   }
 
   onDetailDateChange(): void {
@@ -2065,7 +2053,7 @@ export class AllocationsComponent implements OnInit {
 
     this.apiService.createAllocation(payload).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: () => {
-        this.showAddAssignment = false;
+        this.openAddAssignmentForm(); // reset form for the next entry
         this.refreshDetailAllocations();
         this.loadAllocations();
       },
