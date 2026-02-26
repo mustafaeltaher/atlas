@@ -13,15 +13,18 @@ import com.atlas.repository.EmployeeRepository;
 import com.atlas.repository.MonthlyAllocationRepository;
 import com.atlas.repository.ProjectRepository;
 import com.atlas.specification.AllocationSpecification;
+import com.atlas.specification.EmployeeSpecification;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -73,7 +76,7 @@ public class AllocationService {
             return new PageImpl<>(List.of(), pageable, 0);
         }
 
-        org.springframework.data.jpa.domain.Specification<Allocation> spec = com.atlas.specification.AllocationSpecification
+        Specification<Allocation> spec = AllocationSpecification
                 .withFilters(allocationTypeEnum, managerId, searchParam, accessibleIds, year, month);
 
         Page<Allocation> allocationPage = allocationRepository.findAll(spec, pageable);
@@ -124,7 +127,7 @@ public class AllocationService {
 
         // Reuse EmployeeSpecification for consistent search behavior (name OR email)
         // Pass year/month so status checks use the SELECTED month, not current month
-        org.springframework.data.jpa.domain.Specification<Employee> spec = com.atlas.specification.EmployeeSpecification
+        Specification<Employee> spec = EmployeeSpecification
                 .withFilters(
                         searchParam, null, managerId, employeeStatus, accessibleIds, null, currentYear, currentMonth);
 
@@ -140,8 +143,7 @@ public class AllocationService {
                 .map(Employee::getId)
                 .collect(Collectors.toList());
 
-        // Use DB-level Specification to fetch strictly valid allocations for the month
-        org.springframework.data.jpa.domain.Specification<Allocation> allocationSpec;
+        Specification<Allocation> allocationSpec;
         if (isBenchFilter) {
             allocationSpec = null; // Bench employees have no active allocations
         } else {
@@ -238,13 +240,13 @@ public class AllocationService {
                 .map(Allocation::getId)
                 .collect(Collectors.toList());
 
-        Map<Long, Integer> currentMonthAllocations = allocationIds.isEmpty() ? java.util.Map.of()
+        Map<Long, Integer> currentMonthAllocations = allocationIds.isEmpty() ? Map.of()
                 : monthlyAllocationRepository
                         .findByAllocationIdsAndYearAndMonth(allocationIds, targetYear, targetMonth)
                         .stream()
                         .collect(Collectors.toMap(
                                 ma -> ma.getAllocation().getId(),
-                                com.atlas.entity.MonthlyAllocation::getPercentage,
+                                MonthlyAllocation::getPercentage,
                                 (a, b) -> a));
 
         return allEmployeeAllocations.stream()
@@ -631,7 +633,7 @@ public class AllocationService {
 
         return distinctManagers.stream()
                 .map(m -> {
-                    Map<String, Object> map = new java.util.LinkedHashMap<>();
+                    Map<String, Object> map = new LinkedHashMap<>();
                     map.put("id", m.getId());
                     map.put("name", m.getName());
                     return map;
@@ -682,7 +684,7 @@ public class AllocationService {
             // Note: year/month parameters are accepted but BENCH employees should be
             // visible
             // across all months since they have no allocations (per constitution)
-            org.springframework.data.jpa.domain.Specification<Employee> benchSpec = com.atlas.specification.EmployeeSpecification
+            Specification<Employee> benchSpec = EmployeeSpecification
                     .withFilters(
                             searchWithWildcards, null, managerId, "BENCH", accessibleIds, null, year, month);
 

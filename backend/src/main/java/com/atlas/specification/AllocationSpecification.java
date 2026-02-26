@@ -22,20 +22,8 @@ public class AllocationSpecification {
         return (root, query, cb) -> {
             List<Predicate> predicates = new ArrayList<>();
 
-            // Join necessary tables for filtering and search
-            // We use fetch joins in the repository or separate standard joins here?
-            // Specifications use joins for predicates.
-            // Note: findAll(Spec, Pageable) doesn't automatically do FETCH joins for the
-            // result.
-            // However, the original query did: "JOIN FETCH a.employee LEFT JOIN FETCH
-            // a.project"
-            // To maintain performance (N+1 prob), we should ideally ensure fetches happen.
-            // In JPA Criteria, we can use root.fetch(...) but it counts as a join.
-            // Caveat: Fetch joins with pagination in Hibernate can lead to "fetching in
-            // memory" warnings.
-            // But the original query was paginated and had fetches? Yes.
-            // Let's implement the predicates first.
-
+            // Joins for predicate filtering (fetch strategy handled by @EntityGraph in the
+            // repository)
             Join<Allocation, Employee> employeeJoin = root.join("employee", JoinType.INNER);
             // Access Control (ABAC)
             if (accessibleEmployeeIds != null) {
