@@ -1,4 +1,5 @@
 import { Component, OnInit, signal, ElementRef, DestroyRef, inject } from '@angular/core';
+import { forkJoin } from 'rxjs';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
@@ -137,7 +138,7 @@ import { Allocation, EmployeeAllocationSummary, Employee, Project, Manager } fro
                         @if (summary.totalAllocationPercentage === 0) {
                           <span class="badge-bench">Bench</span>
                         } @else {
-                          <span class="alloc-value">{{ summary.totalAllocationPercentage }}%</span>
+                          <span class="alloc-value">{{ summary.totalAllocationPercentage | number:'1.0-0' }}%</span>
                         }
                       </div>
                     </td>
@@ -196,20 +197,22 @@ import { Allocation, EmployeeAllocationSummary, Employee, Project, Manager } fro
 
         <!-- Detail Modal: individual allocations for selected employee -->
         @if (showDetailModal) {
-          <div class="modal-overlay" (click)="showDetailModal = false">
+          <div class="modal-overlay" (click)="closeDetailModal()">
             <div class="modal modal-wide" (click)="$event.stopPropagation()">
               <div class="detail-header">
                 <div>
                   <h2>{{ selectedSummary.employeeName }}</h2>
                   <p class="edit-info">Oracle ID: {{ selectedSummary.employeeOracleId || 'N/A' }} &middot; Total: {{ selectedSummary.totalAllocationPercentage }}%</p>
                 </div>
-                <button class="btn btn-primary btn-sm" (click)="openAddAssignmentForm()">
-                  <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
-                    <line x1="12" y1="5" x2="12" y2="19"></line>
-                    <line x1="5" y1="12" x2="19" y2="12"></line>
-                  </svg>
-                  Create Allocation
-                </button>
+                @if (!showAddAssignment) {
+                  <button class="btn btn-primary btn-sm" (click)="openAddAssignmentForm()">
+                    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
+                      <line x1="12" y1="5" x2="12" y2="19"></line>
+                      <line x1="5" y1="12" x2="19" y2="12"></line>
+                    </svg>
+                    Create Allocation
+                  </button>
+                }
               </div>
 
               <!-- Add assignment inline form -->
@@ -253,31 +256,50 @@ import { Allocation, EmployeeAllocationSummary, Employee, Project, Manager } fro
                         <option value="MATERNITY">Maternity</option>
                       </select>
                     </div>
-                    @if (newDetailAllocation.allocationType === 'PROJECT') {
-                      <div class="form-group">
-                        <label class="form-label">Allocation</label>
-                        <select class="form-input" [(ngModel)]="newDetailAllocation.currentMonthAllocation" name="detailAllocation">
-                          <option value="100">100%</option>
-                          <option value="75">75%</option>
-                          <option value="50">50%</option>
-                          <option value="25">25%</option>
-                        </select>
-                      </div>
-                    }
-                  </div>
-                  <div class="form-row">
                     <div class="form-group">
                       <label class="form-label">Start Date</label>
-                      <input type="date" class="form-input" [(ngModel)]="newDetailAllocation.startDate" name="detailStartDate">
+                      <input type="date" class="form-input" [(ngModel)]="newDetailAllocation.startDate" name="detailStartDate" (change)="onDetailDateChange()">
                     </div>
                     <div class="form-group">
                       <label class="form-label">End Date</label>
-                      <input type="date" class="form-input" [(ngModel)]="newDetailAllocation.endDate" name="detailEndDate">
+                      <input type="date" class="form-input" [(ngModel)]="newDetailAllocation.endDate" name="detailEndDate" (change)="onDetailDateChange()">
                     </div>
-                    <div class="form-group form-actions-inline">
-                      <button class="btn btn-primary btn-sm" (click)="createDetailAllocation()" [disabled]="!newDetailAllocation.projectId">Save</button>
-                      <button class="btn btn-secondary btn-sm" (click)="showAddAssignment = false">Cancel</button>
-                    </div>
+                  </div>
+                  <div class="form-row">
+                    @if (newDetailAllocation.allocationType === 'PROJECT' || newDetailAllocation.allocationType === 'PROSPECT') {
+                      <div class="form-group">
+                        <label class="form-label">Mode</label>
+                        <label class="checkbox-label" style="display:flex;align-items:center;height:38px;">
+                          <input type="checkbox" (change)="onDetailMonthByMonthToggle($event)" [checked]="detailMonthByMonthMode()">
+                          <span style="margin-left:8px;">Month-by-Month</span>
+                        </label>
+                      </div>
+                      <div class="form-group" style="flex:1;">
+                        @if (!detailMonthByMonthMode()) {
+                          <label class="form-label">Uniform Allocation</label>
+                          <input type="number" class="form-input" min="1" max="100" [(ngModel)]="newDetailAllocation.currentMonthAllocation" name="detailAllocation">
+                        } @else {
+                          <div class="month-list-container" style="display:flex;flex-wrap:wrap;gap:8px;">
+                            @for (m of detailMonthList(); track m.key) {
+                              <div class="month-item" style="display:flex;flex-direction:column;align-items:center;">
+                                <label style="font-size:11px;">{{ m.label }}</label>
+                                <div style="display:flex;align-items:center;">
+                                  <input type="number" class="form-input form-input-sm" 
+                                         [min]="1" [max]="100"
+                                         [value]="getDetailMonthlyPercentage(m.key)"
+                                         (input)="updateDetailMonthlyPercentage(m.key, $any($event.target).value)"
+                                         style="width:60px;text-align:center;">
+                                  <span style="font-size:12px;margin-left:4px;">%</span>
+                                </div>
+                              </div>
+                            } @empty {
+                              <span class="text-muted" style="font-size:12px;margin-top:8px;">Enter Start/End Date</span>
+                            }
+                          </div>
+                        }
+                      </div>
+                    }
+                    
                   </div>
                 </div>
               }
@@ -289,7 +311,7 @@ import { Allocation, EmployeeAllocationSummary, Employee, Project, Manager } fro
                     <th>Project</th>
                     <th>Type</th>
                     <th>Allocation</th>
-                    <th>Status</th>
+                    <th>Type</th>
                     <th>Start Date</th>
                     <th>End Date</th>
                     <th>Actions</th>
@@ -301,26 +323,61 @@ import { Allocation, EmployeeAllocationSummary, Employee, Project, Manager } fro
                       <td>{{ alloc.projectName }}</td>
                       <td>{{ alloc.allocationType }}</td>
                       <td>
-                        @if (editingAllocationId === alloc.id && alloc.allocationType === 'PROJECT') {
-                          <select class="form-input form-input-sm" [(ngModel)]="editAllocationValue" name="inlineEdit">
-                            <option value="100">100%</option>
-                            <option value="75">75%</option>
-                            <option value="50">50%</option>
-                            <option value="25">25%</option>
-                          </select>
-                        } @else if (alloc.allocationType !== 'PROJECT') {
-                          <span class="prospect-badge">{{ alloc.allocationType }}</span>
+                        @if (editingAllocationId === alloc.id && (alloc.allocationType === 'PROJECT' || alloc.allocationType === 'PROSPECT')) {
+                          <div style="margin-bottom:8px;">
+                            <label class="checkbox-label" style="display:flex;align-items:center;">
+                              <input type="checkbox" (change)="toggleInlineEditMode()" [checked]="editMonthByMonthMode()">
+                              <span style="margin-left:8px;font-size:12px;">Month-by-Month Allocation</span>
+                            </label>
+                          </div>
+                          @if (!editMonthByMonthMode()) {
+                            <div style="display:flex;align-items:center;gap:8px;">
+                              <input type="number" class="form-input form-input-sm" min="1" max="100" [(ngModel)]="editAllocationValue" name="inlineEdit" style="width:70px;">
+                            </div>
+                          } @else {
+                            <div class="month-list-container" style="max-width: 320px; display:flex;flex-wrap:wrap;gap:8px;">
+                              @for (m of editMonthList(); track m.key) {
+                                <div class="month-item" style="display:flex;flex-direction:column;align-items:center;">
+                                  <label style="font-size:11px;">{{ m.label }}</label>
+                                  <div style="display:flex;align-items:center;">
+                                    <input type="number" class="form-input form-input-sm" 
+                                           [min]="1" [max]="100"
+                                           [value]="getEditMonthlyPercentage(m.key)"
+                                           (input)="updateEditMonthlyPercentage(m.key, $any($event.target).value)"
+                                           [disabled]="m.isPast"
+                                           [title]="m.isPast ? 'Past month' : ''"
+                                           style="width:60px;text-align:center;">
+                                    <span style="font-size:12px;margin-left:4px;" [class.text-muted]="m.isPast">%</span>
+                                  </div>
+                                </div>
+                              }
+                            </div>
+                          }
                         } @else {
                           <div class="allocation-cell">
-                            <div class="progress-bar">
-                              <div class="progress-bar-fill"
-                                   [class.high]="alloc.allocationPercentage >= 75"
-                                   [class.medium]="alloc.allocationPercentage >= 50 && alloc.allocationPercentage < 75"
-                                   [class.low]="alloc.allocationPercentage < 50"
-                                   [style.width.%]="alloc.allocationPercentage">
+                            @if (isMonthByMonth(alloc)) {
+                              <div class="month-list-readonly" style="max-width: 250px; display:grid;grid-template-columns:1fr 1fr;gap:4px;">
+                                @for (m of getSortedMonthlyAllocations(alloc); track m.id) {
+                                  <span class="status-pill" 
+                                        [class.active]="!isCurrentMonth(m.year, m.month)"
+                                        [class.current]="isCurrentMonth(m.year, m.month)"
+                                        style="font-size: 10px; padding: 2px 6px; white-space: nowrap;" 
+                                        [title]="getShortMonthName(m.month) + ' ' + m.year">
+                                    {{ getShortMonthName(m.month) }} '{{ m.year.toString().slice(-2) }}: {{ m.percentage }}%
+                                  </span>
+                                }
                               </div>
-                            </div>
-                            <span class="alloc-value">{{ alloc.currentMonthAllocation || 'N/A' }}</span>
+                            } @else {
+                              <div class="progress-bar">
+                                <div class="progress-bar-fill"
+                                     [class.high]="alloc.allocationPercentage >= 75"
+                                     [class.medium]="alloc.allocationPercentage >= 50 && alloc.allocationPercentage < 75"
+                                     [class.low]="alloc.allocationPercentage < 50"
+                                     [style.width.%]="alloc.allocationPercentage">
+                                </div>
+                              </div>
+                              <span class="alloc-value">{{ alloc.currentMonthAllocation || 'N/A' }}</span>
+                            }
                           </div>
                         }
                       </td>
@@ -374,8 +431,11 @@ import { Allocation, EmployeeAllocationSummary, Employee, Project, Manager } fro
                 </tbody>
               </table>
 
-              <div class="modal-actions">
-                <button class="btn btn-secondary" (click)="showDetailModal = false">Close</button>
+              <div class="modal-actions" style="display:flex; justify-content:flex-end; gap:8px;">
+                @if (showAddAssignment) {
+                  <button class="btn btn-primary" (click)="createDetailAllocation()" [disabled]="(newDetailAllocation.allocationType === 'PROJECT' || newDetailAllocation.allocationType === 'PROSPECT') && !newDetailAllocation.projectId">Save</button>
+                }
+                <button class="btn btn-secondary" (click)="handleDetailCancel()">Cancel</button>
               </div>
             </div>
           </div>
@@ -454,25 +514,50 @@ import { Allocation, EmployeeAllocationSummary, Employee, Project, Manager } fro
                     <option value="MATERNITY">Maternity</option>
                   </select>
                 </div>
-                @if (newAllocation.allocationType === 'PROJECT') {
-                  <div class="form-group">
-                    <label class="form-label">Allocation (current month)</label>
-                    <select class="form-input" [(ngModel)]="newAllocation.currentMonthAllocation" name="allocation">
-                      <option value="100">100%</option>
-                      <option value="75">75%</option>
-                      <option value="50">50%</option>
-                      <option value="25">25%</option>
-                    </select>
-                  </div>
-                }
                 <div class="form-group">
                   <label class="form-label">Start Date</label>
-                  <input type="date" class="form-input" [(ngModel)]="newAllocation.startDate" name="startDate">
+                  <input type="date" class="form-input" [(ngModel)]="newAllocation.startDate" name="startDate" (change)="onDateChange()">
                 </div>
                 <div class="form-group">
                   <label class="form-label">End Date</label>
-                  <input type="date" class="form-input" [(ngModel)]="newAllocation.endDate" name="endDate">
+                  <input type="date" class="form-input" [(ngModel)]="newAllocation.endDate" name="endDate" (change)="onDateChange()">
                 </div>
+                @if (newAllocation.allocationType === 'PROJECT' || newAllocation.allocationType === 'PROSPECT') {
+                  <div class="form-group">
+                     <label class="form-label">Mode</label>
+                     <label class="checkbox-label" style="display:flex;align-items:center;height:38px;margin-bottom:8px;">
+                       <input type="checkbox" (change)="onMonthByMonthToggle($event)" [checked]="monthByMonthMode()">
+                       <span style="margin-left:8px;">Month-by-Month Allocation</span>
+                     </label>
+                  </div>
+                  @if (!monthByMonthMode()) {
+                    <div class="form-group">
+                      <label class="form-label">Allocation (Uniform)</label>
+                      <input type="number" class="form-input" min="1" max="100" [(ngModel)]="newAllocation.currentMonthAllocation" name="allocation">
+                    </div>
+                  } @else {
+                    <div class="form-group">
+                      <label class="form-label">Monthly Allocations</label>
+                      <div class="month-list-container" style="display:flex;flex-wrap:wrap;gap:8px;padding:8px;border:1px solid var(--border);border-radius:8px;margin-bottom:8px;">
+                        @for (m of monthList(); track m.key) {
+                          <div class="month-item" style="display:flex;flex-direction:column;align-items:center;">
+                            <label style="font-size:11px;">{{ m.label }}</label>
+                            <div style="display:flex;align-items:center;">
+                              <input type="number" class="form-input form-input-sm" 
+                                     [min]="1" [max]="100"
+                                     [value]="getMonthlyPercentage(m.key)"
+                                     (input)="updateMonthlyPercentage(m.key, $any($event.target).value)"
+                                     style="width:60px;text-align:center;">
+                              <span style="font-size:12px;margin-left:4px;">%</span>
+                            </div>
+                          </div>
+                        } @empty {
+                           <span class="text-muted" style="font-size:12px;">Enter Start and End Date first.</span>
+                        }
+                      </div>
+                    </div>
+                  }
+                }
                 <div class="modal-actions">
                   <button type="button" class="btn btn-secondary" (click)="showCreateModal = false">Cancel</button>
                   <button type="submit" class="btn btn-primary">Create</button>
@@ -540,17 +625,31 @@ import { Allocation, EmployeeAllocationSummary, Employee, Project, Manager } fro
                               </span>
                             </td>
                             <td>
-                              @if (alloc.allocationType === 'PROJECT') {
+                              @if (alloc.allocationType === 'PROJECT' || alloc.allocationType === 'PROSPECT') {
                                 <div class="allocation-cell">
-                                  <div class="progress-bar">
-                                    <div class="progress-bar-fill"
-                                         [class.high]="(alloc.currentMonthAllocation || 0) >= 75"
-                                         [class.medium]="(alloc.currentMonthAllocation || 0) >= 50 && (alloc.currentMonthAllocation || 0) < 75"
-                                         [class.low]="(alloc.currentMonthAllocation || 0) < 50"
-                                         [style.width.%]="alloc.currentMonthAllocation || 0">
+                                  @if (isMonthByMonth(alloc)) {
+                                    <div class="month-list-readonly" style="max-width: 250px; display:grid;grid-template-columns:1fr 1fr;gap:4px;">
+                                      @for (m of getSortedMonthlyAllocations(alloc); track m.id) {
+                                        <span class="status-pill" 
+                                              [class.active]="!isCurrentMonth(m.year, m.month)"
+                                              [class.current]="isCurrentMonth(m.year, m.month)"
+                                              style="font-size: 10px; padding: 2px 6px; white-space: nowrap;" 
+                                              [title]="getShortMonthName(m.month) + ' ' + m.year">
+                                          {{ getShortMonthName(m.month) }} '{{ m.year.toString().slice(-2) }}: {{ m.percentage }}%
+                                        </span>
+                                      }
                                     </div>
-                                  </div>
-                                  <span class="alloc-value">{{ alloc.currentMonthAllocation || 0 }}%</span>
+                                  } @else {
+                                    <div class="progress-bar">
+                                      <div class="progress-bar-fill"
+                                           [class.high]="(alloc.currentMonthAllocation || 0) >= 75"
+                                           [class.medium]="(alloc.currentMonthAllocation || 0) >= 50 && (alloc.currentMonthAllocation || 0) < 75"
+                                           [class.low]="(alloc.currentMonthAllocation || 0) < 50"
+                                           [style.width.%]="alloc.currentMonthAllocation || 0">
+                                      </div>
+                                    </div>
+                                    <span class="alloc-value">{{ alloc.currentMonthAllocation || 0 }}%</span>
+                                  }
                                 </div>
                               } @else {
                                 <span class="text-muted">-</span>
@@ -707,6 +806,8 @@ import { Allocation, EmployeeAllocationSummary, Employee, Project, Manager } fro
     .btn-icon {
       width: 32px;
       height: 32px;
+      min-width: 32px;
+      min-height: 32px;
       border-radius: 6px;
       border: 1px solid var(--border);
       background: var(--surface);
@@ -715,7 +816,9 @@ import { Allocation, EmployeeAllocationSummary, Employee, Project, Manager } fro
       align-items: center;
       justify-content: center;
       cursor: pointer;
+      box-sizing: border-box;
       transition: all 0.2s;
+      flex-shrink: 0;
     }
 
     .btn-icon:hover {
@@ -736,6 +839,7 @@ import { Allocation, EmployeeAllocationSummary, Employee, Project, Manager } fro
     .action-buttons {
       display: flex;
       gap: 6px;
+      align-items: center;
     }
 
     .modal-overlay {
@@ -761,7 +865,7 @@ import { Allocation, EmployeeAllocationSummary, Employee, Project, Manager } fro
     .modal-wide {
       max-width: 800px;
       max-height: 80vh;
-      overflow-y: auto;
+      overflow: auto;
       padding: 24px;
     }
 
@@ -846,6 +950,7 @@ import { Allocation, EmployeeAllocationSummary, Employee, Project, Manager } fro
     .btn-sm {
       padding: 6px 12px;
       font-size: 13px;
+      min-width: 90px;
     }
 
     .form-input-sm {
@@ -1258,10 +1363,22 @@ export class AllocationsComponent implements OnInit {
   // Inline edit within detail modal
   editingAllocationId: number | null = null;
   editAllocationValue = '';
+  editMonthByMonthMode = signal<boolean>(false);
+  editMonthlyPercentages = signal<Map<string, number>>(new Map());
+  editOriginalMonthlyPercentages = new Map<string, number>();
+  editMonthList = signal<Array<{ year: number, month: number, label: string, key: string, isPast: boolean }>>([]);
 
   // Add assignment within detail modal
   showAddAssignment = false;
   newDetailAllocation: any = { allocationType: 'PROJECT', currentMonthAllocation: '100' };
+  detailMonthByMonthMode = signal<boolean>(false);
+  detailMonthlyPercentages = signal<Map<string, number>>(new Map());
+  detailMonthList = signal<Array<{ year: number, month: number, label: string, key: string }>>([]);
+
+  // Create modal (from master page)
+  monthByMonthMode = signal<boolean>(false);
+  monthlyPercentages = signal<Map<string, number>>(new Map());
+  monthList = signal<Array<{ year: number, month: number, label: string, key: string }>>([]);
 
   // Pagination state
   currentPage = signal(0);
@@ -1524,6 +1641,45 @@ export class AllocationsComponent implements OnInit {
     this.detailProjectSearchText = '';
   }
 
+  isMonthByMonth(alloc: any): boolean {
+    return Array.isArray(alloc.monthlyAllocations) && alloc.monthlyAllocations.length > 0;
+  }
+
+  getSortedMonthlyAllocations(alloc: any): any[] {
+    if (!alloc.monthlyAllocations) return [];
+
+    // Default to full array if dates are missing, though they shouldn't be
+    let startD = new Date(1900, 0, 1);
+    let endD = new Date(2100, 0, 1);
+
+    if (alloc.startDate && alloc.endDate) {
+      startD = new Date(alloc.startDate);
+      startD.setDate(1); // Normalize to month start
+      startD.setHours(0, 0, 0, 0);
+      endD = new Date(alloc.endDate);
+      endD.setDate(28); // Push to near end of month to safely boundary check year-month (don't worry about day)
+      endD.setHours(23, 59, 59, 999);
+    }
+
+    return [...alloc.monthlyAllocations]
+      .filter((m: any) => {
+        const d = new Date(m.year, m.month - 1, 5); // arbitrarily day 5 to avoid timezone shifts throwing it into previous month
+        return d >= startD && d <= endD;
+      })
+      .sort((a, b) => (a.year - b.year) || (a.month - b.month));
+  }
+
+  getShortMonthName(month: number): string {
+    const d = new Date();
+    d.setMonth(month - 1);
+    return d.toLocaleString('default', { month: 'short' });
+  }
+
+  isCurrentMonth(year: number, month: number): boolean {
+    const today = new Date();
+    return today.getFullYear() === year && (today.getMonth() + 1) === month;
+  }
+
   // --- Detail modal ---
 
   openDetailModal(summary: EmployeeAllocationSummary): void {
@@ -1532,10 +1688,32 @@ export class AllocationsComponent implements OnInit {
     this.editingAllocationId = null;
     this.showAddAssignment = false;
     this.showDetailModal = true;
+
+    // Immediately fetch all allocations to guarantee PROSPECT or other hidden types are consistently visible from load
+    this.refreshDetailAllocations();
+  }
+
+  closeDetailModal(): void {
+    this.showDetailModal = false;
+    this.showAddAssignment = false;
+    this.editingAllocationId = null;
+  }
+
+  handleDetailCancel(): void {
+    if (this.showAddAssignment) {
+      this.showAddAssignment = false;
+    } else if (this.editingAllocationId !== null) {
+      this.editingAllocationId = null;
+    } else {
+      this.closeDetailModal();
+    }
   }
 
   refreshDetailAllocations(): void {
-    this.apiService.getAllocationsByEmployee(this.selectedSummary.employeeId)
+    const filterYear = this.selectedYear();
+    const filterMonth = this.selectedMonth();
+
+    this.apiService.getAllocationsByEmployee(this.selectedSummary.employeeId, filterYear, filterMonth)
       .pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
         next: (allocations) => {
           this.detailAllocations.set(allocations);
@@ -1551,9 +1729,85 @@ export class AllocationsComponent implements OnInit {
       });
   }
 
-  startInlineEdit(alloc: Allocation): void {
+  startInlineEdit(alloc: any): void {
     this.editingAllocationId = alloc.id;
     this.editAllocationValue = alloc.currentMonthAllocation?.toString() || '100';
+
+    // Check if this allocation was a month-by-month one. We determine this by whether it has multiple 
+    // monthly allocations or relies on `monthlyAllocations`. Actually, the backend DTO now returns `monthlyAllocations`.
+    const monthlyList = alloc.monthlyAllocations || [];
+    if (monthlyList.length > 0) {
+      this.editMonthByMonthMode.set(true);
+    } else {
+      this.editMonthByMonthMode.set(false);
+    }
+
+    // Generate month list for edit based on allocation bounds
+    if (alloc.startDate && alloc.endDate) {
+      const start = new Date(alloc.startDate);
+      const end = new Date(alloc.endDate);
+      const list = [];
+      const initialMap = new Map<string, number>();
+      this.editOriginalMonthlyPercentages.clear();
+
+      let current = new Date(start.getFullYear(), start.getMonth(), 1);
+      const endMonth = new Date(end.getFullYear(), end.getMonth(), 1);
+
+      while (current <= endMonth) {
+        const year = current.getFullYear();
+        const month = current.getMonth() + 1;
+        const key = `${year}-${month.toString().padStart(2, '0')}`;
+        const label = current.toLocaleString('default', { month: 'short', year: 'numeric' });
+
+        const isPast = this.isPastMonth(year, month);
+        let defaultVal = 100;
+        const existing = monthlyList.find((m: any) => m.year === year && m.month === month);
+        if (existing) {
+          defaultVal = existing.percentage;
+        } else if (alloc.currentMonthAllocation != null) {
+          defaultVal = alloc.currentMonthAllocation;
+        }
+
+        initialMap.set(key, defaultVal);
+        this.editOriginalMonthlyPercentages.set(key, defaultVal);
+        list.push({ year, month, label, key, isPast });
+
+        current.setMonth(current.getMonth() + 1);
+      }
+      this.editMonthList.set(list);
+      this.editMonthlyPercentages.set(initialMap);
+
+      // If all months are past, user shouldn't switch to month-by-month to edit past. 
+      // We keep it functionally handled in UI.
+    } else {
+      this.editMonthList.set([]);
+      this.editMonthlyPercentages.set(new Map());
+    }
+  }
+
+  isPastMonth(year: number, month: number): boolean {
+    const today = new Date();
+    const currentYear = today.getFullYear();
+    const currentMonth = today.getMonth() + 1;
+    return year < currentYear || (year === currentYear && month < currentMonth);
+  }
+
+  toggleInlineEditMode(): void {
+    this.editMonthByMonthMode.update(v => !v);
+  }
+
+  getEditMonthlyPercentage(key: string): number {
+    return this.editMonthlyPercentages().get(key) || 100;
+  }
+
+  updateEditMonthlyPercentage(key: string, value: string): void {
+    const numValue = parseInt(value, 10);
+    if (!isNaN(numValue)) {
+      const map = new Map(this.editMonthlyPercentages());
+      const clampedValue = Math.max(1, Math.min(100, numValue));
+      map.set(key, clampedValue);
+      this.editMonthlyPercentages.set(map);
+    }
   }
 
   cancelInlineEdit(): void {
@@ -1564,13 +1818,46 @@ export class AllocationsComponent implements OnInit {
   saveInlineEdit(): void {
     if (this.editingAllocationId == null) return;
 
-    const currentYear = new Date().getFullYear();
-    const currentMonth = new Date().getMonth() + 1; // 1-indexed for backend
-
-    const payload: any = {
-      year: currentYear,
-      currentMonthAllocation: parseInt(this.editAllocationValue) || 100
+    const currentAlloc = this.detailAllocations().find(a => a.id === this.editingAllocationId);
+    let payload: any = {
+      allocationType: currentAlloc ? currentAlloc.allocationType : 'PROJECT'
     };
+
+    if (this.editMonthByMonthMode()) {
+      const changes: any[] = [];
+      const currentMap = this.editMonthlyPercentages();
+      for (const { year, month, key, isPast } of this.editMonthList()) {
+        if (!isPast) { // Only send changed future/current months
+          const currentVal = currentMap.get(key);
+          const originalVal = this.editOriginalMonthlyPercentages.get(key);
+          if (currentVal !== originalVal) {
+            changes.push({ year, month, percentage: currentVal });
+          }
+        }
+      }
+
+      // Validate 
+      for (const c of changes) {
+        if (c.percentage < 1 || c.percentage > 100) {
+          alert('Percentages must be between 1 and 100');
+          return;
+        }
+      }
+
+      if (changes.length === 0) {
+        // No changes
+        this.editingAllocationId = null;
+        return;
+      }
+      payload.monthlyAllocations = changes;
+    } else {
+      const val = parseInt(this.editAllocationValue, 10);
+      if (isNaN(val) || val < 1 || val > 100) {
+        alert('Percentage must be between 1 and 100');
+        return;
+      }
+      payload.currentMonthAllocation = val;
+    }
 
     this.apiService.updateAllocation(this.editingAllocationId, payload).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: () => {
@@ -1599,10 +1886,17 @@ export class AllocationsComponent implements OnInit {
 
   // --- Add assignment from detail modal ---
 
+  private previousDetailDates: { start?: string, end?: string } = {};
+
   openAddAssignmentForm(): void {
     this.newDetailAllocation = { allocationType: 'PROJECT', currentMonthAllocation: '100' };
+    this.previousDetailDates = {};
     this.detailProjectSearchText = '';
     this.showDetailProjectDropdown = false;
+    this.detailMonthByMonthMode.set(false);
+    this.detailMonthlyPercentages.set(new Map());
+    this.detailMonthList.set([]);
+
     this.apiService.getProjects(0, 100).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: (page) => this.projectsList.set(page.content),
       error: () => { }
@@ -1610,10 +1904,135 @@ export class AllocationsComponent implements OnInit {
     this.showAddAssignment = true;
   }
 
+  onDetailDateChange(): void {
+    if (this.detailMonthByMonthMode()) {
+      this.generateDetailMonthList();
+    } else {
+      this.previousDetailDates = { start: this.newDetailAllocation.startDate, end: this.newDetailAllocation.endDate };
+    }
+  }
+
+  onDetailMonthByMonthToggle(event: Event): void {
+    const isChecked = (event.target as HTMLInputElement).checked;
+    if (!isChecked && this.detailMonthlyPercentages().size > 0) {
+      if (!confirm('Switching to single percentage mode will replace all individual month allocations. Continue?')) {
+        (event.target as HTMLInputElement).checked = true;
+        return;
+      }
+    }
+
+    this.detailMonthByMonthMode.set(isChecked);
+    if (isChecked) {
+      this.generateDetailMonthList();
+    } else {
+      this.detailMonthlyPercentages.set(new Map());
+      this.detailMonthList.set([]);
+    }
+  }
+
+  generateDetailMonthList(): void {
+    const startStr = this.newDetailAllocation.startDate;
+    const endStr = this.newDetailAllocation.endDate;
+    const list = [];
+    if (startStr && endStr) {
+      const start = new Date(startStr);
+      const end = new Date(endStr);
+      let current = new Date(start.getFullYear(), start.getMonth(), 1);
+      const endMonth = new Date(end.getFullYear(), end.getMonth(), 1);
+
+      const newKeys: string[] = [];
+      const currentMap = this.detailMonthlyPercentages();
+
+      while (current <= endMonth) {
+        const year = current.getFullYear();
+        const month = current.getMonth() + 1;
+        const key = `${year}-${month.toString().padStart(2, '0')}`;
+        newKeys.push(key);
+        current.setMonth(current.getMonth() + 1);
+      }
+
+      const existingKeys = Array.from(currentMap.keys());
+      const removedKeys = existingKeys.filter(k => !newKeys.includes(k) && currentMap.get(k) !== undefined && currentMap.get(k) !== null);
+
+      if (removedKeys.length > 0) {
+        const monthLabels = removedKeys.map(k => {
+          const [y, m] = k.split('-');
+          return new Date(parseInt(y), parseInt(m) - 1, 1).toLocaleString('default', { month: 'short', year: 'numeric' });
+        });
+        if (!confirm(`Changing the date range will remove data for ${monthLabels.join(', ')}. Continue?`)) {
+          this.newDetailAllocation.startDate = this.previousDetailDates.start;
+          this.newDetailAllocation.endDate = this.previousDetailDates.end;
+          return;
+        }
+      }
+
+      current = new Date(start.getFullYear(), start.getMonth(), 1);
+      while (current <= endMonth) {
+        const year = current.getFullYear();
+        const month = current.getMonth() + 1;
+        const key = `${year}-${month.toString().padStart(2, '0')}`;
+        const label = current.toLocaleString('default', { month: 'short', year: 'numeric' });
+        list.push({ year, month, label, key });
+
+        if (!currentMap.has(key)) {
+          const map = new Map(this.detailMonthlyPercentages());
+          map.set(key, undefined as any);
+          this.detailMonthlyPercentages.set(map);
+        }
+        current.setMonth(current.getMonth() + 1);
+      }
+
+      if (removedKeys.length > 0) {
+        const map = new Map(this.detailMonthlyPercentages());
+        for (const k of removedKeys) {
+          map.delete(k);
+        }
+        this.detailMonthlyPercentages.set(map);
+      }
+      this.previousDetailDates = { start: startStr, end: endStr };
+    }
+    this.detailMonthList.set(list);
+  }
+
+  getDetailMonthlyPercentage(key: string): number | '' {
+    const val = this.detailMonthlyPercentages().get(key);
+    return val === undefined || val === null ? '' : val;
+  }
+
+  updateDetailMonthlyPercentage(key: string, value: string): void {
+    const map = new Map(this.detailMonthlyPercentages());
+    if (value === '') {
+      map.set(key, undefined as any);
+      this.detailMonthlyPercentages.set(map);
+      return;
+    }
+    const numValue = parseInt(value, 10);
+    if (!isNaN(numValue)) {
+      const clampedValue = Math.max(1, Math.min(100, numValue));
+      map.set(key, clampedValue);
+      this.detailMonthlyPercentages.set(map);
+    }
+  }
+
   createDetailAllocation(): void {
     const allocType = this.newDetailAllocation.allocationType || 'PROJECT';
     const requiresProject = allocType === 'PROJECT' || allocType === 'PROSPECT';
     if (requiresProject && !this.newDetailAllocation.projectId) return;
+
+    if ((allocType === 'PROJECT' || allocType === 'PROSPECT') && this.detailMonthByMonthMode()) {
+      const map = this.detailMonthlyPercentages();
+      for (const { key } of this.detailMonthList()) {
+        const val = map.get(key);
+        if (val === undefined || val === null) {
+          alert('Percentage is required for all months');
+          return;
+        }
+        if (val < 1 || val > 100) {
+          alert('Percentage must be between 1 and 100');
+          return;
+        }
+      }
+    }
 
     const currentYear = new Date().getFullYear();
 
@@ -1626,9 +2045,22 @@ export class AllocationsComponent implements OnInit {
       year: currentYear
     };
 
-    // Only set allocation percentage for PROJECT type
-    if (allocType === 'PROJECT') {
-      payload.currentMonthAllocation = parseInt(this.newDetailAllocation.currentMonthAllocation) || 100;
+    if (allocType === 'PROJECT' || allocType === 'PROSPECT') {
+      if (this.detailMonthByMonthMode()) {
+        const changes: any[] = [];
+        const currentMap = this.detailMonthlyPercentages();
+        for (const { year, month, key } of this.detailMonthList()) {
+          changes.push({ year, month, percentage: currentMap.get(key) || 100 });
+        }
+        payload.monthlyAllocations = changes;
+      } else {
+        const val = parseInt(this.newDetailAllocation.currentMonthAllocation, 10) || 100;
+        if (val < 1 || val > 100) {
+          alert('Percentage must be between 1 and 100');
+          return;
+        }
+        payload.currentMonthAllocation = val;
+      }
     }
 
     this.apiService.createAllocation(payload).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
@@ -1651,6 +2083,10 @@ export class AllocationsComponent implements OnInit {
     this.createProjectSearchText = '';
     this.showEmployeeDropdown = false;
     this.showCreateProjectDropdown = false;
+    this.monthByMonthMode.set(false);
+    this.monthlyPercentages.set(new Map());
+    this.monthList.set([]);
+
     this.apiService.getEmployees(0, 100).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: (page) => this.employeesList.set(page.content),
       error: () => { }
@@ -1662,10 +2098,77 @@ export class AllocationsComponent implements OnInit {
     this.showCreateModal = true;
   }
 
+  onDateChange(): void {
+    if (this.monthByMonthMode()) {
+      this.generateMonthList();
+    }
+  }
+
+  onMonthByMonthToggle(event: Event): void {
+    const isChecked = (event.target as HTMLInputElement).checked;
+    this.monthByMonthMode.set(isChecked);
+    if (isChecked) {
+      this.generateMonthList();
+    }
+  }
+
+  generateMonthList(): void {
+    const startStr = this.newAllocation.startDate;
+    const endStr = this.newAllocation.endDate;
+    const list = [];
+    if (startStr && endStr) {
+      const start = new Date(startStr);
+      const end = new Date(endStr);
+      let current = new Date(start.getFullYear(), start.getMonth(), 1);
+      const endMonth = new Date(end.getFullYear(), end.getMonth(), 1);
+
+      while (current <= endMonth) {
+        const year = current.getFullYear();
+        const month = current.getMonth() + 1;
+        const key = `${year}-${month.toString().padStart(2, '0')}`;
+        const label = current.toLocaleString('default', { month: 'short', year: 'numeric' });
+        list.push({ year, month, label, key });
+
+        const currentMap = this.monthlyPercentages();
+        if (!currentMap.has(key)) {
+          const map = new Map(currentMap);
+          map.set(key, 100);
+          this.monthlyPercentages.set(map);
+        }
+        current.setMonth(current.getMonth() + 1);
+      }
+    }
+    this.monthList.set(list);
+  }
+
+  getMonthlyPercentage(key: string): number {
+    return this.monthlyPercentages().get(key) || 100;
+  }
+
+  updateMonthlyPercentage(key: string, value: string): void {
+    const numValue = parseInt(value, 10);
+    if (!isNaN(numValue)) {
+      const map = new Map(this.monthlyPercentages());
+      const clampedValue = Math.max(1, Math.min(100, numValue));
+      map.set(key, clampedValue);
+      this.monthlyPercentages.set(map);
+    }
+  }
+
   createAllocation(): void {
     const allocType = this.newAllocation.allocationType || 'PROJECT';
     const requiresProject = allocType === 'PROJECT' || allocType === 'PROSPECT';
     if (!this.newAllocation.employeeId || (requiresProject && !this.newAllocation.projectId)) return;
+
+    if ((allocType === 'PROJECT' || allocType === 'PROSPECT') && this.monthByMonthMode()) {
+      const map = this.monthlyPercentages();
+      for (const val of map.values()) {
+        if (val < 1 || val > 100) {
+          alert('Percentages must be between 1 and 100');
+          return;
+        }
+      }
+    }
 
     const currentYear = new Date().getFullYear();
 
@@ -1678,9 +2181,22 @@ export class AllocationsComponent implements OnInit {
       year: currentYear
     };
 
-    // Only set allocation percentage for PROJECT type
-    if (allocType === 'PROJECT') {
-      payload.currentMonthAllocation = parseInt(this.newAllocation.currentMonthAllocation) || 100;
+    if (allocType === 'PROJECT' || allocType === 'PROSPECT') {
+      if (this.monthByMonthMode()) {
+        const changes: any[] = [];
+        const currentMap = this.monthlyPercentages();
+        for (const { year, month, key } of this.monthList()) {
+          changes.push({ year, month, percentage: currentMap.get(key) || 100 });
+        }
+        payload.monthlyAllocations = changes;
+      } else {
+        const val = parseInt(this.newAllocation.currentMonthAllocation, 10) || 100;
+        if (val < 1 || val > 100) {
+          alert('Percentage must be between 1 and 100');
+          return;
+        }
+        payload.currentMonthAllocation = val;
+      }
     }
 
     this.apiService.createAllocation(payload).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
@@ -1696,13 +2212,13 @@ export class AllocationsComponent implements OnInit {
 
   // Allocation type change handlers
   onCreateStatusChange(): void {
-    if (this.newAllocation.allocationType === 'PROJECT') {
+    if (this.newAllocation.allocationType === 'PROJECT' || this.newAllocation.allocationType === 'PROSPECT') {
       this.newAllocation.currentMonthAllocation = '100';
     }
   }
 
   onDetailStatusChange(): void {
-    if (this.newDetailAllocation.allocationType === 'PROJECT') {
+    if (this.newDetailAllocation.allocationType === 'PROJECT' || this.newDetailAllocation.allocationType === 'PROSPECT') {
       this.newDetailAllocation.currentMonthAllocation = '100';
     }
   }
@@ -1711,17 +2227,24 @@ export class AllocationsComponent implements OnInit {
   selectedEmployeeAllocations = signal<Allocation[]>([]);
 
   viewEmployeeDetails(summary: EmployeeAllocationSummary): void {
-    this.selectedEmployeeAllocations.set(summary.allocations || []);
-    // Fetch full employee details to get skills and other info not in summary
-    this.apiService.getEmployee(summary.employeeId).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
-      next: (employee) => {
-        this.selectedEmployee.set(employee);
-      },
-      error: (err) => {
-        console.error('Failed to load employee details', err);
-        // Fallback or alert? For now just log.
-      }
-    });
+    // Clear existing set first
+    this.selectedEmployeeAllocations.set([]);
+
+    // Fetch both the full actual allocations and the employee details in parallel
+    forkJoin({
+      allocations: this.apiService.getAllocationsByEmployee(summary.employeeId),
+      employee: this.apiService.getEmployee(summary.employeeId)
+    })
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (data) => {
+          this.selectedEmployeeAllocations.set(data.allocations || []);
+          this.selectedEmployee.set(data.employee);
+        },
+        error: (err) => {
+          console.error('Failed to load employee details or allocations', err);
+        }
+      });
   }
 
   closeEmployeeDetails(): void {
