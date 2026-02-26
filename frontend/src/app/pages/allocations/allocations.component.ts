@@ -1719,14 +1719,7 @@ export class AllocationsComponent implements OnInit {
     this.editingAllocationId = alloc.id;
     this.editAllocationValue = alloc.currentMonthAllocation?.toString() || '100';
 
-    // Check if this allocation was a month-by-month one. We determine this by whether it has multiple 
-    // monthly allocations or relies on `monthlyAllocations`. Actually, the backend DTO now returns `monthlyAllocations`.
     const monthlyList = alloc.monthlyAllocations || [];
-    if (monthlyList.length > 0) {
-      this.editMonthByMonthMode.set(true);
-    } else {
-      this.editMonthByMonthMode.set(false);
-    }
 
     // Generate month list for edit based on allocation bounds
     if (alloc.startDate && alloc.endDate) {
@@ -1763,11 +1756,14 @@ export class AllocationsComponent implements OnInit {
       this.editMonthList.set(list);
       this.editMonthlyPercentages.set(initialMap);
 
-      // If all months are past, user shouldn't switch to month-by-month to edit past. 
-      // We keep it functionally handled in UI.
+      // Check if percentages vary across months - enable month-by-month mode if they do
+      const percentages = Array.from(initialMap.values());
+      const hasVaryingPercentages = percentages.length > 1 && !percentages.every(p => p === percentages[0]);
+      this.editMonthByMonthMode.set(hasVaryingPercentages);
     } else {
       this.editMonthList.set([]);
       this.editMonthlyPercentages.set(new Map());
+      this.editMonthByMonthMode.set(false);
     }
   }
 
