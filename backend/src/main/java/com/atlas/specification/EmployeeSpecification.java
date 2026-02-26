@@ -18,6 +18,9 @@ public class EmployeeSpecification {
      */
     public static Specification<Employee> isBench(int currentYear, int currentMonth) {
         return (root, query, cb) -> {
+            java.time.LocalDate firstDayOfMonth = java.time.LocalDate.of(currentYear, currentMonth, 1);
+            java.time.LocalDate lastDayOfMonth = firstDayOfMonth.withDayOfMonth(firstDayOfMonth.lengthOfMonth());
+
             List<Predicate> predicates = new ArrayList<>();
 
             // No active PROJECT allocation
@@ -39,7 +42,11 @@ public class EmployeeSpecification {
             prospectSub.select(prRoot.get("employee").get("id"));
             prospectSub.where(cb.and(
                     cb.equal(prRoot.get("employee"), root),
-                    cb.equal(prRoot.get("allocationType"), Allocation.AllocationType.PROSPECT)));
+                    cb.equal(prRoot.get("allocationType"), Allocation.AllocationType.PROSPECT),
+                    cb.lessThanOrEqualTo(prRoot.get("startDate"), lastDayOfMonth),
+                    cb.or(
+                            cb.isNull(prRoot.get("endDate")),
+                            cb.greaterThanOrEqualTo(prRoot.get("endDate"), firstDayOfMonth))));
             predicates.add(cb.not(cb.exists(prospectSub)));
 
             // Exclude MATERNITY
@@ -48,7 +55,11 @@ public class EmployeeSpecification {
             maternitySub.select(matRoot.get("employee").get("id"));
             maternitySub.where(cb.and(
                     cb.equal(matRoot.get("employee"), root),
-                    cb.equal(matRoot.get("allocationType"), Allocation.AllocationType.MATERNITY)));
+                    cb.equal(matRoot.get("allocationType"), Allocation.AllocationType.MATERNITY),
+                    cb.lessThanOrEqualTo(matRoot.get("startDate"), lastDayOfMonth),
+                    cb.or(
+                            cb.isNull(matRoot.get("endDate")),
+                            cb.greaterThanOrEqualTo(matRoot.get("endDate"), firstDayOfMonth))));
             predicates.add(cb.not(cb.exists(maternitySub)));
 
             // Exclude VACATION
@@ -57,7 +68,11 @@ public class EmployeeSpecification {
             vacationSub.select(vacRoot.get("employee").get("id"));
             vacationSub.where(cb.and(
                     cb.equal(vacRoot.get("employee"), root),
-                    cb.equal(vacRoot.get("allocationType"), Allocation.AllocationType.VACATION)));
+                    cb.equal(vacRoot.get("allocationType"), Allocation.AllocationType.VACATION),
+                    cb.lessThanOrEqualTo(vacRoot.get("startDate"), lastDayOfMonth),
+                    cb.or(
+                            cb.isNull(vacRoot.get("endDate")),
+                            cb.greaterThanOrEqualTo(vacRoot.get("endDate"), firstDayOfMonth))));
             predicates.add(cb.not(cb.exists(vacationSub)));
 
             return cb.and(predicates.toArray(new Predicate[0]));
@@ -75,7 +90,8 @@ public class EmployeeSpecification {
             java.time.LocalDate lastDayOfMonth = firstDayOfMonth.withDayOfMonth(firstDayOfMonth.lengthOfMonth());
 
             // Has PROSPECT allocation active in the selected month
-            // Date range overlap: startDate <= lastDayOfMonth AND (endDate IS NULL OR endDate >= firstDayOfMonth)
+            // Date range overlap: startDate <= lastDayOfMonth AND (endDate IS NULL OR
+            // endDate >= firstDayOfMonth)
             Subquery<Long> prospectSubquery = query.subquery(Long.class);
             Root<Allocation> pRoot = prospectSubquery.from(Allocation.class);
             prospectSubquery.select(pRoot.get("employee").get("id"));
@@ -85,8 +101,7 @@ public class EmployeeSpecification {
                     cb.lessThanOrEqualTo(pRoot.get("startDate"), lastDayOfMonth),
                     cb.or(
                             cb.isNull(pRoot.get("endDate")),
-                            cb.greaterThanOrEqualTo(pRoot.get("endDate"), firstDayOfMonth)
-                    )));
+                            cb.greaterThanOrEqualTo(pRoot.get("endDate"), firstDayOfMonth))));
 
             // No active PROJECT allocation in the selected month
             Subquery<Long> activeSubquery = query.subquery(Long.class);
@@ -137,8 +152,12 @@ public class EmployeeSpecification {
             predicates.add(cb.isNull(root.get("resignationDate")));
 
             // Employee IDs filter (for ABAC)
-            if (employeeIds != null && !employeeIds.isEmpty()) {
-                predicates.add(root.get("id").in(employeeIds));
+            if (employeeIds != null) {
+                if (employeeIds.isEmpty()) {
+                    predicates.add(cb.or()); // Force false predicate
+                } else {
+                    predicates.add(root.get("id").in(employeeIds));
+                }
             }
 
             // Search filter (name or email)
@@ -162,7 +181,7 @@ public class EmployeeSpecification {
      * Complete filter for BENCH employees (composable)
      */
     public static Specification<Employee> benchEmployees(String search, Long managerId, List<Long> employeeIds,
-                                                         int currentYear, int currentMonth) {
+            int currentYear, int currentMonth) {
         return Specification.where(baseFilters(search, managerId, employeeIds))
                 .and(isBench(currentYear, currentMonth));
     }
@@ -171,7 +190,7 @@ public class EmployeeSpecification {
      * Complete filter for ACTIVE employees (composable)
      */
     public static Specification<Employee> activeEmployees(String search, Long managerId, List<Long> employeeIds,
-                                                          int currentYear, int currentMonth) {
+            int currentYear, int currentMonth) {
         return Specification.where(baseFilters(search, managerId, employeeIds))
                 .and(isActive(currentYear, currentMonth));
     }
@@ -180,7 +199,7 @@ public class EmployeeSpecification {
      * Complete filter for PROSPECT employees (composable)
      */
     public static Specification<Employee> prospectEmployees(String search, Long managerId, List<Long> employeeIds,
-                                                            int currentYear, int currentMonth) {
+            int currentYear, int currentMonth) {
         return Specification.where(baseFilters(search, managerId, employeeIds))
                 .and(isProspect(currentYear, currentMonth));
     }
@@ -218,8 +237,12 @@ public class EmployeeSpecification {
             }
 
             // Employee IDs filter (for ABAC hierarchy-based access)
-            if (employeeIds != null && !employeeIds.isEmpty()) {
-                predicates.add(root.get("id").in(employeeIds));
+            if (employeeIds != null) {
+                if (employeeIds.isEmpty()) {
+                    predicates.add(cb.or()); // Force false predicate
+                } else {
+                    predicates.add(root.get("id").in(employeeIds));
+                }
             }
 
             // Tower filter (match by tower description)
@@ -270,7 +293,8 @@ public class EmployeeSpecification {
 
                 } else if ("MATERNITY".equalsIgnoreCase(status)) {
                     // MATERNITY = Has allocation of type MATERNITY active in the selected month
-                    // Date range overlap: startDate <= lastDayOfMonth AND (endDate IS NULL OR endDate >= firstDayOfMonth)
+                    // Date range overlap: startDate <= lastDayOfMonth AND (endDate IS NULL OR
+                    // endDate >= firstDayOfMonth)
                     LocalDate firstDayOfMonth = LocalDate.of(currentYear, currentMonth, 1);
                     LocalDate lastDayOfMonth = firstDayOfMonth.withDayOfMonth(firstDayOfMonth.lengthOfMonth());
 
@@ -283,14 +307,14 @@ public class EmployeeSpecification {
                             cb.lessThanOrEqualTo(mRoot.get("startDate"), lastDayOfMonth),
                             cb.or(
                                     cb.isNull(mRoot.get("endDate")),
-                                    cb.greaterThanOrEqualTo(mRoot.get("endDate"), firstDayOfMonth)
-                            )));
+                                    cb.greaterThanOrEqualTo(mRoot.get("endDate"), firstDayOfMonth))));
 
                     predicates.add(cb.exists(maternitySubquery));
 
                 } else if ("VACATION".equalsIgnoreCase(status)) {
                     // VACATION = Has allocation of type VACATION active in the selected month
-                    // Date range overlap: startDate <= lastDayOfMonth AND (endDate IS NULL OR endDate >= firstDayOfMonth)
+                    // Date range overlap: startDate <= lastDayOfMonth AND (endDate IS NULL OR
+                    // endDate >= firstDayOfMonth)
                     LocalDate firstDayOfMonth = LocalDate.of(currentYear, currentMonth, 1);
                     LocalDate lastDayOfMonth = firstDayOfMonth.withDayOfMonth(firstDayOfMonth.lengthOfMonth());
 
@@ -303,8 +327,7 @@ public class EmployeeSpecification {
                             cb.lessThanOrEqualTo(vRoot.get("startDate"), lastDayOfMonth),
                             cb.or(
                                     cb.isNull(vRoot.get("endDate")),
-                                    cb.greaterThanOrEqualTo(vRoot.get("endDate"), firstDayOfMonth)
-                            )));
+                                    cb.greaterThanOrEqualTo(vRoot.get("endDate"), firstDayOfMonth))));
 
                     predicates.add(cb.exists(vacationSubquery));
                 }

@@ -219,4 +219,19 @@ DELETE FROM users WHERE employee_id IS NULL;
 
 ALTER TABLE users ALTER COLUMN employee_id SET NOT NULL;
 
+-- ============================================================================
+-- PHASE 9: Clean up orphaned monthly allocations
+-- ============================================================================
+-- Delete any monthly entries that fall outside their parent allocation's start/end dates
+DELETE FROM monthly_allocations
+WHERE id IN (
+    SELECT ma.id
+    FROM monthly_allocations ma
+    JOIN allocations a ON ma.allocation_id = a.id
+    WHERE 
+        DATE(ma.year || '-' || LPAD(ma.month::text, 2, '0') || '-01') < DATE_TRUNC('month', a.start_date)
+        OR 
+        DATE(ma.year || '-' || LPAD(ma.month::text, 2, '0') || '-01') > DATE_TRUNC('month', a.end_date)
+);
+
 COMMIT;

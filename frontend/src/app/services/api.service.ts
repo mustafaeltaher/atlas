@@ -151,8 +151,12 @@ export class ApiService {
         return this.http.get<Page<Allocation>>(url);
     }
 
-    getAllocationsByEmployee(employeeId: number): Observable<Allocation[]> {
-        return this.http.get<Allocation[]>(`${this.API_URL}/allocations/employee/${employeeId}`);
+    getAllocationsByEmployee(employeeId: number, year?: number, month?: number): Observable<Allocation[]> {
+        let params = new HttpParams();
+        if (year) params = params.set('year', year);
+        if (month) params = params.set('month', month);
+
+        return this.http.get<Allocation[]>(`${this.API_URL}/allocations/employee/${employeeId}`, { params });
     }
 
     getAllocationsByProject(projectId: number): Observable<Allocation[]> {

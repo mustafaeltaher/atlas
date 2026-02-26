@@ -40,7 +40,8 @@ public class AllocationController {
         size = Math.max(1, Math.min(size, MAX_PAGE_SIZE));
         User currentUser = userDetailsService.getUserByUsername(authentication.getName());
         return ResponseEntity.ok(allocationService.getAllAllocations(currentUser,
-                org.springframework.data.domain.PageRequest.of(page, size), search, allocationType, managerId, year, month));
+                org.springframework.data.domain.PageRequest.of(page, size), search, allocationType, managerId, year,
+                month));
     }
 
     @GetMapping("/grouped")
@@ -70,7 +71,8 @@ public class AllocationController {
             @RequestParam(required = false) Integer month) {
         User currentUser = userDetailsService.getUserByUsername(authentication.getName());
         return ResponseEntity
-                .ok(allocationService.getManagersForAllocations(currentUser, allocationType, search, managerSearch, year, month));
+                .ok(allocationService.getManagersForAllocations(currentUser, allocationType, search, managerSearch,
+                        year, month));
     }
 
     @GetMapping("/allocation-types")
@@ -82,7 +84,8 @@ public class AllocationController {
             @RequestParam(required = false) Integer year,
             @RequestParam(required = false) Integer month) {
         User currentUser = userDetailsService.getUserByUsername(authentication.getName());
-        return ResponseEntity.ok(allocationService.getDistinctAllocationTypes(currentUser, managerId, search, allocationType, year, month));
+        return ResponseEntity.ok(allocationService.getDistinctAllocationTypes(currentUser, managerId, search,
+                allocationType, year, month));
     }
 
     @GetMapping("/available-months")
@@ -102,10 +105,13 @@ public class AllocationController {
     }
 
     @GetMapping("/employee/{employeeId}")
-    public ResponseEntity<List<AllocationDTO>> getAllocationsByEmployee(@PathVariable Long employeeId,
+    public ResponseEntity<List<AllocationDTO>> getAllocationsByEmployee(
+            @PathVariable Long employeeId,
+            @RequestParam(required = false) Integer year,
+            @RequestParam(required = false) Integer month,
             Authentication authentication) {
         User currentUser = userDetailsService.getUserByUsername(authentication.getName());
-        return ResponseEntity.ok(allocationService.getAllocationsByEmployee(employeeId, currentUser));
+        return ResponseEntity.ok(allocationService.getAllocationsByEmployee(employeeId, year, month, currentUser));
     }
 
     @GetMapping("/project/{projectId}")
