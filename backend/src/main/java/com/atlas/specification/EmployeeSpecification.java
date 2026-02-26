@@ -178,6 +178,80 @@ public class EmployeeSpecification {
     }
 
     /**
+     * Base filters with allocation type existence check.
+     * Returns employees who have at least one allocation of the specified type in the given month.
+     * This is used for allocation type filtering where we want to show anyone with that type,
+     * regardless of other allocation types they may have.
+     */
+    public static Specification<Employee> baseFiltersWithAllocationType(
+            String search, Long managerId, List<Long> employeeIds,
+            Allocation.AllocationType allocationType, int currentYear, int currentMonth) {
+        return (root, query, cb) -> {
+            List<Predicate> predicates = new ArrayList<>();
+
+            // Active employees only (not resigned)
+            predicates.add(cb.isNull(root.get("resignationDate")));
+
+            // Employee IDs filter (for ABAC)
+            if (employeeIds != null) {
+                if (employeeIds.isEmpty()) {
+                    predicates.add(cb.or()); // Force false predicate
+                } else {
+                    predicates.add(root.get("id").in(employeeIds));
+                }
+            }
+
+            // Search filter (name or email)
+            if (search != null && !search.trim().isEmpty()) {
+                String searchLike = "%" + search.toLowerCase() + "%";
+                Predicate nameLike = cb.like(cb.lower(root.get("name")), searchLike);
+                Predicate emailLike = cb.like(cb.lower(root.get("email")), searchLike);
+                predicates.add(cb.or(nameLike, emailLike));
+            }
+
+            // Manager filter
+            if (managerId != null) {
+                predicates.add(cb.equal(root.get("manager").get("id"), managerId));
+            }
+
+            // Allocation type existence check
+            // For PROJECT/PROSPECT: check if employee has at least one allocation with percentage > 0 in the selected month
+            // For MATERNITY/VACATION: check if allocation period overlaps with the selected month
+            if (allocationType == Allocation.AllocationType.PROJECT || allocationType == Allocation.AllocationType.PROSPECT) {
+                Subquery<Long> allocationSubquery = query.subquery(Long.class);
+                Root<Allocation> allocRoot = allocationSubquery.from(Allocation.class);
+                Join<Allocation, MonthlyAllocation> maJoin = allocRoot.join("monthlyAllocations");
+                allocationSubquery.select(allocRoot.get("employee").get("id"));
+                allocationSubquery.where(cb.and(
+                        cb.equal(allocRoot.get("employee"), root),
+                        cb.equal(allocRoot.get("allocationType"), allocationType),
+                        cb.equal(maJoin.get("year"), currentYear),
+                        cb.equal(maJoin.get("month"), currentMonth),
+                        cb.gt(maJoin.get("percentage"), 0)));
+                predicates.add(cb.exists(allocationSubquery));
+            } else {
+                // MATERNITY or VACATION: check date overlap with selected month
+                java.time.LocalDate firstDayOfMonth = java.time.LocalDate.of(currentYear, currentMonth, 1);
+                java.time.LocalDate lastDayOfMonth = firstDayOfMonth.withDayOfMonth(firstDayOfMonth.lengthOfMonth());
+
+                Subquery<Long> allocationSubquery = query.subquery(Long.class);
+                Root<Allocation> allocRoot = allocationSubquery.from(Allocation.class);
+                allocationSubquery.select(allocRoot.get("employee").get("id"));
+                allocationSubquery.where(cb.and(
+                        cb.equal(allocRoot.get("employee"), root),
+                        cb.equal(allocRoot.get("allocationType"), allocationType),
+                        cb.lessThanOrEqualTo(allocRoot.get("startDate"), lastDayOfMonth),
+                        cb.or(
+                                cb.isNull(allocRoot.get("endDate")),
+                                cb.greaterThanOrEqualTo(allocRoot.get("endDate"), firstDayOfMonth))));
+                predicates.add(cb.exists(allocationSubquery));
+            }
+
+            return cb.and(predicates.toArray(new Predicate[0]));
+        };
+    }
+
+    /**
      * Complete filter for BENCH employees (composable)
      */
     public static Specification<Employee> benchEmployees(String search, Long managerId, List<Long> employeeIds,

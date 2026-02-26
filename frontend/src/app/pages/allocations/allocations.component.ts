@@ -1455,9 +1455,10 @@ export class AllocationsComponent implements OnInit {
   loadAllocationTypes(): void {
     const managerId = this.managerFilter ? Number(this.managerFilter) : undefined;
     const search = this.searchTerm || undefined;
+    // Don't pass allocationType - the type filter should not affect itself
     const year = this.selectedYear();
     const month = this.selectedMonth();
-    this.apiService.getAllocationTypes(managerId, search, year, month).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+    this.apiService.getAllocationTypes(managerId, search, undefined, year, month).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: (types) => this.allocationTypes.set(types),
       error: () => { }
     });

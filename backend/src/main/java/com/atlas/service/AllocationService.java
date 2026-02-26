@@ -116,20 +116,23 @@ public class AllocationService {
             return new PageImpl<>(List.of(), pageable, 0);
         }
 
-        // Map allocation TYPE to employee STATUS for EmployeeSpecification
-        // PROJECT type → ACTIVE status (employees with active PROJECT allocations)
-        // Other types (PROSPECT/MATERNITY/VACATION) stay the same
-        // BENCH stays BENCH
-        String employeeStatus = allocationType;
-        if ("PROJECT".equalsIgnoreCase(allocationType)) {
-            employeeStatus = "ACTIVE"; // ACTIVE employee status = has PROJECT allocations
-        }
+        // Build employee filter specification
+        Specification<Employee> spec;
 
-        // Reuse EmployeeSpecification for consistent search behavior (name OR email)
-        // Pass year/month so status checks use the SELECTED month, not current month
-        Specification<Employee> spec = EmployeeSpecification
-                .withFilters(
-                        searchParam, null, managerId, employeeStatus, accessibleIds, null, currentYear, currentMonth);
+        if (isBenchFilter) {
+            // BENCH: employees with no allocations
+            spec = EmployeeSpecification.withFilters(
+                    searchParam, null, managerId, "BENCH", accessibleIds, null, currentYear, currentMonth);
+        } else if (filterTypeEnum != null) {
+            // Allocation type filter: get employees who have at least one allocation of this type
+            // Use base filters (search, manager, access) + allocation type existence check
+            spec = EmployeeSpecification.baseFiltersWithAllocationType(
+                    searchParam, managerId, accessibleIds, filterTypeEnum, currentYear, currentMonth);
+        } else {
+            // No type filter: get all employees
+            spec = EmployeeSpecification.withFilters(
+                    searchParam, null, managerId, null, accessibleIds, null, currentYear, currentMonth);
+        }
 
         Page<Employee> employeePage = employeeRepository.findAll(spec, pageable);
 
@@ -172,9 +175,12 @@ public class AllocationService {
         Map<Long, List<Allocation>> allocationsByEmployee = allocations.stream()
                 .collect(Collectors.groupingBy(a -> a.getEmployee().getId()));
 
-        // Fetch distinct project counts directly from the DB
+        // Fetch distinct project counts directly from the DB, filtered by allocation type
+        // For BENCH, filterTypeEnum is null, so we won't count any projects (BENCH employees have no allocations)
+        // For PROJECT/PROSPECT/etc., we count only projects matching that type
+        String allocationTypeString = filterTypeEnum != null ? filterTypeEnum.name() : null;
         Map<Long, Long> projectCountMap = monthlyAllocationRepository
-                .findDistinctProjectCountByEmployeeIdsAndYearMonth(employeeIds, currentYear, currentMonth)
+                .findDistinctProjectCountByEmployeeIdsAndYearMonth(employeeIds, currentYear, currentMonth, allocationTypeString)
                 .stream()
                 .collect(Collectors.toMap(
                         row -> (Long) row[0],
