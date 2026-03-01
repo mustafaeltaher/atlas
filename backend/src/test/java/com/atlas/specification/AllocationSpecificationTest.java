@@ -2,9 +2,11 @@ package com.atlas.specification;
 
 import com.atlas.entity.Allocation;
 import com.atlas.entity.Employee;
+import com.atlas.entity.MonthlyAllocation;
 import com.atlas.entity.Project;
 import com.atlas.repository.AllocationRepository;
 import com.atlas.repository.EmployeeRepository;
+import com.atlas.repository.MonthlyAllocationRepository;
 import com.atlas.repository.ProjectRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -36,6 +38,9 @@ class AllocationSpecificationTest {
 
     @Autowired
     private ProjectRepository projectRepository;
+
+    @Autowired
+    private MonthlyAllocationRepository monthlyAllocationRepository;
 
     private Employee testEmployee;
     private Project testProject;
@@ -289,6 +294,27 @@ class AllocationSpecificationTest {
                 .endDate(endDate)
                 .allocationType(type)
                 .build();
-        return allocationRepository.save(allocation);
+        allocation = allocationRepository.save(allocation);
+
+        // PROJECT and PROSPECT allocations require MonthlyAllocation records
+        // MATERNITY and VACATION only use date overlap
+        if ((type == Allocation.AllocationType.PROJECT || type == Allocation.AllocationType.PROSPECT)
+                && startDate != null) {
+            LocalDate current = startDate.withDayOfMonth(1);
+            LocalDate end = (endDate != null) ? endDate.withDayOfMonth(1) : LocalDate.now().plusYears(2).withDayOfMonth(1);
+
+            while (!current.isAfter(end)) {
+                MonthlyAllocation monthlyAlloc = MonthlyAllocation.builder()
+                        .allocation(allocation)
+                        .year(current.getYear())
+                        .month(current.getMonthValue())
+                        .percentage(50)  // Default percentage for tests
+                        .build();
+                monthlyAllocationRepository.save(monthlyAlloc);
+                current = current.plusMonths(1);
+            }
+        }
+
+        return allocation;
     }
 }

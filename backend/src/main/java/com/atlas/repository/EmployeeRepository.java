@@ -12,10 +12,10 @@ import java.util.List;
 
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import com.atlas.specification.EmployeeSpecification;
-import java.time.LocalDate;
 
 @Repository
-public interface EmployeeRepository extends JpaRepository<Employee, Long>, JpaSpecificationExecutor<Employee>, EmployeeRepositoryCustom {
+public interface EmployeeRepository
+                extends JpaRepository<Employee, Long>, JpaSpecificationExecutor<Employee>, EmployeeRepositoryCustom {
 
         List<Employee> findByManager(Employee manager);
 
@@ -45,7 +45,8 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long>, JpaSp
         // VACATION
         @Query(value = "SELECT DISTINCT e.* FROM employees e " +
                         "WHERE e.resignation_date IS NULL " +
-                        "AND (CAST(:search AS text) IS NULL OR LOWER(e.name) LIKE :search OR LOWER(e.email) LIKE :search) " +
+                        "AND (CAST(:search AS text) IS NULL OR LOWER(e.name) LIKE :search OR LOWER(e.email) LIKE :search) "
+                        +
                         "AND (CAST(:managerId AS bigint) IS NULL OR e.manager_id = :managerId) " +
                         "AND NOT EXISTS (" +
                         "  SELECT 1 FROM allocations a " +
@@ -63,7 +64,8 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long>, JpaSp
                         +
                         "ORDER BY e.name", countQuery = "SELECT COUNT(DISTINCT e.id) FROM employees e " +
                                         "WHERE e.resignation_date IS NULL " +
-                                        "AND (CAST(:search AS text) IS NULL OR LOWER(e.name) LIKE :search OR LOWER(e.email) LIKE :search) " +
+                                        "AND (CAST(:search AS text) IS NULL OR LOWER(e.name) LIKE :search OR LOWER(e.email) LIKE :search) "
+                                        +
                                         "AND (CAST(:managerId AS bigint) IS NULL OR e.manager_id = :managerId) " +
                                         "AND NOT EXISTS (" +
                                         "  SELECT 1 FROM allocations a " +
@@ -712,13 +714,8 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long>, JpaSp
         long countBenchEmployeesByIds(@Param("ids") List<Long> ids, @Param("year") int year, @Param("month") int month);
 
         default long countBenchEmployeesFiltered(List<Long> ids, int year, int month) {
-                // Handle empty list case - IN () clause fails in native SQL
-                if (ids != null && ids.isEmpty()) {
-                        return 0L;
-                }
-                if (ids == null)
-                        return countBenchEmployees(year, month);
-                return countBenchEmployeesByIds(ids, year, month);
+                return count(com.atlas.specification.EmployeeSpecification.benchEmployees(null, null, ids, year,
+                                month));
         }
 
         // Count ACTIVE employees: have PROJECT allocation with % > 0 this month
@@ -740,13 +737,8 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long>, JpaSp
                         @Param("year") int year, @Param("month") int month);
 
         default long countActiveAllocatedEmployeesFiltered(List<Long> ids, int year, int month) {
-                // Handle empty list case - IN () clause fails in native SQL
-                if (ids != null && ids.isEmpty()) {
-                        return 0L;
-                }
-                if (ids == null)
-                        return countActiveAllocatedEmployees(year, month);
-                return countActiveAllocatedEmployeesByIds(ids, year, month);
+                return count(com.atlas.specification.EmployeeSpecification.activeEmployees(null, null, ids, year,
+                                month));
         }
 
         // Count PROSPECT employees: have PROSPECT allocation but NOT active
@@ -774,13 +766,8 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long>, JpaSp
                         @Param("year") int year, @Param("month") int month);
 
         default long countProspectEmployeesFiltered(List<Long> ids, int year, int month) {
-                // Handle empty list case - IN () clause fails in native SQL
-                if (ids != null && ids.isEmpty()) {
-                        return 0L;
-                }
-                if (ids == null)
-                        return countProspectEmployees(year, month);
-                return countProspectEmployeesByIds(ids, year, month);
+                return count(com.atlas.specification.EmployeeSpecification.prospectEmployees(null, null, ids, year,
+                                month));
         }
 
         // Average allocation % for active employees

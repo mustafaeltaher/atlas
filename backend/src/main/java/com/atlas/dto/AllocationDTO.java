@@ -8,6 +8,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDate;
+import java.util.List;
 
 @Data
 @Builder
@@ -31,6 +32,11 @@ public class AllocationDTO {
     // Current month allocation (for display)
     private Integer currentMonthAllocation;
     private Double allocationPercentage;
+
+    // Month-by-month mode
+    // If null or empty: single percentage mode
+    // If populated: month-by-month mode
+    private List<MonthlyAllocationDTO> monthlyAllocations;
 
     // Year for creating/editing allocations
     private Integer year;

@@ -85,19 +85,29 @@ import { AuthService } from '../../services/auth.service';
     </aside>
   `,
   styles: [`
+    :host {
+      display: block;
+      flex-shrink: 0;
+      height: 100vh;
+      position: relative;
+      z-index: 100;
+    }
+
     .sidebar {
       width: 260px;
-      height: 100vh;
+      min-width: 260px;
+      height: 100%;
       background: var(--bg-sidebar);
       display: flex;
       flex-direction: column;
       border-right: 1px solid rgba(255,255,255,0.1);
       position: relative;
-      transition: width 0.3s ease;
+      transition: width 0.3s ease, min-width 0.3s ease;
     }
 
     .sidebar.collapsed {
       width: 80px;
+      min-width: 80px;
     }
 
     /* Toggle Button */
