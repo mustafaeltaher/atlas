@@ -13,7 +13,8 @@ import java.util.List;
 import java.util.Optional;
 
 @Repository
-public interface AllocationRepository extends JpaRepository<Allocation, Long>, JpaSpecificationExecutor<Allocation>, AllocationRepositoryCustom {
+public interface AllocationRepository extends JpaRepository<Allocation, Long>, JpaSpecificationExecutor<Allocation>,
+                AllocationRepositoryCustom {
 
         @Query("SELECT a FROM Allocation a JOIN FETCH a.employee LEFT JOIN FETCH a.project WHERE a.project.id = :projectId AND a.allocationType = :allocationType")
         List<Allocation> findAllocationsByProjectIdAndType(
@@ -41,6 +42,9 @@ public interface AllocationRepository extends JpaRepository<Allocation, Long>, J
         @EntityGraph("Allocation.withDetails")
         @Override
         List<Allocation> findAll();
+
+        @EntityGraph("Allocation.withDetails")
+        List<Allocation> findAll(org.springframework.data.jpa.domain.Specification<Allocation> spec);
 
         // Keep method name for backward compatibility
         default List<Allocation> findAllWithEmployeeAndProject() {

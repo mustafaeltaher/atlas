@@ -21,6 +21,8 @@ public interface EmployeeRepositoryCustom {
      * @param status Status filter (employee or allocation status)
      * @param accessibleIds List of accessible employee IDs for ABAC
      * @param managerName Manager name search filter
+     * @param year Year for status checks (e.g., PROSPECT, ACTIVE, BENCH in specific month)
+     * @param month Month for status checks (e.g., PROSPECT, ACTIVE, BENCH in specific month)
      * @return List of distinct manager Employee entities, ordered by name
      */
     List<Employee> findDistinctManagersByEmployeeSpec(
@@ -29,5 +31,7 @@ public interface EmployeeRepositoryCustom {
             Long managerId,
             String status,
             List<Long> accessibleIds,
-            String managerName);
+            String managerName,
+            Integer year,
+            Integer month);
 }
